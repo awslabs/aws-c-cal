@@ -1,6 +1,6 @@
 ## AWS C Cal
 
-Aws Crypto Abstraction Layer: Cross-Platform, C99 wrapper for cryptography primitives.
+AWS Crypto Abstraction Layer: Cross-Platform, C99 wrapper for cryptography primitives.
 
 ## License
 

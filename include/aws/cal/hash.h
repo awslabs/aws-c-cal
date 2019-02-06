@@ -25,6 +25,8 @@
 struct aws_hash;
 
 struct aws_hash_vtable {
+    const char *alg_name;
+    const char *provider;
     void (*destroy)(struct aws_hash *hash);
     int (*update)(struct aws_hash *hash, struct aws_byte_cursor *buf);
     int (*finalize)(struct aws_hash *hash, struct aws_byte_buf *out);
@@ -32,9 +34,9 @@ struct aws_hash_vtable {
 
 struct aws_hash {
     struct aws_allocator *allocator;
-    const char *alg_name;
-    void *impl;
     struct aws_hash_vtable *vtable;
+    size_t digest_size;
+    void *impl;
 };
 
 typedef struct aws_hash *(aws_hash_new_fn)(struct aws_allocator *allocator);

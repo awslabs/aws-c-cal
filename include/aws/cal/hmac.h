@@ -24,6 +24,8 @@
 struct aws_hmac;
 
 struct aws_hmac_vtable {
+    const char *alg_name;
+    const char *provider;
     void (*destroy)(struct aws_hmac *hmac);
     int (*update)(struct aws_hmac *hmac, struct aws_byte_cursor *buf);
     int (*finalize)(struct aws_hmac *hmac, struct aws_byte_buf *out);
@@ -31,9 +33,9 @@ struct aws_hmac_vtable {
 
 struct aws_hmac {
     struct aws_allocator *allocator;
-    const char *alg_name;
-    void *impl;
     struct aws_hmac_vtable *vtable;
+    size_t digest_size;
+    void *impl;
 };
 
 typedef struct aws_hmac *(aws_hmac_new_fn)(struct aws_allocator *allocator, struct aws_byte_cursor *secret);

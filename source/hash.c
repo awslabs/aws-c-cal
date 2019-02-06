@@ -21,8 +21,13 @@ extern struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator);
 static aws_hash_new_fn *s_sha256_new_fn = aws_sha256_default_new;
 static aws_hash_new_fn *s_md5_new_fn = aws_md5_default_new;
 #else
-static aws_hash_new_fn *s_sha256_new_fn = NULL;
-static aws_hash_new_fn *s_md5_new_fn = NULL;
+static struct aws_hash *aws_hash_new_abort(struct aws_allocator *allocator) {
+    (void)allocator;
+    abort();
+}
+
+static aws_hash_new_fn *s_sha256_new_fn = aws_hash_new_abort;
+static aws_hash_new_fn *s_md5_new_fn = aws_hash_new_abort;
 #endif
 
 struct aws_hash *aws_sha256_new(struct aws_allocator *allocator) {

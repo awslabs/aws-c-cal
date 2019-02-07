@@ -82,10 +82,12 @@ static inline int compute_hash(struct aws_hash *hash, struct aws_byte_cursor *in
     }
 
     if (aws_hash_update(hash, input)) {
+        aws_hash_destroy(hash);
         return AWS_OP_ERR;
     }
 
     if (aws_hash_finalize(hash, output)) {
+        aws_hash_destroy(hash);
         return AWS_OP_ERR;
     }
 

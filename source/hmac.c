@@ -73,10 +73,12 @@ int aws_sha256_hmac_compute(struct aws_allocator *allocator, struct aws_byte_cur
     }
 
     if (aws_hmac_update(hmac, to_hash)) {
+        aws_hmac_destroy(hmac);
         return AWS_OP_ERR;
     }
 
     if (aws_hmac_finalize(hmac, output)) {
+        aws_hmac_destroy(hmac);
         return AWS_OP_ERR;
     }
 

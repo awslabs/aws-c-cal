@@ -93,9 +93,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC AWS::aws-c-common ${PLATFORM_
 
 if (BYO_CRYPTO)
     target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE -DAWS_BYO_CRYPTO)
-endif()
-
-if (NOT WIN32 AND NOT APPLE)
+elseif (NOT WIN32 AND NOT APPLE)
     target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:LibCrypto::Crypto,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
@@ -138,4 +136,3 @@ if (NOT CMAKE_CROSSCOMPILING AND NOT BYO_CRYPTO)
     include(CTest)
     add_subdirectory(tests)
 endif()
-

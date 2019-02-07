@@ -14,31 +14,13 @@
  */
 #include <aws/cal/hash.h>
 #include <aws/testing/aws_test_harness.h>
+#include <aws/common/byte_buf.h>
 
+#include <test_case_helper.h>
 /*
  * these are the NIST test vectors, as compiled here:
  * https://www.di-mgt.com.au/sha_testvectors.html
  */
-
-static int s_verify_test_case(
-    struct aws_allocator *allocator,
-    struct aws_byte_cursor *input,
-    struct aws_byte_cursor *expected) {
-    uint8_t output[AWS_SHA256_LEN] = {0};
-    struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
-    output_buf.len = 0;
-
-    struct aws_hash *hash = aws_sha256_new(allocator);
-    ASSERT_NOT_NULL(hash);
-    ASSERT_SUCCESS(aws_hash_update(hash, input));
-    ASSERT_SUCCESS(aws_hash_finalize(hash, &output_buf));
-
-    ASSERT_BIN_ARRAYS_EQUALS(expected->ptr, expected->len, output_buf.buffer, output_buf.len);
-
-    aws_hash_destroy(hash);
-
-    return AWS_OP_SUCCESS;
-}
 
 static int s_sha256_nist_test_case_1_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -50,7 +32,7 @@ static int s_sha256_nist_test_case_1_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_sha256_new);
 }
 
 AWS_TEST_CASE(sha256_nist_test_case_1, s_sha256_nist_test_case_1_fn)
@@ -65,7 +47,7 @@ static int s_sha256_nist_test_case_2_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_sha256_new);
 }
 
 AWS_TEST_CASE(sha256_nist_test_case_2, s_sha256_nist_test_case_2_fn)
@@ -81,7 +63,7 @@ static int s_sha256_nist_test_case_3_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_sha256_new);
 }
 
 AWS_TEST_CASE(sha256_nist_test_case_3, s_sha256_nist_test_case_3_fn)
@@ -98,7 +80,7 @@ static int s_sha256_nist_test_case_4_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_sha256_new);
 }
 
 AWS_TEST_CASE(sha256_nist_test_case_4, s_sha256_nist_test_case_4_fn)
@@ -132,6 +114,34 @@ static int s_sha256_nist_test_case_5_fn(struct aws_allocator *allocator, void *c
 
 AWS_TEST_CASE(sha256_nist_test_case_5, s_sha256_nist_test_case_5_fn)
 
+static int s_sha256_nist_test_case_5_truncated_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_hash *hash = aws_sha256_new(allocator);
+    ASSERT_NOT_NULL(hash);
+    struct aws_byte_cursor input = aws_byte_cursor_from_c_str("a");
+
+    for (size_t i = 0; i < 1000000; ++i) {
+        ASSERT_SUCCESS(aws_hash_update(hash, &input));
+    }
+
+    uint8_t expected[] = {
+            0xcd, 0xc7, 0x6e, 0x5c, 0x99, 0x14, 0xfb, 0x92, 0x81, 0xa1, 0xc7, 0xe2, 0x84, 0xd7, 0x3e, 0x67,
+    };
+    struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
+    uint8_t output[AWS_SHA256_LEN] = {0};
+    struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, expected_buf.len);
+    output_buf.len = 0;
+    ASSERT_SUCCESS(aws_hash_finalize(hash, &output_buf));
+
+    ASSERT_BIN_ARRAYS_EQUALS(expected_buf.ptr, expected_buf.len, output_buf.buffer, output_buf.len);
+
+    aws_hash_destroy(hash);
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(sha256_nist_test_case_5_truncated, s_sha256_nist_test_case_5_truncated_fn)
+
 static int s_sha256_nist_test_case_6_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
@@ -162,17 +172,3 @@ static int s_sha256_nist_test_case_6_fn(struct aws_allocator *allocator, void *c
 
 AWS_TEST_CASE(sha256_nist_test_case_6, s_sha256_nist_test_case_6_fn)
 
-static int s_sha256_invalid_buffer_size_fn(struct aws_allocator *allocator, void *ctx) {
-    (void)ctx;
-    struct aws_hash *hash = aws_sha256_new(allocator);
-    ASSERT_NOT_NULL(hash);
-
-    uint8_t output[AWS_SHA256_LEN] = {0};
-    struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
-    output_buf.len = 1;
-    ASSERT_ERROR(AWS_ERROR_SHORT_BUFFER, aws_hash_finalize(hash, &output_buf));
-    aws_hash_destroy(hash);
-    return AWS_OP_SUCCESS;
-}
-
-AWS_TEST_CASE(sha256_invalid_buffer_size, s_sha256_invalid_buffer_size_fn)

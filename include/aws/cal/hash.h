@@ -60,9 +60,22 @@ AWS_CAL_API void aws_hash_destroy(struct aws_hash *hash);
 AWS_CAL_API int aws_hash_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash);
 /**
  * Completes the hash computation and writes the final digest to output. Allocation of output is the caller's
- * responsibility.
+ * responsibility. If output available write capacity is smaller than the digest size, the output will be truncated.
+ * Use the truncation ability if you, for example, just want 8 bytes from the sha256 instead of the full 32.
  */
 AWS_CAL_API int aws_hash_finalize(struct aws_hash *hash, struct aws_byte_buf *output);
+
+/**
+ * Computes the md5 hash over input and writes the digest output to 'output'. Use this if you don't need to stream the
+ * data you're hashing and you can load the entire input to hash into memory.
+ */
+AWS_CAL_API int aws_md5_compute(struct aws_allocator *allocator, struct aws_byte_cursor *input, struct aws_byte_buf *output);
+
+/**
+ * Computes the sha256 hash over input and writes the digest output to 'output'. Use this if you don't need to stream the
+ * data you're hashing and you can load the entire input to hash into memory.
+ */
+AWS_CAL_API int aws_sha256_compute(struct aws_allocator *allocator, struct aws_byte_cursor *input, struct aws_byte_buf *output);
 
 /**
  * Set the implementation of md5 to use. If you compiled without AWS_BYO_CRYPTO, you do not need to call this. However,

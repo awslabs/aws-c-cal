@@ -14,32 +14,14 @@
  */
 #include <aws/cal/hmac.h>
 #include <aws/testing/aws_test_harness.h>
+#include <aws/common/byte_buf.h>
+
+#include <test_case_helper.h>
 
 /*
  * these are the rfc4231  test vectors, as compiled here:
  * https://tools.ietf.org/html/rfc4231#section-4.1
  */
-
-static int s_verify_test_case(
-    struct aws_allocator *allocator,
-    struct aws_byte_cursor *input,
-    struct aws_byte_cursor *secret,
-    struct aws_byte_cursor *expected) {
-    uint8_t output[AWS_SHA256_HMAC_LEN] = {0};
-    struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
-    output_buf.len = 0;
-
-    struct aws_hmac *hmac = aws_sha256_hmac_new(allocator, secret);
-    ASSERT_NOT_NULL(hmac);
-    ASSERT_SUCCESS(aws_hmac_update(hmac, input));
-    ASSERT_SUCCESS(aws_hmac_finalize(hmac, &output_buf));
-
-    ASSERT_BIN_ARRAYS_EQUALS(expected->ptr, expected->len, output_buf.buffer, output_buf.len);
-
-    aws_hmac_destroy(hmac);
-
-    return AWS_OP_SUCCESS;
-}
 
 static int s_sha256_hmac_rfc4231_test_case_1_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -57,7 +39,7 @@ static int s_sha256_hmac_rfc4231_test_case_1_fn(struct aws_allocator *allocator,
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &secret_buf, &expected_buf);
+    return s_verify_hmac_test_case(allocator, &input, &secret_buf, &expected_buf, aws_sha256_hmac_new);
 }
 
 AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_1, s_sha256_hmac_rfc4231_test_case_1_fn)
@@ -80,7 +62,7 @@ static int s_sha256_hmac_rfc4231_test_case_2_fn(struct aws_allocator *allocator,
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &secret_buf, &expected_buf);
+    return s_verify_hmac_test_case(allocator, &input, &secret_buf, &expected_buf, aws_sha256_hmac_new);
 }
 
 AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_2, s_sha256_hmac_rfc4231_test_case_2_fn)
@@ -108,7 +90,7 @@ static int s_sha256_hmac_rfc4231_test_case_3_fn(struct aws_allocator *allocator,
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input_buf, &secret_buf, &expected_buf);
+    return s_verify_hmac_test_case(allocator, &input_buf, &secret_buf, &expected_buf, aws_sha256_hmac_new);
 }
 
 AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_3, s_sha256_hmac_rfc4231_test_case_3_fn)
@@ -136,12 +118,32 @@ static int s_sha256_hmac_rfc4231_test_case_4_fn(struct aws_allocator *allocator,
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input_buf, &secret_buf, &expected_buf);
+    return s_verify_hmac_test_case(allocator, &input_buf, &secret_buf, &expected_buf, aws_sha256_hmac_new);
 }
 
 AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_4, s_sha256_hmac_rfc4231_test_case_4_fn)
 
-/* test case 5 is deliberately left out. It deals with truncation behavior. */
+static int s_sha256_hmac_rfc4231_test_case_5_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t secret[] = {
+            0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
+            0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
+    };
+    struct aws_byte_cursor secret_buf = aws_byte_cursor_from_array(secret, sizeof(secret));
+
+    struct aws_byte_cursor input_buf =
+            aws_byte_cursor_from_c_str("Test With Truncation");
+
+    uint8_t expected[] = {
+            0xa3, 0xb6, 0x16, 0x74, 0x73, 0x10, 0x0e, 0xe0, 0x6e, 0x0c, 0x79, 0x6c, 0x29, 0x55, 0x55, 0x2b,
+    };
+    struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
+
+    return s_verify_hmac_test_case(allocator, &input_buf, &secret_buf, &expected_buf, aws_sha256_hmac_new);
+}
+
+AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_5, s_sha256_hmac_rfc4231_test_case_5_fn)
 
 static int s_sha256_hmac_rfc4231_test_case_6_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -167,7 +169,7 @@ static int s_sha256_hmac_rfc4231_test_case_6_fn(struct aws_allocator *allocator,
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input_buf, &secret_buf, &expected_buf);
+    return s_verify_hmac_test_case(allocator, &input_buf, &secret_buf, &expected_buf, aws_sha256_hmac_new);
 }
 
 AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_6, s_sha256_hmac_rfc4231_test_case_6_fn)
@@ -197,29 +199,7 @@ static int s_sha256_hmac_rfc4231_test_case_7_fn(struct aws_allocator *allocator,
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input_buf, &secret_buf, &expected_buf);
+    return s_verify_hmac_test_case(allocator, &input_buf, &secret_buf, &expected_buf, aws_sha256_hmac_new);
 }
 
 AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_7, s_sha256_hmac_rfc4231_test_case_7_fn)
-
-static int s_sha256_hmac_invalid_buffer_size_fn(struct aws_allocator *allocator, void *ctx) {
-    (void)ctx;
-
-    uint8_t secret[] = {
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
-            0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
-    };
-    struct aws_byte_cursor secret_buf = aws_byte_cursor_from_array(secret, sizeof(secret));
-
-    struct aws_hmac *hmac = aws_sha256_hmac_new(allocator, &secret_buf);
-    ASSERT_NOT_NULL(hmac);
-
-    uint8_t output[AWS_SHA256_HMAC_LEN] = {0};
-    struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
-    output_buf.len = 1;
-    ASSERT_ERROR(AWS_ERROR_SHORT_BUFFER, aws_hmac_finalize(hmac, &output_buf));
-    aws_hmac_destroy(hmac);
-    return AWS_OP_SUCCESS;
-}
-
-AWS_TEST_CASE(sha256_hmac_invalid_buffer_size, s_sha256_hmac_invalid_buffer_size_fn)

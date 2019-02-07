@@ -55,5 +55,48 @@ int aws_hash_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
 }
 
 int aws_hash_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
+    size_t available_buffer = output->capacity - output->len;
+
+    if (available_buffer < hash->digest_size) {
+        uint8_t tmp_output[128] = {0};
+        assert(sizeof(tmp_output) >= hash->digest_size);
+
+        struct aws_byte_buf tmp_out_buf = aws_byte_buf_from_array(tmp_output, sizeof(tmp_output));
+        tmp_out_buf.len = 0;
+
+        if (hash->vtable->finalize(hash, &tmp_out_buf)) {
+            return AWS_OP_ERR;
+        }
+
+        memcpy(output->buffer + output->len, tmp_output, available_buffer);
+        output->len += available_buffer;
+        return AWS_OP_SUCCESS;
+    }
+
     return hash->vtable->finalize(hash, output);
+}
+
+static inline int compute_hash(struct aws_hash *hash, struct aws_byte_cursor *input, struct aws_byte_buf *output) {
+    if (!hash) {
+        return AWS_OP_ERR;
+    }
+
+    if (aws_hash_update(hash, input)) {
+        return AWS_OP_ERR;
+    }
+
+    if (aws_hash_finalize(hash, output)) {
+        return AWS_OP_ERR;
+    }
+
+    aws_hash_destroy(hash);
+    return AWS_OP_SUCCESS;
+}
+
+int aws_md5_compute(struct aws_allocator *allocator, struct aws_byte_cursor *input, struct aws_byte_buf *output) {
+    return compute_hash(aws_md5_new(allocator), input, output);
+}
+
+int aws_sha256_compute(struct aws_allocator *allocator, struct aws_byte_cursor *input, struct aws_byte_buf *output) {
+    return compute_hash(aws_md5_new(allocator), input, output);
 }

@@ -15,29 +15,11 @@
 #include <aws/cal/hash.h>
 #include <aws/testing/aws_test_harness.h>
 
+#include <test_case_helper.h>
+
 /*
  * these are the rfc1321 test vectors
  */
-
-static int s_verify_test_case(
-    struct aws_allocator *allocator,
-    struct aws_byte_cursor *input,
-    struct aws_byte_cursor *expected) {
-    uint8_t output[AWS_MD5_LEN] = {0};
-    struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
-    output_buf.len = 0;
-
-    struct aws_hash *hash = aws_md5_new(allocator);
-    ASSERT_NOT_NULL(hash);
-    ASSERT_SUCCESS(aws_hash_update(hash, input));
-    ASSERT_SUCCESS(aws_hash_finalize(hash, &output_buf));
-
-    ASSERT_BIN_ARRAYS_EQUALS(expected->ptr, expected->len, output_buf.buffer, output_buf.len);
-
-    aws_hash_destroy(hash);
-
-    return AWS_OP_SUCCESS;
-}
 
 static int s_md5_rfc1321_test_case_1_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -48,7 +30,7 @@ static int s_md5_rfc1321_test_case_1_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
 AWS_TEST_CASE(md5_rfc1321_test_case_1, s_md5_rfc1321_test_case_1_fn)
@@ -62,7 +44,7 @@ static int s_md5_rfc1321_test_case_2_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
 AWS_TEST_CASE(md5_rfc1321_test_case_2, s_md5_rfc1321_test_case_2_fn)
@@ -77,7 +59,7 @@ static int s_md5_rfc1321_test_case_3_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
 AWS_TEST_CASE(md5_rfc1321_test_case_3, s_md5_rfc1321_test_case_3_fn)
@@ -92,7 +74,7 @@ static int s_md5_rfc1321_test_case_4_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
 AWS_TEST_CASE(md5_rfc1321_test_case_4, s_md5_rfc1321_test_case_4_fn)
@@ -107,7 +89,7 @@ static int s_md5_rfc1321_test_case_5_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
 AWS_TEST_CASE(md5_rfc1321_test_case_5, s_md5_rfc1321_test_case_5_fn)
@@ -122,7 +104,7 @@ static int s_md5_rfc1321_test_case_6_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
 AWS_TEST_CASE(md5_rfc1321_test_case_6, s_md5_rfc1321_test_case_6_fn)
@@ -137,22 +119,22 @@ static int s_md5_rfc1321_test_case_7_fn(struct aws_allocator *allocator, void *c
     };
     struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
 
-    return s_verify_test_case(allocator, &input, &expected_buf);
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
 AWS_TEST_CASE(md5_rfc1321_test_case_7, s_md5_rfc1321_test_case_7_fn)
 
-static int s_md5_invalid_buffer_size_fn(struct aws_allocator *allocator, void *ctx) {
+static int s_md5_rfc1321_test_case_7_truncated_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
-    struct aws_hash *hash = aws_md5_new(allocator);
-    ASSERT_NOT_NULL(hash);
 
-    uint8_t output[AWS_MD5_LEN] = {0};
-    struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
-    output_buf.len = 1;
-    ASSERT_ERROR(AWS_ERROR_SHORT_BUFFER, aws_hash_finalize(hash, &output_buf));
-    aws_hash_destroy(hash);
-    return AWS_OP_SUCCESS;
+    struct aws_byte_cursor input =
+            aws_byte_cursor_from_c_str("12345678901234567890123456789012345678901234567890123456789012345678901234567890");
+    uint8_t expected[] = {
+            0x57, 0xed, 0xf4, 0xa2, 0x2b, 0xe3, 0xc9, 0x55,
+    };
+    struct aws_byte_cursor expected_buf = aws_byte_cursor_from_array(expected, sizeof(expected));
+
+    return s_verify_hash_test_case(allocator, &input, &expected_buf, aws_md5_new);
 }
 
-AWS_TEST_CASE(md5_invalid_buffer_size, s_md5_invalid_buffer_size_fn)
+AWS_TEST_CASE(md5_rfc1321_test_case_7_truncated, s_md5_rfc1321_test_case_7_truncated_fn)

@@ -60,7 +60,12 @@ AWS_CAL_API int aws_hmac_update(struct aws_hmac *hmac, struct aws_byte_cursor *t
  * responsibility.
  */
 AWS_CAL_API int aws_hmac_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output);
-
+/**
+ * Computes the sha256 hmac over input and writes the digest output to 'output'. Use this if you don't need to stream the
+ * data you're hashing and you can load the entire input to hash into memory.
+ */
+AWS_CAL_API int aws_sha256_hmac_compute(struct aws_allocator *allocator, struct aws_byte_cursor *secret,
+        struct aws_byte_cursor *to_hash, struct aws_byte_buf *output);
 /**
  * Set the implementation of sha256 hmac to use. If you compiled without AWS_BYO_CRYPTO, you do not need to call this.
  * However, if use this, we will honor it, regardless of compile options. This may be useful for testing purposes. If

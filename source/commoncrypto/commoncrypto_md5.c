@@ -24,54 +24,52 @@ static struct aws_hash_vtable s_vtable = {
     .destroy = s_destroy,
     .update = s_update,
     .finalize = s_finalize,
+    .alg_name = "MD5",
+    .provider = "CommonCrypto",
 };
 
+struct cc_md5_hash {
+    struct aws_hash hash;
+    CC_MD5_CTX cc_hash;
+};
 struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
-    struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
+    struct cc_md5_hash *cc_md5_hash = aws_mem_acquire(allocator, sizeof(struct cc_md5_hash));
 
-    if (!hash) {
+    if (!cc_md5_hash) {
         return NULL;
     }
 
-    hash->allocator = allocator;
-    hash->alg_name = "MD5 (From: CommonCrypto)";
-    hash->vtable = &s_vtable;
-    CC_MD5_CTX *ctx = aws_mem_acquire(allocator, sizeof(CC_MD5_CTX));
-    hash->impl = ctx;
+    cc_md5_hash->hash.allocator = allocator;
+    cc_md5_hash->hash.vtable = &s_vtable;
+    cc_md5_hash->hash.digest_size = AWS_MD5_LEN;
+    cc_md5_hash->hash.impl = cc_md5_hash;
 
-    if (!hash->impl) {
-        aws_raise_error(AWS_ERROR_OOM);
-        aws_mem_release(allocator, hash);
-        return NULL;
-    }
-
-    CC_MD5_Init(ctx);
-    return hash;
+    CC_MD5_Init(&cc_md5_hash->cc_hash);
+    return &cc_md5_hash->hash;
 }
 
 static void s_destroy(struct aws_hash *hash) {
-    CC_MD5_CTX *ctx = hash->impl;
+    struct cc_md5_hash *ctx = hash->impl;
     aws_mem_release(hash->allocator, ctx);
-    aws_mem_release(hash->allocator, hash);
 }
 
 static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
-    CC_MD5_CTX *ctx = hash->impl;
+    struct cc_md5_hash *ctx = hash->impl;
 
-    CC_MD5_Update(ctx, to_hash->ptr, (CC_LONG)to_hash->len);
+    CC_MD5_Update(&ctx->cc_hash, to_hash->ptr, (CC_LONG)to_hash->len);
     return AWS_OP_SUCCESS;
 }
 
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
-    CC_MD5_CTX *ctx = hash->impl;
+    struct cc_md5_hash *ctx = hash->impl;
 
     size_t buffer_len = output->capacity - output->len;
 
-    if (buffer_len < AWS_MD5_LEN) {
+    if (buffer_len < hash->digest_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    CC_MD5_Final(output->buffer + output->len, ctx);
+    CC_MD5_Final(output->buffer + output->len, &ctx->cc_hash);
     output->len += buffer_len;
     return AWS_OP_SUCCESS;
 }

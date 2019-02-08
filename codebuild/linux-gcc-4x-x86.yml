@@ -20,7 +20,7 @@ phases:
         --prefix=`pwd`/../../install/
       - make -j 12
       - make install
-      - cd ../../
+      - cd ../../aws-c-cal
 
   pre_build:
     commands:

@@ -94,6 +94,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
   bcrypt_hash->hash.vtable = &s_sha256_vtable;
   bcrypt_hash->hash.impl = bcrypt_hash;
   bcrypt_hash->hash.digest_size = AWS_SHA256_LEN;
+  bcrypt_hash->hash.good = true;
   bcrypt_hash->hash_obj = hash_obj;
   NTSTATUS status = BCryptCreateHash(s_sha256_alg, &bcrypt_hash->hash_handle,
                                      bcrypt_hash->hash_obj,
@@ -125,6 +126,7 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
   bcrypt_hash->hash.vtable = &s_md5_vtable;
   bcrypt_hash->hash.impl = bcrypt_hash;
   bcrypt_hash->hash.digest_size = AWS_MD5_LEN;
+  bcrypt_hash->hash.good = true;
   bcrypt_hash->hash_obj = hash_obj;
   NTSTATUS status =
       BCryptCreateHash(s_md5_alg, &bcrypt_hash->hash_handle,
@@ -145,11 +147,16 @@ static void s_destroy(struct aws_hash *hash) {
 }
 
 static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct bcrypt_hash_handle *ctx = hash->impl;
   NTSTATUS status =
       BCryptHashData(ctx->hash_handle, to_hash->ptr, (ULONG)to_hash->len, 0);
 
   if (!NT_SUCCESS(status)) {
+    hash->good = false;
     return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
   }
 
@@ -157,6 +164,10 @@ static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
 }
 
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct bcrypt_hash_handle *ctx = hash->impl;
 
   size_t buffer_len = output->capacity - output->len;
@@ -167,6 +178,8 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
 
   NTSTATUS status = BCryptFinishHash(
       ctx->hash_handle, output->buffer + output->len, (ULONG)buffer_len, 0);
+
+  hash->good = false;
   if (!NT_SUCCESS(status)) {
     return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
   }

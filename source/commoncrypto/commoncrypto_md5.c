@@ -44,6 +44,7 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
   cc_md5_hash->hash.vtable = &s_vtable;
   cc_md5_hash->hash.digest_size = AWS_MD5_LEN;
   cc_md5_hash->hash.impl = cc_md5_hash;
+  cc_md5_hash->hash.good = true;
 
   CC_MD5_Init(&cc_md5_hash->cc_hash);
   return &cc_md5_hash->hash;
@@ -55,6 +56,10 @@ static void s_destroy(struct aws_hash *hash) {
 }
 
 static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct cc_md5_hash *ctx = hash->impl;
 
   CC_MD5_Update(&ctx->cc_hash, to_hash->ptr, (CC_LONG)to_hash->len);
@@ -62,6 +67,10 @@ static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
 }
 
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct cc_md5_hash *ctx = hash->impl;
 
   size_t buffer_len = output->capacity - output->len;
@@ -71,6 +80,7 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
   }
 
   CC_MD5_Final(output->buffer + output->len, &ctx->cc_hash);
+  hash->good = false;
   output->len += buffer_len;
   return AWS_OP_SUCCESS;
 }

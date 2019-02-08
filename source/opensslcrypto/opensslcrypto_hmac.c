@@ -61,6 +61,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator,
   ctx = HMAC_CTX_new();
 #endif
   hmac->impl = ctx;
+  hmac->good = true;
 
   if (!hmac->impl) {
     aws_raise_error(AWS_ERROR_OOM);
@@ -101,16 +102,25 @@ static void s_destroy(struct aws_hmac *hmac) {
 }
 
 static int s_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hmac) {
+  if (!hmac->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   HMAC_CTX *ctx = hmac->impl;
 
   if (AWS_LIKELY(HMAC_Update(ctx, to_hmac->ptr, to_hmac->len))) {
     return AWS_OP_SUCCESS;
   }
 
+  hmac->good = false;
   return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
 }
 
 static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
+  if (!hmac->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   HMAC_CTX *ctx = hmac->impl;
 
   size_t buffer_len = output->capacity - output->len;
@@ -121,9 +131,11 @@ static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
 
   if (AWS_LIKELY(HMAC_Final(ctx, output->buffer + output->len,
                             (unsigned int *)&buffer_len))) {
+    hmac->good = false;
     output->len += buffer_len;
     return AWS_OP_SUCCESS;
   }
 
+  hmac->good = false;
   return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
 }

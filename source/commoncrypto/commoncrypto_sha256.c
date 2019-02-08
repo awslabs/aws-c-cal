@@ -45,6 +45,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
   sha256_hash->hash.vtable = &s_vtable;
   sha256_hash->hash.impl = sha256_hash;
   sha256_hash->hash.digest_size = AWS_SHA256_LEN;
+  sha256_hash->hash.good = true;
 
   CC_SHA256_Init(&sha256_hash->cc_hash);
   return &sha256_hash->hash;
@@ -56,6 +57,10 @@ static void s_destroy(struct aws_hash *hash) {
 }
 
 static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct cc_sha256_hash *ctx = hash->impl;
 
   CC_SHA256_Update(&ctx->cc_hash, to_hash->ptr, (CC_LONG)to_hash->len);
@@ -63,6 +68,10 @@ static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
 }
 
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct cc_sha256_hash *ctx = hash->impl;
 
   size_t buffer_len = output->capacity - output->len;
@@ -72,6 +81,7 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
   }
 
   CC_SHA256_Final(output->buffer + output->len, &ctx->cc_hash);
+  hash->good = false;
   output->len += buffer_len;
   return AWS_OP_SUCCESS;
 }

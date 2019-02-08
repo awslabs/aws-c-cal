@@ -249,3 +249,32 @@ static int s_md5_invalid_buffer_size_fn(struct aws_allocator *allocator,
 }
 
 AWS_TEST_CASE(md5_invalid_buffer_size, s_md5_invalid_buffer_size_fn)
+
+static int s_md5_test_invalid_state_fn(struct aws_allocator *allocator,
+                                       void *ctx) {
+  (void)ctx;
+
+  struct aws_byte_cursor input =
+      aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
+                                 "67890123456789012345678901234567890");
+
+  struct aws_hash *hash = aws_md5_new(allocator);
+  ASSERT_NOT_NULL(hash);
+
+  uint8_t output[AWS_MD5_LEN] = {0};
+  struct aws_byte_buf output_buf =
+      aws_byte_buf_from_array(output, sizeof(output));
+  output_buf.len = 0;
+
+  ASSERT_SUCCESS(aws_hash_update(hash, &input));
+  ASSERT_SUCCESS(aws_hash_finalize(hash, &output_buf, 0));
+  ASSERT_ERROR(AWS_ERROR_INVALID_STATE, aws_hash_update(hash, &input));
+  ASSERT_ERROR(AWS_ERROR_INVALID_STATE,
+               aws_hash_finalize(hash, &output_buf, 0));
+
+  aws_hash_destroy(hash);
+
+  return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(md5_test_invalid_state, s_md5_test_invalid_state_fn)

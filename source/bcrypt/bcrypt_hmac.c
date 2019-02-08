@@ -75,6 +75,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator,
   bcrypt_hmac->hmac.vtable = &s_sha256_hmac_vtable;
   bcrypt_hmac->hmac.impl = bcrypt_hmac;
   bcrypt_hmac->hmac.digest_size = AWS_SHA256_HMAC_LEN;
+  bcrypt_hmac->hmac.good = true;
   bcrypt_hmac->hash_obj = hash_obj;
   NTSTATUS status = BCryptCreateHash(
       s_sha256_hmac_alg, &bcrypt_hmac->hash_handle, bcrypt_hmac->hash_obj,
@@ -95,11 +96,16 @@ static void s_destroy(struct aws_hmac *hmac) {
 }
 
 static int s_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hash) {
+  if (!hmac->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct bcrypt_hmac_handle *ctx = hmac->impl;
   NTSTATUS status =
       BCryptHashData(ctx->hash_handle, to_hash->ptr, (ULONG)to_hash->len, 0);
 
   if (!NT_SUCCESS(status)) {
+    hmac->good = false;
     return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
   }
 
@@ -107,6 +113,10 @@ static int s_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hash) {
 }
 
 static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
+  if (!hmac->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   struct bcrypt_hmac_handle *ctx = hmac->impl;
 
   size_t buffer_len = output->capacity - output->len;
@@ -117,6 +127,8 @@ static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
 
   NTSTATUS status = BCryptFinishHash(
       ctx->hash_handle, output->buffer + output->len, (ULONG)buffer_len, 0);
+
+  hmac->good = false;
   if (!NT_SUCCESS(status)) {
     return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
   }

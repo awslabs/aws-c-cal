@@ -35,6 +35,7 @@ struct aws_hmac {
   struct aws_allocator *allocator;
   struct aws_hmac_vtable *vtable;
   size_t digest_size;
+  bool good;
   void *impl;
 };
 

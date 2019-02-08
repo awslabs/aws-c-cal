@@ -36,6 +36,7 @@ struct aws_hash {
   struct aws_allocator *allocator;
   struct aws_hash_vtable *vtable;
   size_t digest_size;
+  bool good;
   void *impl;
 };
 

@@ -49,6 +49,7 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
   hash->digest_size = AWS_MD5_LEN;
   EVP_MD_CTX *ctx = EVP_MD_CTX_create();
   hash->impl = ctx;
+  hash->good = true;
 
   if (!hash->impl) {
     aws_raise_error(AWS_ERROR_OOM);
@@ -78,6 +79,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
   hash->digest_size = AWS_SHA256_LEN;
   EVP_MD_CTX *ctx = EVP_MD_CTX_create();
   hash->impl = ctx;
+  hash->good = true;
 
   if (!hash->impl) {
     aws_raise_error(AWS_ERROR_OOM);
@@ -102,16 +104,25 @@ static void s_destroy(struct aws_hash *hash) {
 }
 
 static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   EVP_MD_CTX *ctx = hash->impl;
 
   if (AWS_LIKELY(EVP_DigestUpdate(ctx, to_hash->ptr, to_hash->len))) {
     return AWS_OP_SUCCESS;
   }
 
+  hash->good = false;
   return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
 }
 
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
+  if (!hash->good) {
+    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+  }
+
   EVP_MD_CTX *ctx = hash->impl;
 
   size_t buffer_len = output->capacity - output->len;
@@ -123,8 +134,10 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
   if (AWS_LIKELY(EVP_DigestFinal_ex(ctx, output->buffer + output->len,
                                     (unsigned int *)&buffer_len))) {
     output->len += buffer_len;
+    hash->good = false;
     return AWS_OP_SUCCESS;
   }
 
+  hash->good = false;
   return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
 }

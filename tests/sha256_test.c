@@ -254,3 +254,33 @@ static int s_sha256_test_oneshot_fn(struct aws_allocator *allocator,
 }
 
 AWS_TEST_CASE(sha256_test_oneshot, s_sha256_test_oneshot_fn)
+
+static int s_sha256_test_invalid_state_fn(struct aws_allocator *allocator,
+                                          void *ctx) {
+  (void)ctx;
+
+  struct aws_byte_cursor input =
+      aws_byte_cursor_from_c_str("abcdefghbcdefghicdefghijdefghijkefghijklfghij"
+                                 "klmghijklmnhijklmnoijklmnopjklmnopqklm"
+                                 "nopqrlmnopqrsmnopqrstnopqrstu");
+
+  struct aws_hash *hash = aws_sha256_new(allocator);
+  ASSERT_NOT_NULL(hash);
+
+  uint8_t output[AWS_SHA256_LEN] = {0};
+  struct aws_byte_buf output_buf =
+      aws_byte_buf_from_array(output, sizeof(output));
+  output_buf.len = 0;
+
+  ASSERT_SUCCESS(aws_hash_update(hash, &input));
+  ASSERT_SUCCESS(aws_hash_finalize(hash, &output_buf, 0));
+  ASSERT_ERROR(AWS_ERROR_INVALID_STATE, aws_hash_update(hash, &input));
+  ASSERT_ERROR(AWS_ERROR_INVALID_STATE,
+               aws_hash_finalize(hash, &output_buf, 0));
+
+  aws_hash_destroy(hash);
+
+  return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(sha256_test_invalid_state, s_sha256_test_invalid_state_fn)

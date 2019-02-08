@@ -5,7 +5,10 @@ set -e
 echo "Using CC=$CC CXX=$CXX"
 
 CMAKE_ARGS="$@"
-
+cd ..
+mkdir -p install
+INSTALL_DIR=`pwd`/install
+echo $INSTALL_DIR
 # install_library <git_repo> [<commit>]
 function install_library {
     git clone https://github.com/awslabs/$1.git
@@ -18,15 +21,11 @@ function install_library {
     mkdir build
     cd build
 
-    cmake -DCMAKE_PREFIX_PATH=../../install -DCMAKE_INSTALL_PREFIX=../../install -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../
+    cmake -DCMAKE_PREFIX_PATH=$INSTALL_DIR -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../
     make install
 
     cd ../..
 }
-
-cd ../
-
-mkdir -p install
 
 if [ "$TRAVIS_OS_NAME" != "osx" ]; then
     sudo apt-get install libssl-dev -y
@@ -37,7 +36,7 @@ pwd
 cd aws-c-cal
 mkdir build
 cd build
-cmake -DCMAKE_PREFIX_PATH=../../install -DCMAKE_INSTALL_PREFIX=../../install -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../
+cmake -DCMAKE_PREFIX_PATH=$INSTALL_DIR -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../
 
 make
 

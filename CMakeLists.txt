@@ -24,6 +24,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_PREFIX_PATH}/${CMAKE_INSTALL_LIBDIR}/cmake")
+message("MODULE PATH is ${CMAKE_MODULE_PATH}")
 
 include(AwsCFlags)
 include(AwsSharedLibSetup)

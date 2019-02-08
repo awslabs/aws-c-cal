@@ -31,12 +31,11 @@ if [ "$TRAVIS_OS_NAME" != "osx" ]; then
     sudo apt-get install libssl-dev -y
 fi
 install_library aws-c-common
-ls -la
-pwd
-cd aws-c-cal
-mkdir build
-cd build
-cmake -DCMAKE_PREFIX_PATH=$INSTALL_DIR -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../
+
+mkdir aws-c-cal-build
+cd aws-c-cal-build
+
+cmake -DCMAKE_PREFIX_PATH=$INSTALL_DIR -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../aws-c-cal
 
 make
 

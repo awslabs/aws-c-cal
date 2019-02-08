@@ -8,7 +8,7 @@ CALL :install_library aws-c-common
 cd aws-c-cal
 mkdir build
 cd build
-cmake %CMAKE_ARGS% -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DCMAKE_INSTALL_PREFIX=../../install ../ || goto error
+cmake %CMAKE_ARGS% -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DCMAKE_PREFIX_PATH=../../install  -DCMAKE_INSTALL_PREFIX=../../install ../ || goto error
 cmake --build . --config RelWithDebInfo || goto error
 ctest -V || goto error
 

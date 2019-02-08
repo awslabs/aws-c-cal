@@ -36,7 +36,7 @@ install_library aws-c-common
 cd aws-c-cal
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=../../install -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../
+cmake -DCMAKE_PREFIX_PATH=../../install -DCMAKE_INSTALL_PREFIX=../../install -DENABLE_SANITIZERS=ON $CMAKE_ARGS ../
 
 make
 

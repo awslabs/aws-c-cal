@@ -38,106 +38,105 @@ static struct aws_hash_vtable s_sha256_vtable = {
 };
 
 struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
-  struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
+    struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
 
-  if (!hash) {
-    return NULL;
-  }
+    if (!hash) {
+        return NULL;
+    }
 
-  hash->allocator = allocator;
-  hash->vtable = &s_md5_vtable;
-  hash->digest_size = AWS_MD5_LEN;
-  EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-  hash->impl = ctx;
-  hash->good = true;
+    hash->allocator = allocator;
+    hash->vtable = &s_md5_vtable;
+    hash->digest_size = AWS_MD5_LEN;
+    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    hash->impl = ctx;
+    hash->good = true;
 
-  if (!hash->impl) {
-    aws_raise_error(AWS_ERROR_OOM);
-    aws_mem_release(allocator, hash);
-    return NULL;
-  }
+    if (!hash->impl) {
+        aws_raise_error(AWS_ERROR_OOM);
+        aws_mem_release(allocator, hash);
+        return NULL;
+    }
 
-  if (!EVP_DigestInit_ex(ctx, EVP_md5(), NULL)) {
-    EVP_MD_CTX_destroy(ctx);
-    aws_mem_release(allocator, hash);
-    aws_raise_error(AWS_ERROR_UNKNOWN);
-    return NULL;
-  }
+    if (!EVP_DigestInit_ex(ctx, EVP_md5(), NULL)) {
+        EVP_MD_CTX_destroy(ctx);
+        aws_mem_release(allocator, hash);
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        return NULL;
+    }
 
-  return hash;
+    return hash;
 }
 
 struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
-  struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
+    struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
 
-  if (!hash) {
-    return NULL;
-  }
+    if (!hash) {
+        return NULL;
+    }
 
-  hash->allocator = allocator;
-  hash->vtable = &s_sha256_vtable;
-  hash->digest_size = AWS_SHA256_LEN;
-  EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-  hash->impl = ctx;
-  hash->good = true;
+    hash->allocator = allocator;
+    hash->vtable = &s_sha256_vtable;
+    hash->digest_size = AWS_SHA256_LEN;
+    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    hash->impl = ctx;
+    hash->good = true;
 
-  if (!hash->impl) {
-    aws_raise_error(AWS_ERROR_OOM);
-    aws_mem_release(allocator, hash);
-    return NULL;
-  }
+    if (!hash->impl) {
+        aws_raise_error(AWS_ERROR_OOM);
+        aws_mem_release(allocator, hash);
+        return NULL;
+    }
 
-  if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
-    EVP_MD_CTX_destroy(ctx);
-    aws_mem_release(allocator, hash);
-    aws_raise_error(AWS_ERROR_UNKNOWN);
-    return NULL;
-  }
+    if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
+        EVP_MD_CTX_destroy(ctx);
+        aws_mem_release(allocator, hash);
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        return NULL;
+    }
 
-  return hash;
+    return hash;
 }
 
 static void s_destroy(struct aws_hash *hash) {
-  EVP_MD_CTX *ctx = hash->impl;
-  EVP_MD_CTX_destroy(ctx);
-  aws_mem_release(hash->allocator, hash);
+    EVP_MD_CTX *ctx = hash->impl;
+    EVP_MD_CTX_destroy(ctx);
+    aws_mem_release(hash->allocator, hash);
 }
 
 static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
-  if (!hash->good) {
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
-  }
+    if (!hash->good) {
+        return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    }
 
-  EVP_MD_CTX *ctx = hash->impl;
+    EVP_MD_CTX *ctx = hash->impl;
 
-  if (AWS_LIKELY(EVP_DigestUpdate(ctx, to_hash->ptr, to_hash->len))) {
-    return AWS_OP_SUCCESS;
-  }
+    if (AWS_LIKELY(EVP_DigestUpdate(ctx, to_hash->ptr, to_hash->len))) {
+        return AWS_OP_SUCCESS;
+    }
 
-  hash->good = false;
-  return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    hash->good = false;
+    return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
 }
 
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
-  if (!hash->good) {
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
-  }
+    if (!hash->good) {
+        return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    }
 
-  EVP_MD_CTX *ctx = hash->impl;
+    EVP_MD_CTX *ctx = hash->impl;
 
-  size_t buffer_len = output->capacity - output->len;
+    size_t buffer_len = output->capacity - output->len;
 
-  if (buffer_len < hash->digest_size) {
-    return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-  }
+    if (buffer_len < hash->digest_size) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    }
 
-  if (AWS_LIKELY(EVP_DigestFinal_ex(ctx, output->buffer + output->len,
-                                    (unsigned int *)&buffer_len))) {
-    output->len += buffer_len;
+    if (AWS_LIKELY(EVP_DigestFinal_ex(ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
+        output->len += buffer_len;
+        hash->good = false;
+        return AWS_OP_SUCCESS;
+    }
+
     hash->good = false;
-    return AWS_OP_SUCCESS;
-  }
-
-  hash->good = false;
-  return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
 }

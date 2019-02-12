@@ -70,7 +70,7 @@ else ()
             "source/opensslcrypto/*.c"
         )
         find_package(LibCrypto REQUIRED)
-        set(PLATFORM_LIBS LibCrypto::Crypto)
+        set(PLATFORM_LIBS LibCrypto::Crypto dl)
     endif()
 endif()
 

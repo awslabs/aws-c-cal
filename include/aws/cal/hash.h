@@ -25,19 +25,19 @@
 struct aws_hash;
 
 struct aws_hash_vtable {
-  const char *alg_name;
-  const char *provider;
-  void (*destroy)(struct aws_hash *hash);
-  int (*update)(struct aws_hash *hash, struct aws_byte_cursor *buf);
-  int (*finalize)(struct aws_hash *hash, struct aws_byte_buf *out);
+    const char *alg_name;
+    const char *provider;
+    void (*destroy)(struct aws_hash *hash);
+    int (*update)(struct aws_hash *hash, struct aws_byte_cursor *buf);
+    int (*finalize)(struct aws_hash *hash, struct aws_byte_buf *out);
 };
 
 struct aws_hash {
-  struct aws_allocator *allocator;
-  struct aws_hash_vtable *vtable;
-  size_t digest_size;
-  bool good;
-  void *impl;
+    struct aws_allocator *allocator;
+    struct aws_hash_vtable *vtable;
+    size_t digest_size;
+    bool good;
+    void *impl;
 };
 
 typedef struct aws_hash *(aws_hash_new_fn)(struct aws_allocator *allocator);
@@ -58,8 +58,7 @@ AWS_CAL_API void aws_hash_destroy(struct aws_hash *hash);
 /**
  * Updates the running hash with to_hash. this can be called multiple times.
  */
-AWS_CAL_API int aws_hash_update(struct aws_hash *hash,
-                                struct aws_byte_cursor *to_hash);
+AWS_CAL_API int aws_hash_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash);
 /**
  * Completes the hash computation and writes the final digest to output.
  * Allocation of output is the caller's responsibility. If you specify
@@ -68,19 +67,18 @@ AWS_CAL_API int aws_hash_update(struct aws_hash *hash,
  * bytes, set truncate_to to 16. If you want the full digest size, just set this
  * to 0.
  */
-AWS_CAL_API int aws_hash_finalize(struct aws_hash *hash,
-                                  struct aws_byte_buf *output,
-                                  size_t truncate_to);
+AWS_CAL_API int aws_hash_finalize(struct aws_hash *hash, struct aws_byte_buf *output, size_t truncate_to);
 
 /**
  * Computes the md5 hash over input and writes the digest output to 'output'.
  * Use this if you don't need to stream the data you're hashing and you can load
  * the entire input to hash into memory.
  */
-AWS_CAL_API int aws_md5_compute(struct aws_allocator *allocator,
-                                struct aws_byte_cursor *input,
-                                struct aws_byte_buf *output,
-                                size_t truncate_to);
+AWS_CAL_API int aws_md5_compute(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor *input,
+    struct aws_byte_buf *output,
+    size_t truncate_to);
 
 /**
  * Computes the sha256 hash over input and writes the digest output to 'output'.
@@ -90,10 +88,11 @@ AWS_CAL_API int aws_md5_compute(struct aws_allocator *allocator,
  * example if you want a SHA256 digest as the first 16 bytes, set truncate_to
  * to 16. If you want the full digest size, just set this to 0.
  */
-AWS_CAL_API int aws_sha256_compute(struct aws_allocator *allocator,
-                                   struct aws_byte_cursor *input,
-                                   struct aws_byte_buf *output,
-                                   size_t truncate_to);
+AWS_CAL_API int aws_sha256_compute(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor *input,
+    struct aws_byte_buf *output,
+    size_t truncate_to);
 
 /**
  * Set the implementation of md5 to use. If you compiled without AWS_BYO_CRYPTO,

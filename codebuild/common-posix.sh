@@ -12,7 +12,7 @@ mkdir -p $INSTALL_PATH
 
 # install_library <git_repo> [<commit>]
 function install_library {
-    CURRENT_DIR=`pwd`
+    pushd
     cd $BUILD_PATH
     git clone https://github.com/awslabs/$1.git
     
@@ -23,8 +23,7 @@ function install_library {
 
     cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH -DCMAKE_PREFIX_PATH=$INSTALL_PATH -DENABLE_SANITIZERS=ON $CMAKE_ARGS ./
     make install
-
-    cd $CURRENT_DIR
+    popd
 }
 
 if [ "$TRAVIS_OS_NAME" != "osx" ]; then

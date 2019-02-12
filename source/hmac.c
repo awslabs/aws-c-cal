@@ -80,7 +80,7 @@ int aws_sha256_hmac_compute(
         return AWS_OP_ERR;
     }
 
-    if (aws_hmac_update(hmac, to_hash)) {
+    if (aws_hmac_update(hmac, to_hmac)) {
         aws_hmac_destroy(hmac);
         return AWS_OP_ERR;
     }
@@ -93,3 +93,4 @@ int aws_sha256_hmac_compute(
     aws_hmac_destroy(hmac);
     return AWS_OP_SUCCESS;
 }
+

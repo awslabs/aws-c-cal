@@ -6,7 +6,7 @@ phases:
       - sudo apt-get update -y
       - sudo apt-get install gcc gcc-multilib cmake3 -y
       # Build OpenSSL from source
-      - cd ..
+      - cd /tmp
       - mkdir libcrypto-build
       - cd libcrypto-build
       - curl -LO https://www.openssl.org/source/openssl-1.1.0j.tar.gz

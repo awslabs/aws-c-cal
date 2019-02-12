@@ -93,4 +93,3 @@ int aws_sha256_hmac_compute(
     aws_hmac_destroy(hmac);
     return AWS_OP_SUCCESS;
 }
-

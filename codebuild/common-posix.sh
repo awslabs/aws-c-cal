@@ -12,8 +12,7 @@ mkdir -p $INSTALL_PATH
 
 # install_library <git_repo> [<commit>]
 function install_library {
-    pushd
-    cd $BUILD_PATH
+    pushd $BUILD_PATH
     git clone https://github.com/awslabs/$1.git
     
     cd $1

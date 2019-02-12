@@ -56,7 +56,7 @@ AWS_CAL_API void aws_hmac_destroy(struct aws_hmac *hmac);
 /**
  * Updates the running hmac with to_hash. this can be called multiple times.
  */
-AWS_CAL_API int aws_hmac_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hash);
+AWS_CAL_API int aws_hmac_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hmac);
 /**
  * Completes the hmac computation and writes the final digest to output.
  * Allocation of output is the caller's responsibility. If you specify
@@ -77,7 +77,7 @@ AWS_CAL_API int aws_hmac_finalize(struct aws_hmac *hmac, struct aws_byte_buf *ou
 AWS_CAL_API int aws_sha256_hmac_compute(
     struct aws_allocator *allocator,
     struct aws_byte_cursor *secret,
-    struct aws_byte_cursor *to_hash,
+    struct aws_byte_cursor *to_hmac,
     struct aws_byte_buf *output,
     size_t truncate_to);
 /**

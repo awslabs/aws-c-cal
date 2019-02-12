@@ -71,7 +71,7 @@ int aws_hmac_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output, size_t
 int aws_sha256_hmac_compute(
     struct aws_allocator *allocator,
     struct aws_byte_cursor *secret,
-    struct aws_byte_cursor *to_hash,
+    struct aws_byte_cursor *to_hmac,
     struct aws_byte_buf *output,
     size_t truncate_to) {
     struct aws_hmac *hmac = aws_sha256_hmac_new(allocator, secret);

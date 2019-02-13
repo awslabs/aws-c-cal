@@ -9,11 +9,11 @@ This library is licensed under the Apache 2.0 License.
 ## Supported Platforms
 * Windows (Vista and Later)
 * Apple
-* Unix (via. OpenSSL compatible libcrypto)
+* Unix (via OpenSSL compatible libcrypto)
 
 ## Build Instructions
 Since this project builds with CMake, you can build with whichever tool you prefer. Here, we show make for simplicity. You can
-use Visual Studio, XCode, or whatever you'd like via. the -G option.
+use Visual Studio, XCode, or whatever you'd like via the -G option.
 
 ```
 git clone git@github.com:awslabs/aws-c-common

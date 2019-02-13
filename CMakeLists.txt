@@ -115,6 +115,8 @@ configure_file("cmake/${CMAKE_PROJECT_NAME}-config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}-config.cmake"
   @ONLY)
 
+install(FILES ${AWS_CAL_HEADERS} DESTINATION "include/aws/cal" COMPONENT Development)
+
 install(EXPORT "${CMAKE_PROJECT_NAME}-targets"
     DESTINATION "${LIBRARY_DIRECTORY}/${CMAKE_PROJECT_NAME}/cmake"
     NAMESPACE AWS::

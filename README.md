@@ -25,7 +25,7 @@ aws_hash_destroy(hash);
 
 ##### One-Shot
 ````
-aws_md5_compute(allocator, &your_buffer,, &output_buffer, 0);
+aws_md5_compute(allocator, &your_buffer, &output_buffer, 0);
 ````
 
 #### SHA256
@@ -39,7 +39,7 @@ aws_hash_destroy(hash);
 
 ##### One-Shot
 ````
-aws_sha256_compute(allocator, &your_buffer,, &output_buffer, 0);
+aws_sha256_compute(allocator, &your_buffer, &output_buffer, 0);
 ````
 
 ### HMAC

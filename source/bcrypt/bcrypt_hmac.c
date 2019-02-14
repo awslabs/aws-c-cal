@@ -19,7 +19,6 @@
 
 #include <bcrypt.h>
 #include <winerror.h>
-#include <winternl.h>
 
 static BCRYPT_ALG_HANDLE s_sha256_hmac_alg = NULL;
 static size_t s_sha256_hmac_obj_len = 0;
@@ -87,7 +86,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
         (ULONG)secret->len,
         0);
 
-    if (!NT_SUCCESS(status)) {
+    if (status < 0) {
         aws_mem_release(allocator, bcrypt_hmac);
         return NULL;
     }
@@ -109,7 +108,7 @@ static int s_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hash
     struct bcrypt_hmac_handle *ctx = hmac->impl;
     NTSTATUS status = BCryptHashData(ctx->hash_handle, to_hash->ptr, (ULONG)to_hash->len, 0);
 
-    if (!NT_SUCCESS(status)) {
+    if (status < 0) {
         hmac->good = false;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -133,7 +132,7 @@ static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
     NTSTATUS status = BCryptFinishHash(ctx->hash_handle, output->buffer + output->len, (ULONG)buffer_len, 0);
 
     hmac->good = false;
-    if (!NT_SUCCESS(status)) {
+    if (status < 0) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 

@@ -50,7 +50,7 @@ void aws_hash_destroy(struct aws_hash *hash) {
     hash->vtable->destroy(hash);
 }
 
-int aws_hash_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
+int aws_hash_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash) {
     return hash->vtable->update(hash, to_hash);
 }
 
@@ -82,7 +82,7 @@ int aws_hash_finalize(struct aws_hash *hash, struct aws_byte_buf *output, size_t
 
 static inline int compute_hash(
     struct aws_hash *hash,
-    struct aws_byte_cursor *input,
+    const struct aws_byte_cursor *input,
     struct aws_byte_buf *output,
     size_t truncate_to) {
     if (!hash) {
@@ -105,7 +105,7 @@ static inline int compute_hash(
 
 int aws_md5_compute(
     struct aws_allocator *allocator,
-    struct aws_byte_cursor *input,
+    const struct aws_byte_cursor *input,
     struct aws_byte_buf *output,
     size_t truncate_to) {
     return compute_hash(aws_md5_new(allocator), input, output, truncate_to);
@@ -113,7 +113,7 @@ int aws_md5_compute(
 
 int aws_sha256_compute(
     struct aws_allocator *allocator,
-    struct aws_byte_cursor *input,
+    const struct aws_byte_cursor *input,
     struct aws_byte_buf *output,
     size_t truncate_to) {
     return compute_hash(aws_sha256_new(allocator), input, output, truncate_to);

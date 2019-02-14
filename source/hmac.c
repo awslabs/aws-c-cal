@@ -15,10 +15,12 @@
 #include <aws/cal/hmac.h>
 
 #ifndef AWS_BYO_CRYPTO
-extern struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, struct aws_byte_cursor *secret);
+extern struct aws_hmac *aws_sha256_hmac_default_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *secret);
 static aws_hmac_new_fn *s_sha256_hmac_new_fn = aws_sha256_hmac_default_new;
 #else
-static struct aws_hmac *aws_hmac_new_abort(struct aws_allocator *allocator, struct aws_byte_cursor *secret) {
+static struct aws_hmac *aws_hmac_new_abort(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
     (void)allocator;
     (void)secret;
     abort();
@@ -27,7 +29,7 @@ static struct aws_hmac *aws_hmac_new_abort(struct aws_allocator *allocator, stru
 static aws_hmac_new_fn *s_sha256_hmac_new_fn = aws_hmac_new_abort;
 #endif
 
-struct aws_hmac *aws_sha256_hmac_new(struct aws_allocator *allocator, struct aws_byte_cursor *secret) {
+struct aws_hmac *aws_sha256_hmac_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
     return s_sha256_hmac_new_fn(allocator, secret);
 }
 
@@ -39,7 +41,7 @@ void aws_hmac_destroy(struct aws_hmac *hmac) {
     hmac->vtable->destroy(hmac);
 }
 
-int aws_hmac_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hmac) {
+int aws_hmac_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac) {
     return hmac->vtable->update(hmac, to_hmac);
 }
 
@@ -70,8 +72,8 @@ int aws_hmac_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output, size_t
 
 int aws_sha256_hmac_compute(
     struct aws_allocator *allocator,
-    struct aws_byte_cursor *secret,
-    struct aws_byte_cursor *to_hmac,
+    const struct aws_byte_cursor *secret,
+    const struct aws_byte_cursor *to_hmac,
     struct aws_byte_buf *output,
     size_t truncate_to) {
     struct aws_hmac *hmac = aws_sha256_hmac_new(allocator, secret);

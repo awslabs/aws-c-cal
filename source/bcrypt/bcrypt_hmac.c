@@ -27,7 +27,7 @@ static size_t s_sha256_hmac_obj_len = 0;
 static aws_thread_once s_sha256_hmac_once = AWS_THREAD_ONCE_STATIC_INIT;
 
 static void s_destroy(struct aws_hmac *hash);
-static int s_update(struct aws_hmac *hash, struct aws_byte_cursor *to_hash);
+static int s_update(struct aws_hmac *hash, const struct aws_byte_cursor *to_hash);
 static int s_finalize(struct aws_hmac *hash, struct aws_byte_buf *output);
 
 static struct aws_hmac_vtable s_sha256_hmac_vtable = {
@@ -59,7 +59,7 @@ static void s_load_alg_handle(void) {
         0);
 }
 
-struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, struct aws_byte_cursor *secret) {
+struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
     aws_thread_call_once(&s_sha256_hmac_once, s_load_alg_handle);
 
     struct bcrypt_hmac_handle *bcrypt_hmac;
@@ -101,7 +101,7 @@ static void s_destroy(struct aws_hmac *hmac) {
     aws_mem_release(hmac->allocator, ctx);
 }
 
-static int s_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hash) {
+static int s_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hash) {
     if (!hmac->good) {
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }

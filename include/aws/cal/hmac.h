@@ -27,7 +27,7 @@ struct aws_hmac_vtable {
     const char *alg_name;
     const char *provider;
     void (*destroy)(struct aws_hmac *hmac);
-    int (*update)(struct aws_hmac *hmac, struct aws_byte_cursor *buf);
+    int (*update)(struct aws_hmac *hmac, const struct aws_byte_cursor *buf);
     int (*finalize)(struct aws_hmac *hmac, struct aws_byte_buf *out);
 };
 
@@ -39,14 +39,14 @@ struct aws_hmac {
     void *impl;
 };
 
-typedef struct aws_hmac *(aws_hmac_new_fn)(struct aws_allocator *allocator, struct aws_byte_cursor *secret);
+typedef struct aws_hmac *(aws_hmac_new_fn)(struct aws_allocator *allocator, const struct aws_byte_cursor *secret);
 
 AWS_EXTERN_C_BEGIN
 /**
  * Allocates and initializes a sha256 hmac instance. Secret is the key to be
  * used for the hmac process.
  */
-AWS_CAL_API struct aws_hmac *aws_sha256_hmac_new(struct aws_allocator *allocator, struct aws_byte_cursor *secret);
+AWS_CAL_API struct aws_hmac *aws_sha256_hmac_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret);
 
 /**
  * Cleans up and deallocates hmac.
@@ -56,7 +56,7 @@ AWS_CAL_API void aws_hmac_destroy(struct aws_hmac *hmac);
 /**
  * Updates the running hmac with to_hash. this can be called multiple times.
  */
-AWS_CAL_API int aws_hmac_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hmac);
+AWS_CAL_API int aws_hmac_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac);
 /**
  * Completes the hmac computation and writes the final digest to output.
  * Allocation of output is the caller's responsibility. If you specify
@@ -76,8 +76,8 @@ AWS_CAL_API int aws_hmac_finalize(struct aws_hmac *hmac, struct aws_byte_buf *ou
  */
 AWS_CAL_API int aws_sha256_hmac_compute(
     struct aws_allocator *allocator,
-    struct aws_byte_cursor *secret,
-    struct aws_byte_cursor *to_hmac,
+    const struct aws_byte_cursor *secret,
+    const struct aws_byte_cursor *to_hmac,
     struct aws_byte_buf *output,
     size_t truncate_to);
 /**

@@ -92,7 +92,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     NTSTATUS status = BCryptCreateHash(
         s_sha256_alg, &bcrypt_hash->hash_handle, bcrypt_hash->hash_obj, (ULONG)s_sha256_obj_len, NULL, 0, 0);
 
-    if (status < 0) {
+    if (((NTSTATUS)status) < 0) {
         aws_mem_release(allocator, bcrypt_hash);
         return NULL;
     }
@@ -121,7 +121,7 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     NTSTATUS status =
         BCryptCreateHash(s_md5_alg, &bcrypt_hash->hash_handle, bcrypt_hash->hash_obj, (ULONG)s_md5_obj_len, NULL, 0, 0);
 
-    if (status < 0) {
+    if (((NTSTATUS)status) < 0) {
         aws_mem_release(allocator, bcrypt_hash);
         return NULL;
     }
@@ -143,7 +143,7 @@ static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash
     struct bcrypt_hash_handle *ctx = hash->impl;
     NTSTATUS status = BCryptHashData(ctx->hash_handle, to_hash->ptr, (ULONG)to_hash->len, 0);
 
-    if (status < 0) {
+    if (((NTSTATUS)status) < 0) {
         hash->good = false;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -164,10 +164,10 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    NTSTATUS status = BCryptFinishHash(ctx->hash_handle, output->buffer + output->len, (ULONG)buffer_len, 0);
+    NTSTATUS status = BCryptFinishHash(ctx->hash_handle, output->buffer + output->len, (ULONG)hash->digest_size, 0);
 
     hash->good = false;
-    if (status < 0) {
+    if (((NTSTATUS)status) < 0) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 

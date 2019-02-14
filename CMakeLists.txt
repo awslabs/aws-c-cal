@@ -16,6 +16,14 @@ project(aws-c-cal LANGUAGES C VERSION 0.1.0)
 
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
 
+if (DEFINED CMAKE_PREFIX_PATH)
+    file(TO_CMAKE_PATH ${CMAKE_PREFIX_PATH} CMAKE_PREFIX_PATH)
+endif()
+
+if (DEFINED CMAKE_INSTALL_PREFIX)
+    file(TO_CMAKE_PATH ${CMAKE_INSTALL_PREFIX} CMAKE_INSTALL_PREFIX)
+endif()
+
 if (UNIX AND NOT APPLE)
     include(GNUInstallDirs)
 elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)

@@ -15,7 +15,9 @@
 #include <aws/cal/hmac.h>
 
 #ifndef AWS_BYO_CRYPTO
-extern struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret);
+extern struct aws_hmac *aws_sha256_hmac_default_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *secret);
 static aws_hmac_new_fn *s_sha256_hmac_new_fn = aws_sha256_hmac_default_new;
 #else
 static struct aws_hmac *aws_hmac_new_abort(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {

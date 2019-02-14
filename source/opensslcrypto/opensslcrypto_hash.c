@@ -18,7 +18,7 @@
 #include <openssl/sha.h>
 
 static void s_destroy(struct aws_hash *hash);
-static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash);
+static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output);
 
 static struct aws_hash_vtable s_md5_vtable = {
@@ -103,7 +103,7 @@ static void s_destroy(struct aws_hash *hash) {
     aws_mem_release(hash->allocator, hash);
 }
 
-static int s_update(struct aws_hash *hash, struct aws_byte_cursor *to_hash) {
+static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash) {
     if (!hash->good) {
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }

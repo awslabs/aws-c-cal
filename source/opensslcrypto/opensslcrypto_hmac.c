@@ -30,7 +30,7 @@
 #define OPENSSL_VERSION_LESS_1_1 (OPENSSL_VERSION_NUMBER < 0x10100003L)
 
 static void s_destroy(struct aws_hmac *hmac);
-static int s_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hmac);
+static int s_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac);
 static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output);
 
 static struct aws_hmac_vtable s_sha256_hmac_vtable = {
@@ -41,7 +41,7 @@ static struct aws_hmac_vtable s_sha256_hmac_vtable = {
     .provider = "OpenSSL Compatible libcrypto",
 };
 
-struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, struct aws_byte_cursor *secret) {
+struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
     assert(secret->ptr);
 
     struct aws_hmac *hmac = aws_mem_acquire(allocator, sizeof(struct aws_hmac));
@@ -100,7 +100,7 @@ static void s_destroy(struct aws_hmac *hmac) {
     aws_mem_release(hmac->allocator, hmac);
 }
 
-static int s_update(struct aws_hmac *hmac, struct aws_byte_cursor *to_hmac) {
+static int s_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac) {
     if (!hmac->good) {
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }

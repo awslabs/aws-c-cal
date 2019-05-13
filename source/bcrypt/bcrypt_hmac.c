@@ -47,7 +47,7 @@ static void s_load_alg_handle(void) {
     /* this function is incredibly slow, LET IT LEAK*/
     BCryptOpenAlgorithmProvider(
         &s_sha256_hmac_alg, BCRYPT_SHA256_ALGORITHM, MS_PRIMITIVE_PROVIDER, BCRYPT_ALG_HANDLE_HMAC_FLAG);
-    assert(s_sha256_hmac_alg);
+    AWS_ASSERT(s_sha256_hmac_alg);
     DWORD result_length = 0;
     BCryptGetProperty(
         s_sha256_hmac_alg,

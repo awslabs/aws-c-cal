@@ -53,7 +53,7 @@ int aws_hmac_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output, size_t
         }
 
         uint8_t tmp_output[128] = {0};
-        assert(sizeof(tmp_output) >= hmac->digest_size);
+        AWS_ASSERT(sizeof(tmp_output) >= hmac->digest_size);
 
         struct aws_byte_buf tmp_out_buf = aws_byte_buf_from_array(tmp_output, sizeof(tmp_output));
         tmp_out_buf.len = 0;

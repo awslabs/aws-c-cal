@@ -42,7 +42,7 @@ static struct aws_hmac_vtable s_sha256_hmac_vtable = {
 };
 
 struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
-    assert(secret->ptr);
+    AWS_ASSERT(secret->ptr);
 
     struct aws_hmac *hmac = aws_mem_acquire(allocator, sizeof(struct aws_hmac));
 

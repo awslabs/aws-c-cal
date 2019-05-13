@@ -34,7 +34,7 @@ struct cc_hmac {
 };
 
 struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
-    assert(secret->ptr);
+    AWS_ASSERT(secret->ptr);
 
     struct cc_hmac *cc_hmac = aws_mem_acquire(allocator, sizeof(struct cc_hmac));
 

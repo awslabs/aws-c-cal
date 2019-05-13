@@ -57,7 +57,7 @@ struct bcrypt_hash_handle {
 static void s_load_sha256_alg_handle(void) {
     /* this function is incredibly slow, LET IT LEAK*/
     BCryptOpenAlgorithmProvider(&s_sha256_alg, BCRYPT_SHA256_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
-    assert(s_sha256_alg);
+    AWS_ASSERT(s_sha256_alg);
     DWORD result_length = 0;
     BCryptGetProperty(
         s_sha256_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_sha256_obj_len, sizeof(s_sha256_obj_len), &result_length, 0);
@@ -66,7 +66,7 @@ static void s_load_sha256_alg_handle(void) {
 static void s_load_md5_alg_handle(void) {
     /* this function is incredibly slow, LET IT LEAK*/
     BCryptOpenAlgorithmProvider(&s_md5_alg, BCRYPT_MD5_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
-    assert(s_md5_alg);
+    AWS_ASSERT(s_md5_alg);
     DWORD result_length = 0;
     BCryptGetProperty(s_md5_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_md5_obj_len, sizeof(s_md5_obj_len), &result_length, 0);
 }

@@ -1,0 +1,8 @@
+{
+    "name": "aws-c-cal",
+    "upstream": [
+        { "name": "aws-c-common" }
+    ],
+    "downstream": [
+    ]
+}

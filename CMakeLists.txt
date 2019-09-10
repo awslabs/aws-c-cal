@@ -14,6 +14,10 @@
 cmake_minimum_required(VERSION 3.0)
 project(aws-c-cal LANGUAGES C VERSION 0.1.0)
 
+if (POLICY CMP0069)
+    cmake_policy(SET CMP0069 NEW) # Enable LTO/IPO if available in the compiler, see AwsCFlags
+endif()
+
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
 
 if (DEFINED CMAKE_PREFIX_PATH)

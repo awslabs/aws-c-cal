@@ -59,7 +59,7 @@ static void s_load_alg_handle(void) {
 }
 
 struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
-    aws_thread_call_once(&s_sha256_hmac_once, s_load_alg_handle);
+    aws_thread_call_once(&s_sha256_hmac_once, s_load_alg_handle, NULL);
 
     struct bcrypt_hmac_handle *bcrypt_hmac;
     uint8_t *hash_obj;

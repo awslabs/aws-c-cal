@@ -43,7 +43,8 @@ struct bcrypt_hmac_handle {
     uint8_t *hash_obj;
 };
 
-static void s_load_alg_handle(void) {
+static void s_load_alg_handle(void *user_data) {
+    (void)user_data;
     /* this function is incredibly slow, LET IT LEAK*/
     BCryptOpenAlgorithmProvider(
         &s_sha256_hmac_alg, BCRYPT_SHA256_ALGORITHM, MS_PRIMITIVE_PROVIDER, BCRYPT_ALG_HANDLE_HMAC_FLAG);
@@ -59,7 +60,7 @@ static void s_load_alg_handle(void) {
 }
 
 struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
-    aws_thread_call_once(&s_sha256_hmac_once, s_load_alg_handle);
+    aws_thread_call_once(&s_sha256_hmac_once, s_load_alg_handle, NULL);
 
     struct bcrypt_hmac_handle *bcrypt_hmac;
     uint8_t *hash_obj;

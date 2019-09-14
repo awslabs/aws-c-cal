@@ -71,7 +71,9 @@ mark_as_advanced(
     LibCrypto_STATIC_LIBRARY
     )
 
-if(LIBCRYPTO_FOUND)
+if(LibCrypto_FOUND OR LIBCRYPTO_FOUND)
+    set(LibCrypto_FOUND true)
+    set(LIBCRYPTO_FOUND true)
     message(STATUS "LibCrypto Include Dir: ${LibCrypto_INCLUDE_DIR}")
     message(STATUS "LibCrypto Shared Lib:  ${LibCrypto_SHARED_LIBRARY}")
     message(STATUS "LibCrypto Static Lib:  ${LibCrypto_STATIC_LIBRARY}")

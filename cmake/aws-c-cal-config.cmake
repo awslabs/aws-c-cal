@@ -1,7 +1,7 @@
 include(CMakeFindDependencyMacro)
 
 if (NOT BYO_CRYPTO AND NOT WIN32 AND NOT APPLE)
-    find_dependency(LibCrypto)
+    find_dependency(LibCryptoCAL)
 endif()
 
 if (BUILD_SHARED_LIBS)

@@ -17,7 +17,7 @@
 #include <CommonCrypto/CommonDigest.h>
 
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored -Wdeprecated-declarations
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 static void s_destroy(struct aws_hash *hash);
 static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);

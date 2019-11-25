@@ -158,5 +158,7 @@ install(FILES ${EXPORT_MODULES}
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT BYO_CRYPTO)
     include(CTest)
-    add_subdirectory(tests)
+    if (BUILD_TESTING)
+        add_subdirectory(tests)
+    endif()
 endif()

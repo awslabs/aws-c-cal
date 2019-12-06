@@ -41,4 +41,7 @@ add_test_case(sha256_hmac_test_oneshot)
 add_test_case(sha256_hmac_test_invalid_buffer)
 add_test_case(sha256_hmac_test_invalid_state)
 
+add_test_case(ecdsa_p256_test_pub_key_derivation)
+add_test_case(ecdsa_p256_test_known_signing_value)
+
 generate_test_driver(${PROJECT_NAME}-tests)

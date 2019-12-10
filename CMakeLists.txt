@@ -74,6 +74,7 @@ elseif (APPLE)
         file(GLOB AWS_CAL_OS_SRC
         "source/commoncrypto/*.c"
         )
+
         find_library(SECURITY_LIB Security)
         if (NOT SECURITY_LIB)
            message(FATAL_ERROR "Security Framework not found")

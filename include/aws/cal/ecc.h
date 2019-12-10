@@ -28,14 +28,29 @@ enum aws_ecc_curve_name {
 struct aws_ecc_key_pair;
 
 typedef void(aws_ecc_key_pair_destroy_fn)(struct aws_ecc_key_pair *key_pair);
+typedef int(aws_ecc_key_pair_sign_message_fn)(
+    const struct aws_ecc_key_pair *key_pair,
+    const struct aws_byte_cursor *message,
+    struct aws_byte_buf *signature_output);
+typedef int(aws_ecc_key_pair_derive_public_key_fn)(struct aws_ecc_key_pair *key_pair);
+typedef int(aws_ecc_key_pair_verify_signature_fn)(
+    const struct aws_ecc_key_pair *signer,
+    const struct aws_byte_cursor *message,
+    const struct aws_byte_cursor *signature);
+typedef size_t(aws_ecc_key_pair_signature_length_fn)(const struct aws_ecc_key_pair *signer);
 
 struct aws_ecc_key_pair_vtable {
     aws_ecc_key_pair_destroy_fn *destroy_fn;
+    aws_ecc_key_pair_derive_public_key_fn *derive_pub_key_fn;
+    aws_ecc_key_pair_sign_message_fn *sign_message_fn;
+    aws_ecc_key_pair_verify_signature_fn *verify_signature_fn;
+    aws_ecc_key_pair_signature_length_fn *signature_length_fn;
 };
 
 struct aws_ecc_key_pair {
     struct aws_allocator *allocator;
     enum aws_ecc_curve_name curve_name;
+    struct aws_byte_buf key_buf;
     struct aws_byte_buf pub_x;
     struct aws_byte_buf pub_y;
     struct aws_byte_buf priv_d;
@@ -43,39 +58,13 @@ struct aws_ecc_key_pair {
     void *impl;
 };
 
-struct aws_ecc_signer;
-
-typedef int(aws_ecc_signer_sign_payload_fn)(
-    const struct aws_ecc_signer *signer,
-    const struct aws_byte_cursor *hash,
-    struct aws_byte_buf *signature_output);
-typedef int(aws_ecc_signer_verify_payload_fn)(
-    const struct aws_ecc_signer *signer,
-    const struct aws_byte_cursor *hash,
-    const struct aws_byte_cursor *signature);
-typedef size_t(aws_ecc_signer_signature_length_fn)(const struct aws_ecc_signer *signer);
-typedef void(aws_ecc_signer_destroy_fn)(struct aws_ecc_signer *signer);
-
-struct aws_ecc_signer_vtable {
-    aws_ecc_signer_sign_payload_fn *sign_payload_fn;
-    aws_ecc_signer_verify_payload_fn *verify_payload_fn;
-    aws_ecc_signer_destroy_fn *destroy_fn;
-    aws_ecc_signer_signature_length_fn *signature_max_length_fn;
-};
-
-struct aws_ecc_signer {
-    struct aws_allocator *allocator;
-    struct aws_ecc_signer_vtable *vtable;
-    void *impl;
-};
-
 AWS_EXTERN_C_BEGIN
 
-AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_derived_from_private_key(
+AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key);
-AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new(
+AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name);
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
@@ -88,19 +77,16 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     const struct aws_byte_cursor *encoded_keys);
 AWS_CAL_API void aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair);
 
-AWS_CAL_API struct aws_ecc_signer *aws_ecc_signer_new(
-    struct aws_allocator *allocator,
-    const struct aws_ecc_key_pair *key_pair);
-AWS_CAL_API void aws_ecc_signer_destroy(struct aws_ecc_signer *signer);
-AWS_CAL_API int aws_ecc_signer_sign_hash(
-    struct aws_ecc_signer *signer,
-    const struct aws_byte_cursor *hash,
+AWS_CAL_API int aws_ecc_key_pair_derive_public_key(struct aws_ecc_key_pair *key_pair);
+AWS_CAL_API int aws_ecc_key_pair_sign_message(
+    const struct aws_ecc_key_pair *key_pair,
+    const struct aws_byte_cursor *message,
     struct aws_byte_buf *signature);
-AWS_CAL_API int aws_ecc_signer_verify_signature(
-    struct aws_ecc_signer *signer,
-    const struct aws_byte_cursor *hash,
+AWS_CAL_API int aws_ecc_key_pair_verify_signature(
+    const struct aws_ecc_key_pair *key_pair,
+    const struct aws_byte_cursor *message,
     const struct aws_byte_cursor *signature);
-AWS_CAL_API size_t aws_ecc_signer_max_signature_length(struct aws_ecc_signer *signer);
+AWS_CAL_API size_t aws_ecc_key_pair_signature_length(const struct aws_ecc_key_pair *signer);
 
 AWS_EXTERN_C_END
 

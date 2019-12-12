@@ -95,6 +95,11 @@ static int s_sign_message_fn(
     struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
 
     size_t signature_length = signature_output->capacity - signature_output->len;
+
+    /* TODO, the result of this needs to be DER encoded:
+       0x30 <len of r|s plus padding> 0x02 <len of r plus padding if it's negative> <r with padding> 0x02
+       < len of s plus padding > < s plus padding if it's negative > 
+    */
     NTSTATUS status = BCryptSignHash(
         key_impl->key_handle,
         NULL,
@@ -136,6 +141,10 @@ static int s_verify_signature_fn(
     const struct aws_byte_cursor *signature) {
     struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
 
+    /* TODO, the signature  needs to be DER decoded:
+      0x30 <len of r|s plus padding> 0x02 <len of r plus padding if it's negative> <r with padding> 0x02
+      < len of s plus padding > < s plus padding if it's negative >
+    */
     NTSTATUS status = BCryptVerifySignature(
         key_impl->key_handle, NULL, message->ptr, (ULONG)message->len, signature->ptr, (ULONG)signature->len, 0);
 

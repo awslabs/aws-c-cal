@@ -30,6 +30,7 @@ struct aws_der_decoder {
     struct aws_array_list tlvs; /* index to elements after parsing */
     int tlv_idx;
     struct aws_byte_buf *buffer;
+    struct aws_array_list stack;
 };
 
 enum aws_der_type {
@@ -186,6 +187,20 @@ enum aws_der_type aws_der_decoder_tlv_type(struct aws_der_decoder *decoder);
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
 size_t aws_der_decoder_tlv_length(struct aws_der_decoder *decoder);
+
+/**
+ * The number of elements in the current TLV SEQUENCE
+ * @param decoder The decoder to inspect
+ * @return Number of elements in the current SEQUENCE
+ */
+size_t aws_der_decoder_tlv_sequence_count(struct aws_der_decoder *decoder);
+
+/**
+ * The number of elements in the current TLV SET
+ * @param decoder The decoder to inspect
+ * @return Number of elements in the current SET
+ */
+size_t aws_der_decoder_tlv_set_count(struct aws_der_decoder *decoder);
 
 /**
  * Extracts the current TLV string value (BIT_STRING, OCTET_STRING)

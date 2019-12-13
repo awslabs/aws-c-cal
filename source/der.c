@@ -27,10 +27,10 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
     uint8_t tag = 0;
     uint8_t len_bytes = 0;
     uint32_t len = 0;
-    if (aws_byte_cursor_read_u8(cur, &tag)) {
+    if (!aws_byte_cursor_read_u8(cur, &tag)) {
         return AWS_OP_ERR;
     }
-    if (aws_byte_cursor_read_u8(cur, &len_bytes)) {
+    if (!aws_byte_cursor_read_u8(cur, &len_bytes)) {
         return AWS_OP_ERR;
     }
     /* if the sign bit is set, then the first byte is the number of bytes required to store
@@ -38,16 +38,20 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
     if (len_bytes & 0x80) {
         len_bytes &= 0x7f;
         AWS_FATAL_ASSERT(len_bytes <= 4 && "Only 32-bit sizes of DER TLV elements are supported");
-        if (len_bytes == 2) {
-            if (aws_byte_cursor_read_be16(cur, (uint16_t *)&len)) {
+        if (len_bytes == 1) {
+            if (!aws_byte_cursor_read_u8(cur, (uint8_t*)&len)) {
+                return AWS_OP_ERR;
+            }
+        } else if (len_bytes == 2) {
+            if (!aws_byte_cursor_read_be16(cur, (uint16_t *)&len)) {
                 return AWS_OP_ERR;
             }
         } else if (len_bytes == 4) {
-            if (aws_byte_cursor_read_be32(cur, &len)) {
+            if (!aws_byte_cursor_read_be32(cur, &len)) {
                 return AWS_OP_ERR;
             }
         } else {
-            AWS_FATAL_ASSERT(len_bytes == 2 || len_bytes == 4);
+            AWS_FATAL_ASSERT(len_bytes == 1 || len_bytes == 2 || len_bytes == 4);
         }
 
     } else {
@@ -57,7 +61,7 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
     tlv->tag = tag;
     tlv->length = len;
     tlv->value = (tag == DER_NULL) ? NULL : cur->ptr;
-    *cur = aws_byte_cursor_advance(cur, tlv->length);
+    aws_byte_cursor_advance(cur, tlv->length);
 
     return AWS_OP_SUCCESS;
 }
@@ -286,9 +290,10 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
     return AWS_OP_SUCCESS;
 }
 
-int aws_der_decoder_init(struct aws_der_decoder *decoder, struct aws_byte_buf *buffer) {
-    decoder->allocator = buffer->allocator;
+int aws_der_decoder_init(struct aws_der_decoder *decoder, struct aws_allocator *allocator, struct aws_byte_buf *buffer) {
+    decoder->allocator = allocator;
     decoder->buffer = buffer;
+    decoder->tlv_idx = -1;
     if (aws_array_list_init_dynamic(&decoder->tlvs, decoder->allocator, 16, sizeof(struct der_tlv))) {
         return AWS_OP_ERR;
     }
@@ -302,7 +307,7 @@ void aws_der_decoder_clean_up(struct aws_der_decoder *decoder) {
 
 int aws_der_decoder_parse(struct aws_der_decoder *decoder) {
     struct aws_byte_cursor cur = aws_byte_cursor_from_buf(decoder->buffer);
-    while (cur.ptr) {
+    while (cur.len) {
         struct der_tlv tlv = {0};
         if (s_der_read_tlv(&cur, &tlv)) {
             return AWS_OP_ERR;
@@ -328,7 +333,7 @@ enum aws_der_type aws_der_decoder_tlv_type(struct aws_der_decoder *decoder) {
     return tlv.tag;
 }
 
-size_t aws_der_decoder_tlv_size(struct aws_der_decoder *decoder) {
+size_t aws_der_decoder_tlv_length(struct aws_der_decoder *decoder) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
     return tlv.length;
 }

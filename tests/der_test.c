@@ -214,6 +214,22 @@ static int s_der_encode_set(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_encode_set, s_der_encode_set)
 
 static int s_der_decode_integer(struct aws_allocator *allocator, void *ctx) {
+    const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_bigint);
+    const size_t decoded_size = AWS_ARRAY_SIZE(s_bigint);
+    struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_bigint, encoded_size);
+    struct aws_der_decoder decoder;
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+
+    /* note that the decoded bigint will have a prepended 0 byte to indicate unsigned */
+    ASSERT_INT_EQUALS(DER_INTEGER, aws_der_decoder_tlv_type(&decoder));
+    ASSERT_INT_EQUALS(decoded_size+1, aws_der_decoder_tlv_length(&decoder));
+    struct aws_byte_buf decoded;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decoded, allocator, encoded_size));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_integer(&decoder, &decoded));
+    ASSERT_BIN_ARRAYS_EQUALS(s_bigint, decoded_size, decoded.buffer+1, decoded.len-1);
+
     return 0;
 }
 

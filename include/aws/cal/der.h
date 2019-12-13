@@ -125,10 +125,11 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
 /**
  * Initializes an DER decoder
  * @param decoder The decoder to initialize
+ * @param allocator The allocator to use
  * @param buffer The DER formatted buffer to parse
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-int aws_der_decoder_init(struct aws_der_decoder *decoder, struct aws_byte_buf *buffer);
+int aws_der_decoder_init(struct aws_der_decoder *decoder, struct aws_allocator *allocator, struct aws_byte_buf *buffer);
 
 /**
  * Cleans up a DER encoder
@@ -155,14 +156,14 @@ bool aws_der_decoder_next(struct aws_der_decoder *decoder);
  * @param decoder The decoder to inspect
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-enum aws_der_type aws_der_tlv_type(struct aws_der_decoder *decoder);
+enum aws_der_type aws_der_decoder_tlv_type(struct aws_der_decoder *decoder);
 
 /**
  * The size of the current TLV
  * @param decoder The decoder to inspect
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-size_t aws_der_tlv_size(struct aws_der_decoder *decoder);
+size_t aws_der_decoder_tlv_length(struct aws_der_decoder *decoder);
 
 /**
  * Extracts the current TLV string value (BIT_STRING, OCTET_STRING)

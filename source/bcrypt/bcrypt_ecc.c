@@ -98,7 +98,7 @@ static int s_sign_message_fn(
 
     /* TODO, the result of this needs to be DER encoded:
        0x30 <len of r|s plus padding> 0x02 <len of r plus padding if it's negative> <r with padding> 0x02
-       < len of s plus padding > < s plus padding if it's negative > 
+       < len of s plus padding > < s plus padding if it's negative >
     */
     NTSTATUS status = BCryptSignHash(
         key_impl->key_handle,

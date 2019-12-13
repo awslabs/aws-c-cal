@@ -15,7 +15,6 @@
  * permissions and limitations under the License.
  */
 
-
 #include <aws/common/array_list.h>
 #include <aws/common/byte_buf.h>
 

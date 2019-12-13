@@ -179,11 +179,7 @@ int aws_der_encoder_write_integer(struct aws_der_encoder *encoder, struct aws_by
 }
 
 int aws_der_encoder_write_boolean(struct aws_der_encoder *encoder, bool boolean) {
-    struct der_tlv tlv = {
-        .tag = DER_BOOLEAN,
-        .length = 1,
-        .value = (uint8_t*)&boolean
-    };
+    struct der_tlv tlv = {.tag = DER_BOOLEAN, .length = 1, .value = (uint8_t *)&boolean};
 
     return s_der_write_tlv(&tlv, encoder->buffer);
 }
@@ -227,7 +223,7 @@ static int s_der_encoder_begin_container(struct aws_der_encoder *encoder, enum a
     struct der_tlv tlv_seq = {
         .tag = type,
         .length = 0, /* not known yet, will update later */
-        .value = (void*)seq_buf,
+        .value = (void *)seq_buf,
     };
     if (aws_array_list_push_back(&encoder->stack, &tlv_seq)) {
         aws_byte_buf_clean_up(seq_buf);
@@ -249,12 +245,12 @@ static int s_der_encoder_end_container(struct aws_der_encoder *encoder) {
         if (aws_array_list_back(&encoder->stack, &outer)) {
             return AWS_OP_ERR;
         }
-        encoder->buffer = (struct aws_byte_buf*)outer.value;
+        encoder->buffer = (struct aws_byte_buf *)outer.value;
     } else {
         encoder->buffer = &encoder->storage;
     }
 
-    struct aws_byte_buf *seq_buf = (struct aws_byte_buf*)tlv.value;
+    struct aws_byte_buf *seq_buf = (struct aws_byte_buf *)tlv.value;
     tlv.length = seq_buf->len;
     tlv.value = seq_buf->buffer;
     int result = s_der_write_tlv(&tlv, encoder->buffer);

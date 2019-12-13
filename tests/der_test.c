@@ -222,13 +222,12 @@ static int s_der_decode_integer(struct aws_allocator *allocator, void *ctx) {
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
 
-    /* note that the decoded bigint will have a prepended 0 byte to indicate unsigned */
     ASSERT_INT_EQUALS(DER_INTEGER, aws_der_decoder_tlv_type(&decoder));
-    ASSERT_INT_EQUALS(decoded_size+1, aws_der_decoder_tlv_length(&decoder));
+    ASSERT_INT_EQUALS(decoded_size, aws_der_decoder_tlv_length(&decoder));
     struct aws_byte_buf decoded;
     ASSERT_SUCCESS(aws_byte_buf_init(&decoded, allocator, encoded_size));
     ASSERT_SUCCESS(aws_der_decoder_tlv_integer(&decoder, &decoded));
-    ASSERT_BIN_ARRAYS_EQUALS(s_bigint, decoded_size, decoded.buffer+1, decoded.len-1);
+    ASSERT_BIN_ARRAYS_EQUALS(s_bigint, decoded_size, decoded.buffer, decoded.len);
 
     return 0;
 }

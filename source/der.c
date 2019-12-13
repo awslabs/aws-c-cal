@@ -23,6 +23,17 @@ struct der_tlv {
     uint8_t *value;
 };
 
+static void s_decode_tlv(struct der_tlv *tlv) {
+    if (tlv->tag == DER_INTEGER) {
+        uint8_t first_byte = tlv->value[0];
+        /* if the first byte is 0, it just denotes unsigned and should be removed */
+        if (first_byte == 0x00) {
+            tlv->length -= 1;
+            tlv->value += 1;
+        }
+    }
+}
+
 static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
     uint8_t tag = 0;
     uint8_t len_bytes = 0;
@@ -60,8 +71,10 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
 
     tlv->tag = tag;
     tlv->length = len;
+    /* skip over any prepended encoding bytes */
     tlv->value = (tag == DER_NULL) ? NULL : cur->ptr;
-    aws_byte_cursor_advance(cur, tlv->length);
+    s_decode_tlv(tlv);
+    aws_byte_cursor_advance(cur, len);
 
     return AWS_OP_SUCCESS;
 }
@@ -340,18 +353,21 @@ size_t aws_der_decoder_tlv_length(struct aws_der_decoder *decoder) {
 
 int aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_buf *string) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
+    AWS_FATAL_ASSERT(tlv.tag == DER_OCTET_STRING || tlv.tag == DER_BIT_STRING);
     struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv.value, tlv.length);
     return aws_byte_buf_append(string, &from);
 }
 
 int aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_buf *integer) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
+    AWS_FATAL_ASSERT(tlv.tag == DER_INTEGER);
     struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv.value, tlv.length);
     return aws_byte_buf_append(integer, &from);
 }
 
 int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
+    AWS_FATAL_ASSERT(tlv.tag == DER_BOOLEAN);
     *boolean = *tlv.value != 0;
     return AWS_OP_SUCCESS;
 }

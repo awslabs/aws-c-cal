@@ -168,16 +168,36 @@ static int s_der_encode_integer(struct aws_allocator *allocator, void *ctx) {
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
     struct aws_byte_cursor bigint_cur = aws_byte_cursor_from_array(s_bigint, AWS_ARRAY_SIZE(s_bigint));
     ASSERT_SUCCESS(aws_der_encoder_write_integer(&encoder, bigint_cur));
-    struct aws_byte_cursor encoded_cur;
-    ASSERT_SUCCESS(aws_der_encoder_get_contents(&encoder, &encoded_cur));
+    struct aws_byte_cursor encoded;
+    ASSERT_SUCCESS(aws_der_encoder_get_contents(&encoder, &encoded));
 
-    ASSERT_BIN_ARRAYS_EQUALS(s_encoded_bigint, AWS_ARRAY_SIZE(s_encoded_bigint), encoded_cur.ptr, encoded_cur.len);
+    ASSERT_BIN_ARRAYS_EQUALS(s_encoded_bigint, AWS_ARRAY_SIZE(s_encoded_bigint), encoded.ptr, encoded.len);
+    aws_der_encoder_clean_up(&encoder);
     return 0;
 }
 
 AWS_TEST_CASE(der_encode_integer, s_der_encode_integer)
 
 static int s_der_encode_boolean(struct aws_allocator *allocator, void *ctx) {
+    bool flag = true;
+    const uint8_t encoded_true[] = {0x01, 0x01, 0xff};
+    const uint8_t encoded_false[] = {0x01, 0x01, 0x00};
+    struct aws_der_encoder encoder;
+    ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
+    ASSERT_SUCCESS(aws_der_encoder_write_boolean(&encoder, flag));
+    struct aws_byte_cursor encoded;
+    ASSERT_SUCCESS(aws_der_encoder_get_contents(&encoder, &encoded));
+
+    ASSERT_BIN_ARRAYS_EQUALS(encoded_true, AWS_ARRAY_SIZE(encoded_true), encoded.ptr, encoded.len);
+    aws_der_encoder_clean_up(&encoder);
+
+    flag = false;
+    ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
+    ASSERT_SUCCESS(aws_der_encoder_write_boolean(&encoder, flag));
+    ASSERT_SUCCESS(aws_der_encoder_get_contents(&encoder, &encoded));
+    ASSERT_BIN_ARRAYS_EQUALS(encoded_false, AWS_ARRAY_SIZE(encoded_false), encoded.ptr, encoded.len);
+    aws_der_encoder_clean_up(&encoder);
+
     return 0;
 }
 
@@ -228,6 +248,8 @@ static int s_der_decode_integer(struct aws_allocator *allocator, void *ctx) {
     ASSERT_SUCCESS(aws_byte_buf_init(&decoded, allocator, encoded_size));
     ASSERT_SUCCESS(aws_der_decoder_tlv_integer(&decoder, &decoded));
     ASSERT_BIN_ARRAYS_EQUALS(s_bigint, decoded_size, decoded.buffer, decoded.len);
+
+    aws_der_decoder_clean_up(&decoder);
 
     return 0;
 }

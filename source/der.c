@@ -94,35 +94,33 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
         return AWS_OP_ERR;
     }
     uint32_t len = s_encoded_len(tlv);
-    if (len > 0x7f) {
-        if (len > UINT16_MAX) {
-            /* write the high bit plus 4 byte length */
-            if (!aws_byte_buf_write_u8(buf, 0x84)) {
-                return AWS_OP_ERR;
-            }
-            if (!aws_byte_buf_write_be32(buf, len)) {
-                return AWS_OP_ERR;
-            }
-        } else if (len > UINT8_MAX) {
-            /* write the high bit plus 2 byte length */
-            if (!aws_byte_buf_write_u8(buf, 0x82)) {
-                return AWS_OP_ERR;
-            }
-            if (!aws_byte_buf_write_be16(buf, len)) {
-                return AWS_OP_ERR;
-            }
-        } else if (len > INT8_MAX) {
-            /* Write the high bit + 1 byte length */
-            if (!aws_byte_buf_write_u8(buf, 0x81)) {
-                return AWS_OP_ERR;
-            }
-            if (!aws_byte_buf_write_u8(buf, len)) {
-                return AWS_OP_ERR;
-            }
-        } else {
-            if (!aws_byte_buf_write_u8(buf, len)) {
-                return AWS_OP_ERR;
-            }
+    if (len > UINT16_MAX) {
+        /* write the high bit plus 4 byte length */
+        if (!aws_byte_buf_write_u8(buf, 0x84)) {
+            return AWS_OP_ERR;
+        }
+        if (!aws_byte_buf_write_be32(buf, len)) {
+            return AWS_OP_ERR;
+        }
+    } else if (len > UINT8_MAX) {
+        /* write the high bit plus 2 byte length */
+        if (!aws_byte_buf_write_u8(buf, 0x82)) {
+            return AWS_OP_ERR;
+        }
+        if (!aws_byte_buf_write_be16(buf, len)) {
+            return AWS_OP_ERR;
+        }
+    } else if (len > INT8_MAX) {
+        /* Write the high bit + 1 byte length */
+        if (!aws_byte_buf_write_u8(buf, 0x81)) {
+            return AWS_OP_ERR;
+        }
+        if (!aws_byte_buf_write_u8(buf, len)) {
+            return AWS_OP_ERR;
+        }
+    } else {
+        if (!aws_byte_buf_write_u8(buf, len)) {
+            return AWS_OP_ERR;
         }
     }
 

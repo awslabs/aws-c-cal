@@ -108,10 +108,32 @@ int aws_der_encoder_write_bit_string(struct aws_der_encoder *encoder, struct aws
  */
 int aws_der_encoder_write_octet_string(struct aws_der_encoder *encoder, struct aws_byte_cursor octet_string);
 
+/**
+ * Begins a SEQUENCE of objects in the DER stream
+ * @param encoder The encoder to use
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
 int aws_der_encoder_begin_sequence(struct aws_der_encoder *encoder);
+
+/**
+ * Finishes a SEQUENCE and applies it to the DER stream buffer
+ * @param encoder The encoder to update
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
 int aws_der_encoder_end_sequence(struct aws_der_encoder *encoder);
 
+/**
+ * Begins a SET of objects in the DER stream
+ * @param encoder The encoder to use
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
 int aws_der_encoder_begin_set(struct aws_der_encoder *encoder);
+
+/**
+ * Finishes a SET and applies it to the DER stream buffer
+ * @param encoder The encoder to update
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
 int aws_der_encoder_end_set(struct aws_der_encoder *encoder);
 
 /**

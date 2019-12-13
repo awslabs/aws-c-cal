@@ -31,6 +31,10 @@ static void s_decode_tlv(struct der_tlv *tlv) {
             tlv->length -= 1;
             tlv->value += 1;
         }
+    } else if (tlv->tag == DER_BIT_STRING) {
+        /* skip over the trailing skipped bit count */
+        tlv->length -= 1;
+        tlv->value += 1;
     }
 }
 
@@ -84,6 +88,8 @@ static uint32_t s_encoded_len(struct der_tlv *tlv) {
         uint8_t first_byte = tlv->value[0];
         /* if the first byte has the high bit set, a 0 will be prepended to denote unsigned */
         return tlv->length + ((first_byte & 0x80) != 0);
+    } else if (tlv->tag == DER_BIT_STRING) {
+        return tlv->length + 1; /* needs a byte to denote how many trailing skipped bits */
     }
 
     return tlv->length;
@@ -142,13 +148,18 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
                 return AWS_OP_ERR;
             }
             break;
+        case DER_BIT_STRING:
+            /* Write that there are 0 skipped bits */
+            if (!aws_byte_buf_write_u8(buf, 0)) {
+                return AWS_OP_ERR;
+            }
+            /* FALLTHROUGH */
         case DER_BMPString:
         case DER_IA5String:
         case DER_PrintableString:
         case DER_UTF8_STRING:
         case DER_OBJECT_IDENTIFIER:
         case DER_OCTET_STRING:
-        case DER_BIT_STRING: /* bytes should already be formatted for BIT_STRING */
             if (!aws_byte_buf_write(buf, tlv->value, tlv->length)) {
                 return AWS_OP_ERR;
             }

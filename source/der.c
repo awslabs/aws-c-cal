@@ -25,14 +25,14 @@ struct der_tlv {
 };
 
 static void s_decode_tlv(struct der_tlv *tlv) {
-    if (tlv->tag == DER_INTEGER) {
+    if (tlv->tag == AWS_DER_INTEGER) {
         uint8_t first_byte = tlv->value[0];
         /* if the first byte is 0, it just denotes unsigned and should be removed */
         if (first_byte == 0x00) {
             tlv->length -= 1;
             tlv->value += 1;
         }
-    } else if (tlv->tag == DER_BIT_STRING) {
+    } else if (tlv->tag == AWS_DER_BIT_STRING) {
         /* skip over the trailing skipped bit count */
         tlv->length -= 1;
         tlv->value += 1;
@@ -55,7 +55,7 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
         len_bytes &= 0x7f;
         AWS_FATAL_ASSERT(len_bytes <= 4 && "Only 32-bit sizes of DER TLV elements are supported");
         if (len_bytes == 1) {
-            if (!aws_byte_cursor_read_u8(cur, (uint8_t*)&len)) {
+            if (!aws_byte_cursor_read_u8(cur, (uint8_t *)&len)) {
                 return AWS_OP_ERR;
             }
         } else if (len_bytes == 2) {
@@ -77,7 +77,7 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
     tlv->tag = tag;
     tlv->length = len;
     /* skip over any prepended encoding bytes */
-    tlv->value = (tag == DER_NULL) ? NULL : cur->ptr;
+    tlv->value = (tag == AWS_DER_NULL) ? NULL : cur->ptr;
     s_decode_tlv(tlv);
     aws_byte_cursor_advance(cur, len);
 
@@ -85,11 +85,11 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
 }
 
 static uint32_t s_encoded_len(struct der_tlv *tlv) {
-    if (tlv->tag == DER_INTEGER) {
+    if (tlv->tag == AWS_DER_INTEGER) {
         uint8_t first_byte = tlv->value[0];
         /* if the first byte has the high bit set, a 0 will be prepended to denote unsigned */
         return tlv->length + ((first_byte & 0x80) != 0);
-    } else if (tlv->tag == DER_BIT_STRING) {
+    } else if (tlv->tag == AWS_DER_BIT_STRING) {
         return tlv->length + 1; /* needs a byte to denote how many trailing skipped bits */
     }
 
@@ -132,7 +132,7 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
     }
 
     switch (tlv->tag) {
-        case DER_INTEGER: {
+        case AWS_DER_INTEGER: {
             /* if the first byte has the sign bit set, insert an extra 0x00 byte to indicate unsigned */
             uint8_t first_byte = tlv->value[0];
             if (first_byte & 0x80) {
@@ -144,30 +144,30 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
                 return AWS_OP_ERR;
             }
         } break;
-        case DER_BOOLEAN:
+        case AWS_DER_BOOLEAN:
             if (!aws_byte_buf_write_u8(buf, (*tlv->value) ? 0xff : 0x00)) {
                 return AWS_OP_ERR;
             }
             break;
-        case DER_BIT_STRING:
+        case AWS_DER_BIT_STRING:
             /* Write that there are 0 skipped bits */
             if (!aws_byte_buf_write_u8(buf, 0)) {
                 return AWS_OP_ERR;
             }
             /* FALLTHROUGH */
-        case DER_BMPString:
-        case DER_IA5String:
-        case DER_PrintableString:
-        case DER_UTF8_STRING:
-        case DER_OBJECT_IDENTIFIER:
-        case DER_OCTET_STRING:
-        case DER_SEQUENCE:
-        case DER_SET:
+        case AWS_DER_BMPString:
+        case AWS_DER_IA5String:
+        case AWS_DER_PrintableString:
+        case AWS_DER_UTF8_STRING:
+        case AWS_DER_OBJECT_IDENTIFIER:
+        case AWS_DER_OCTET_STRING:
+        case AWS_DER_SEQUENCE:
+        case AWS_DER_SET:
             if (!aws_byte_buf_write(buf, tlv->value, tlv->length)) {
                 return AWS_OP_ERR;
             }
             break;
-        case DER_NULL:
+        case AWS_DER_NULL:
             /* No value bytes */
             break;
         default:
@@ -199,7 +199,7 @@ void aws_der_encoder_clean_up(struct aws_der_encoder *encoder) {
 
 int aws_der_encoder_write_integer(struct aws_der_encoder *encoder, struct aws_byte_cursor integer) {
     struct der_tlv tlv = {
-        .tag = DER_INTEGER,
+        .tag = AWS_DER_INTEGER,
         .length = integer.len,
         .value = integer.ptr,
     };
@@ -208,14 +208,14 @@ int aws_der_encoder_write_integer(struct aws_der_encoder *encoder, struct aws_by
 }
 
 int aws_der_encoder_write_boolean(struct aws_der_encoder *encoder, bool boolean) {
-    struct der_tlv tlv = {.tag = DER_BOOLEAN, .length = 1, .value = (uint8_t *)&boolean};
+    struct der_tlv tlv = {.tag = AWS_DER_BOOLEAN, .length = 1, .value = (uint8_t *)&boolean};
 
     return s_der_write_tlv(&tlv, encoder->buffer);
 }
 
 int aws_der_encoder_write_null(struct aws_der_encoder *encoder) {
     struct der_tlv tlv = {
-        .tag = DER_NULL,
+        .tag = AWS_DER_NULL,
         .length = 0,
         .value = NULL,
     };
@@ -225,7 +225,7 @@ int aws_der_encoder_write_null(struct aws_der_encoder *encoder) {
 
 int aws_der_encoder_write_bit_string(struct aws_der_encoder *encoder, struct aws_byte_cursor bit_string) {
     struct der_tlv tlv = {
-        .tag = DER_BIT_STRING,
+        .tag = AWS_DER_BIT_STRING,
         .length = bit_string.len,
         .value = bit_string.ptr,
     };
@@ -235,7 +235,7 @@ int aws_der_encoder_write_bit_string(struct aws_der_encoder *encoder, struct aws
 
 int aws_der_encoder_write_octet_string(struct aws_der_encoder *encoder, struct aws_byte_cursor octet_string) {
     struct der_tlv tlv = {
-        .tag = DER_OCTET_STRING,
+        .tag = AWS_DER_OCTET_STRING,
         .length = octet_string.len,
         .value = octet_string.ptr,
     };
@@ -289,7 +289,7 @@ static int s_der_encoder_end_container(struct aws_der_encoder *encoder) {
 }
 
 int aws_der_encoder_begin_sequence(struct aws_der_encoder *encoder) {
-    return s_der_encoder_begin_container(encoder, DER_SEQUENCE);
+    return s_der_encoder_begin_container(encoder, AWS_DER_SEQUENCE);
 }
 
 int aws_der_encoder_end_sequence(struct aws_der_encoder *encoder) {
@@ -297,7 +297,7 @@ int aws_der_encoder_end_sequence(struct aws_der_encoder *encoder) {
 }
 
 int aws_der_encoder_begin_set(struct aws_der_encoder *encoder) {
-    return s_der_encoder_begin_container(encoder, DER_SET);
+    return s_der_encoder_begin_container(encoder, AWS_DER_SET);
 }
 
 int aws_der_encoder_end_set(struct aws_der_encoder *encoder) {
@@ -316,7 +316,10 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
     return AWS_OP_SUCCESS;
 }
 
-int aws_der_decoder_init(struct aws_der_decoder *decoder, struct aws_allocator *allocator, struct aws_byte_buf *buffer) {
+int aws_der_decoder_init(
+    struct aws_der_decoder *decoder,
+    struct aws_allocator *allocator,
+    struct aws_byte_buf *buffer) {
     decoder->allocator = allocator;
     decoder->buffer = buffer;
     decoder->tlv_idx = -1;
@@ -349,8 +352,8 @@ int aws_der_decoder_parse(struct aws_der_decoder *decoder) {
     }
     /* If the last thing parsed was a container, continually parse until all containers are expanded */
     struct der_tlv *tlv = NULL;
-    while (!aws_array_list_get_at_ptr(&decoder->tlvs, (void**)&tlv, decoder->tlvs.length - 1) &&
-        (tlv->tag == DER_SEQUENCE || tlv->tag == DER_SET)) {
+    while (!aws_array_list_get_at_ptr(&decoder->tlvs, (void **)&tlv, decoder->tlvs.length - 1) &&
+           (tlv->tag == AWS_DER_SEQUENCE || tlv->tag == AWS_DER_SET)) {
         size_t prev_count = decoder->tlvs.length;
         cur = aws_byte_cursor_from_array(tlv->value, tlv->length);
         s_parse_cursor(decoder, cur);
@@ -383,33 +386,33 @@ size_t aws_der_decoder_tlv_length(struct aws_der_decoder *decoder) {
 
 size_t aws_der_decoder_tlv_sequence_count(struct aws_der_decoder *decoder) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == DER_SEQUENCE);
+    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_SEQUENCE);
     return tlv.count;
 }
 
 size_t aws_der_decoder_tlv_set_count(struct aws_der_decoder *decoder) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == DER_SET);
+    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_SET);
     return tlv.count;
 }
 
 int aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_buf *string) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == DER_OCTET_STRING || tlv.tag == DER_BIT_STRING);
+    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_OCTET_STRING || tlv.tag == AWS_DER_BIT_STRING);
     struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv.value, tlv.length);
     return aws_byte_buf_append(string, &from);
 }
 
 int aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_buf *integer) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == DER_INTEGER);
+    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_INTEGER);
     struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv.value, tlv.length);
     return aws_byte_buf_append(integer, &from);
 }
 
 int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == DER_BOOLEAN);
+    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_BOOLEAN);
     *boolean = *tlv.value != 0;
     return AWS_OP_SUCCESS;
 }

@@ -30,7 +30,6 @@ struct aws_der_decoder {
     struct aws_array_list tlvs; /* index to elements after parsing */
     int tlv_idx;
     struct aws_byte_buf *buffer;
-    struct aws_array_list stack;
 };
 
 enum aws_der_type {

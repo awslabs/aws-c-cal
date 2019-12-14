@@ -324,16 +324,11 @@ int aws_der_decoder_init(struct aws_der_decoder *decoder, struct aws_allocator *
         return AWS_OP_ERR;
     }
 
-    if (aws_array_list_init_dynamic(&decoder->stack, decoder->allocator, 4, sizeof(struct der_tlv))) {
-        return AWS_OP_ERR;
-    }
-
     return AWS_OP_SUCCESS;
 }
 
 void aws_der_decoder_clean_up(struct aws_der_decoder *decoder) {
     aws_array_list_clean_up(&decoder->tlvs);
-    aws_array_list_clean_up(&decoder->stack);
 }
 
 int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) {

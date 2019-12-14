@@ -29,9 +29,9 @@ struct aws_der_encoder {
 
 struct aws_der_decoder {
     struct aws_allocator *allocator;
-    struct aws_array_list tlvs; /* index to elements after parsing */
-    int tlv_idx;
-    struct aws_byte_buf *buffer;
+    struct aws_array_list tlvs;  /* parsed elements */
+    int tlv_idx;                 /* index to elements after parsing */
+    struct aws_byte_buf *buffer; /* input buffer, no ownership */
 };
 
 enum aws_der_type {

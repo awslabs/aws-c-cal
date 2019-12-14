@@ -355,7 +355,9 @@ int aws_der_decoder_parse(struct aws_der_decoder *decoder) {
            (tlv->tag == AWS_DER_SEQUENCE || tlv->tag == AWS_DER_SET)) {
         size_t prev_count = decoder->tlvs.length;
         cur = aws_byte_cursor_from_array(tlv->value, tlv->length);
-        s_parse_cursor(decoder, cur);
+        if (s_parse_cursor(decoder, cur)) {
+            return AWS_OP_ERR;
+        }
         /* update the number of inner objects */
         tlv->count = decoder->tlvs.length - prev_count;
     }

@@ -19,7 +19,7 @@
 
 struct der_tlv {
     uint8_t tag;
-    uint32_t length;
+    uint32_t length; /* length of value in bytes */
     uint32_t count; /* SEQUENCE or SET element count */
     uint8_t *value;
 };
@@ -76,7 +76,6 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
 
     tlv->tag = tag;
     tlv->length = len;
-    /* skip over any prepended encoding bytes */
     tlv->value = (tag == AWS_DER_NULL) ? NULL : cur->ptr;
     s_decode_tlv(tlv);
     aws_byte_cursor_advance(cur, len);

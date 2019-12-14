@@ -20,7 +20,7 @@
 struct der_tlv {
     uint8_t tag;
     uint32_t length; /* length of value in bytes */
-    uint32_t count; /* SEQUENCE or SET element count */
+    uint32_t count;  /* SEQUENCE or SET element count */
     uint8_t *value;
 };
 

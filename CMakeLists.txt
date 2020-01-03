@@ -106,7 +106,7 @@ aws_prepare_symbol_visibility_args(${PROJECT_NAME} "AWS_CAL")
 aws_add_sanitizers(${PROJECT_NAME} BLACKLIST "sanitizer-blacklist.txt")
 
 aws_use_package(aws-c-common)
-target_link_libraries(${PROJECT_NAME} PUBLIC AWS::aws-c-common ${PLATFORM_LIBS} ${DEP_AWS_LIBS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DAWS_BYO_CRYPTO)

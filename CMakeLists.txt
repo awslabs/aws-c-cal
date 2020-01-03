@@ -158,7 +158,7 @@ install(FILES ${EXPORT_MODULES}
         COMPONENT Development)
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT BYO_CRYPTO)
-    if (BUILD_TESTING)
+    if (NOT DEFINED BUILD_TESTING OR BUILD_TESTING)
         include(CTest)
         add_subdirectory(tests)
     endif()

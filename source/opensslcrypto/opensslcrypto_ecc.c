@@ -140,8 +140,9 @@ static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
     BN_free(priv_key_num);
 
     EC_KEY_set_public_key(libcrypto_key_pair->ec_key, point);
-    (void)ret_val;
-    return s_fill_in_public_key_info(libcrypto_key_pair, group, point);
+    ret_val = s_fill_in_public_key_info(libcrypto_key_pair, group, point);
+    EC_POINT_free(point);
+    return ret_val;
 }
 
 static struct aws_ecc_key_pair_vtable vtable = {

@@ -86,7 +86,7 @@ AWS_CAL_API int aws_ecc_key_pair_verify_signature(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     const struct aws_byte_cursor *signature);
-AWS_CAL_API size_t aws_ecc_key_pair_signature_length(const struct aws_ecc_key_pair *signer);
+AWS_CAL_API size_t aws_ecc_key_pair_signature_length(const struct aws_ecc_key_pair *key_pair);
 
 AWS_EXTERN_C_END
 

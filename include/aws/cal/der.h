@@ -148,7 +148,7 @@ AWS_CAL_API int aws_der_encoder_end_set(struct aws_der_encoder *encoder);
  * @param cursor The cursor to point at the stream buffer
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-AWS_CAL_API int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byte_cursor *cursor);
+AWS_CAL_API int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byte_cursor *contents);
 
 /**
  * Initializes an DER decoder

@@ -88,7 +88,8 @@ static uint32_t s_encoded_len(struct der_tlv *tlv) {
         uint8_t first_byte = tlv->value[0];
         /* if the first byte has the high bit set, a 0 will be prepended to denote unsigned */
         return tlv->length + ((first_byte & 0x80) != 0);
-    } else if (tlv->tag == AWS_DER_BIT_STRING) {
+    }
+    if (tlv->tag == AWS_DER_BIT_STRING) {
         return tlv->length + 1; /* needs a byte to denote how many trailing skipped bits */
     }
 

@@ -19,6 +19,9 @@
 
 static int s_ecdsa_p256_test_pub_key_derivation_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+#ifdef __APPLE__
+    return AWS_OP_SUCCESS; /* key derivation not supported on Apple platforms */
+#endif
 
     uint8_t d[] = {
         0xc9, 0x80, 0x68, 0x98, 0xa0, 0x33, 0x49, 0x16, 0xc8, 0x60, 0x74, 0x88, 0x80, 0xa5, 0x41, 0xf0,

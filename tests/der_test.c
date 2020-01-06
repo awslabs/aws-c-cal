@@ -133,6 +133,7 @@ static uint8_t s_encoded_set[] = {
 /* clang-format on */
 
 static int s_der_encode_integer(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     struct aws_der_encoder encoder;
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
     struct aws_byte_cursor bigint_cur = aws_byte_cursor_from_array(s_bigint, AWS_ARRAY_SIZE(s_bigint));
@@ -148,6 +149,7 @@ static int s_der_encode_integer(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_encode_integer, s_der_encode_integer)
 
 static int s_der_encode_boolean(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     bool flag = true;
     struct aws_der_encoder encoder;
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
@@ -171,6 +173,7 @@ static int s_der_encode_boolean(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_encode_boolean, s_der_encode_boolean)
 
 static int s_der_encode_null(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     struct aws_der_encoder encoder;
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
     ASSERT_SUCCESS(aws_der_encoder_write_null(&encoder));
@@ -186,6 +189,7 @@ static int s_der_encode_null(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_encode_null, s_der_encode_null)
 
 static int s_der_encode_bit_string(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     struct aws_der_encoder encoder;
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
     struct aws_byte_cursor bit_string = aws_byte_cursor_from_array(s_bit_string, AWS_ARRAY_SIZE(s_bit_string));
@@ -201,6 +205,7 @@ static int s_der_encode_bit_string(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_encode_bit_string, s_der_encode_bit_string)
 
 static int s_der_encode_octet_string(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     struct aws_der_encoder encoder;
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
     struct aws_byte_cursor octet_string = aws_byte_cursor_from_array(s_octet_string, AWS_ARRAY_SIZE(s_octet_string));
@@ -216,6 +221,7 @@ static int s_der_encode_octet_string(struct aws_allocator *allocator, void *ctx)
 AWS_TEST_CASE(der_encode_octet_string, s_der_encode_octet_string)
 
 static int s_der_encode_sequence(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     struct aws_der_encoder encoder;
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
     ASSERT_SUCCESS(aws_der_encoder_begin_sequence(&encoder));
@@ -233,6 +239,7 @@ static int s_der_encode_sequence(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_encode_sequence, s_der_encode_sequence)
 
 static int s_der_encode_set(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     struct aws_der_encoder encoder;
     ASSERT_SUCCESS(aws_der_encoder_init(&encoder, allocator, 1024));
     ASSERT_SUCCESS(aws_der_encoder_begin_set(&encoder));
@@ -250,6 +257,7 @@ static int s_der_encode_set(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_encode_set, s_der_encode_set)
 
 static int s_der_decode_integer(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_bigint);
     const size_t decoded_size = AWS_ARRAY_SIZE(s_bigint);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_bigint, encoded_size);
@@ -274,6 +282,7 @@ static int s_der_decode_integer(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_decode_integer, s_der_decode_integer)
 
 static int s_der_decode_boolean(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     bool flag = false;
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_true);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_true, encoded_size);
@@ -304,6 +313,7 @@ static int s_der_decode_boolean(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_decode_boolean, s_der_decode_boolean)
 
 static int s_der_decode_null(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_null, AWS_ARRAY_SIZE(s_encoded_null));
     struct aws_der_decoder decoder;
     ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
@@ -319,6 +329,7 @@ static int s_der_decode_null(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_decode_null, s_der_decode_null)
 
 static int s_der_decode_bit_string(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_bit_string);
     const size_t decoded_size = AWS_ARRAY_SIZE(s_bit_string);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_bit_string, encoded_size);
@@ -342,6 +353,7 @@ static int s_der_decode_bit_string(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_decode_bit_string, s_der_decode_bit_string)
 
 static int s_der_decode_octet_string(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_octet_string);
     const size_t decoded_size = AWS_ARRAY_SIZE(s_bit_string);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_octet_string, encoded_size);
@@ -365,6 +377,7 @@ static int s_der_decode_octet_string(struct aws_allocator *allocator, void *ctx)
 AWS_TEST_CASE(der_decode_octet_string, s_der_decode_octet_string)
 
 static int s_der_decode_sequence(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_sequence);
     const size_t decoded_size = AWS_ARRAY_SIZE(s_encoded_true) + AWS_ARRAY_SIZE(s_encoded_false);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_sequence, encoded_size);
@@ -400,6 +413,7 @@ static int s_der_decode_sequence(struct aws_allocator *allocator, void *ctx) {
 AWS_TEST_CASE(der_decode_sequence, s_der_decode_sequence)
 
 static int s_der_decode_set(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_set);
     const size_t decoded_size = AWS_ARRAY_SIZE(s_encoded_true) + AWS_ARRAY_SIZE(s_encoded_false);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_set, encoded_size);

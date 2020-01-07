@@ -77,6 +77,19 @@ static BCRYPT_ALG_HANDLE s_key_alg_handle_from_curve_name(enum aws_ecc_curve_nam
     }
 }
 
+static ULONG s_get_magic_from_curve_name(enum aws_ecc_curve_name curve_name, bool private_key) {
+    switch (curve_name) {
+        case AWS_CAL_ECDSA_P256:
+            return private_key ? BCRYPT_ECDSA_PRIVATE_P256_MAGIC : BCRYPT_ECDSA_PUBLIC_P256_MAGIC;
+        case AWS_CAL_ECDSA_P384:
+            return private_key ? BCRYPT_ECDSA_PRIVATE_P384_MAGIC : BCRYPT_ECDSA_PUBLIC_P384_MAGIC;
+        case AWS_CAL_ECDSA_P521:
+            return private_key ? BCRYPT_ECDSA_PRIVATE_P521_MAGIC : BCRYPT_ECDSA_PUBLIC_P521_MAGIC;
+        default:
+            return 0;
+    }
+}
+
 static void s_destroy_key_fn(struct aws_ecc_key_pair *key_pair) {
     struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
 
@@ -207,7 +220,7 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
 
     BCRYPT_ECCKEY_BLOB key_blob;
     AWS_ZERO_STRUCT(key_blob);
-    key_blob.dwMagic = BCRYPT_ECDSA_PUBLIC_GENERIC_MAGIC;
+    key_blob.dwMagic = s_get_magic_from_curve_name(curve_name, priv_key && priv_key->len);
     key_blob.cbKey = (ULONG)s_key_coordinate_size;
 
     struct aws_byte_cursor header = aws_byte_cursor_from_array(&key_blob, sizeof(key_blob));

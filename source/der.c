@@ -18,8 +18,8 @@
 #include <aws/common/byte_buf.h>
 
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4204 4221) /* non-standard aggregate initializer warnings */
+#    pragma warning(push)
+#    pragma warning(disable : 4204 4221) /* non-standard aggregate initializer warnings */
 #endif
 
 struct der_tlv {
@@ -428,5 +428,5 @@ int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) 
 }
 
 #ifdef _MSC_VER
-#pragma warning(pop)
+#    pragma warning(pop)
 #endif

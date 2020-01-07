@@ -98,24 +98,37 @@ static int s_fill_in_public_key_info(
     BIGNUM *big_num_x = BN_new();
     BIGNUM *big_num_y = BN_new();
 
-    int ret_val = EC_POINT_get_affine_coordinates(group, pub_key_point, big_num_x, big_num_y, NULL);
-    (void)ret_val;
+    int ret_val = AWS_OP_ERR;
+
+    if (EC_POINT_get_affine_coordinates(group, pub_key_point, big_num_x, big_num_y, NULL) != 1) {
+        aws_raise_error(AWS_ERROR_INVALID_STATE);
+        goto clean_up;
+    }
 
     size_t x_coor_size = BN_num_bytes(big_num_x);
     size_t y_coor_size = BN_num_bytes(big_num_y);
 
-    aws_byte_buf_init(&libcrypto_key_pair->key_pair.pub_x, libcrypto_key_pair->key_pair.allocator, x_coor_size);
-    aws_byte_buf_init(&libcrypto_key_pair->key_pair.pub_y, libcrypto_key_pair->key_pair.allocator, y_coor_size);
+    if (aws_byte_buf_init(&libcrypto_key_pair->key_pair.pub_x, libcrypto_key_pair->key_pair.allocator, x_coor_size)) {
+        goto clean_up;
+    }
+
+    if (aws_byte_buf_init(&libcrypto_key_pair->key_pair.pub_y, libcrypto_key_pair->key_pair.allocator, y_coor_size)) {
+        goto clean_up;
+    }
 
     BN_bn2bin(big_num_x, libcrypto_key_pair->key_pair.pub_x.buffer);
     BN_bn2bin(big_num_y, libcrypto_key_pair->key_pair.pub_y.buffer);
 
     libcrypto_key_pair->key_pair.pub_x.len = x_coor_size;
     libcrypto_key_pair->key_pair.pub_y.len = y_coor_size;
+
+    ret_val = AWS_OP_SUCCESS;
+
+clean_up:
     BN_free(big_num_x);
     BN_free(big_num_y);
 
-    return AWS_OP_SUCCESS;
+    return ret_val;
 }
 
 static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
@@ -136,11 +149,11 @@ static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
     const EC_GROUP *group = EC_KEY_get0_group(libcrypto_key_pair->ec_key);
     EC_POINT *point = EC_POINT_new(group);
 
-    int ret_val = EC_POINT_mul(group, point, priv_key_num, NULL, NULL, NULL);
+    EC_POINT_mul(group, point, priv_key_num, NULL, NULL, NULL);
     BN_free(priv_key_num);
 
     EC_KEY_set_public_key(libcrypto_key_pair->ec_key, point);
-    ret_val = s_fill_in_public_key_info(libcrypto_key_pair, group, point);
+    int ret_val = s_fill_in_public_key_info(libcrypto_key_pair, group, point);
     EC_POINT_free(point);
     return ret_val;
 }
@@ -185,20 +198,26 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     key_impl->key_pair.vtable = &vtable;
     key_impl->key_pair.impl = key_impl;
 
-    EC_KEY_generate_key(key_impl->ec_key);
+    if (EC_KEY_generate_key(key_impl->ec_key) != 1) {
+        goto error;
+    }
 
     const EC_POINT *pub_key_point = EC_KEY_get0_public_key(key_impl->ec_key);
     const EC_GROUP *group = EC_KEY_get0_group(key_impl->ec_key);
 
     const BIGNUM *private_key_num = EC_KEY_get0_private_key(key_impl->ec_key);
     size_t priv_key_size = BN_num_bytes(private_key_num);
-    aws_byte_buf_init(&key_impl->key_pair.priv_d, allocator, priv_key_size);
+    if (aws_byte_buf_init(&key_impl->key_pair.priv_d, allocator, priv_key_size)) {
+        goto error;
+    }
+
     BN_bn2bin(private_key_num, key_impl->key_pair.priv_d.buffer);
 
     if (!s_fill_in_public_key_info(key_impl, group, pub_key_point)) {
         return &key_impl->key_pair;
     }
 
+error:
     s_key_pair_destroy(&key_impl->key_pair);
     return NULL;
 }
@@ -209,6 +228,13 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     const struct aws_byte_cursor *public_key_x,
     const struct aws_byte_cursor *public_key_y) {
     struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
+    BIGNUM *pub_x_num = NULL;
+    BIGNUM *pub_y_num = NULL;
+    EC_POINT *point = NULL;
+
+    if (!key_impl) {
+        return NULL;
+    }
 
     key_impl->ec_key = EC_KEY_new_by_curve_name(s_curve_name_to_nid(curve_name));
     key_impl->key_pair.curve_name = curve_name;
@@ -216,23 +242,52 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     key_impl->key_pair.vtable = &vtable;
     key_impl->key_pair.impl = key_impl;
 
-    aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_x, allocator, *public_key_x);
-    aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_y, allocator, *public_key_y);
+    if (aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_x, allocator, *public_key_x)) {
+        s_key_pair_destroy(&key_impl->key_pair);
+        return NULL;
+    }
 
-    BIGNUM *pub_x_num = BN_bin2bn(public_key_x->ptr, public_key_x->len, NULL);
-    BIGNUM *pub_y_num = BN_bin2bn(public_key_y->ptr, public_key_y->len, NULL);
+    if (aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_y, allocator, *public_key_y)) {
+        s_key_pair_destroy(&key_impl->key_pair);
+        return NULL;
+    }
 
-    int res = 0;
+    pub_x_num = BN_bin2bn(public_key_x->ptr, public_key_x->len, NULL);
+    pub_y_num = BN_bin2bn(public_key_y->ptr, public_key_y->len, NULL);
+
     const EC_GROUP *group = EC_KEY_get0_group(key_impl->ec_key);
-    EC_POINT *point = EC_POINT_new(group);
-    res = EC_POINT_set_affine_coordinates(group, point, pub_x_num, pub_y_num, NULL);
-    res = EC_KEY_set_public_key(key_impl->ec_key, point);
-    (void)res;
+    point = EC_POINT_new(group);
+
+    if (EC_POINT_set_affine_coordinates(group, point, pub_x_num, pub_y_num, NULL) != 1) {
+        goto error;
+    }
+
+    if (EC_KEY_set_public_key(key_impl->ec_key, point) != 1) {
+        goto error;
+    }
+
     EC_POINT_free(point);
     BN_free(pub_x_num);
     BN_free(pub_y_num);
 
     return &key_impl->key_pair;
+
+error:
+    if (point) {
+        EC_POINT_free(point);
+    }
+
+    if (pub_x_num) {
+        BN_free(pub_x_num);
+    }
+
+    if (pub_y_num) {
+        BN_free(pub_y_num);
+    }
+
+    s_key_pair_destroy(&key_impl->key_pair);
+
+    return NULL;
 }
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
@@ -241,7 +296,11 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
 
-    d2i_ECParameters(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len);
+    if (d2i_ECParameters(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len)) {
+        aws_mem_release(allocator, key_impl);
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        return NULL;
+    }
 
     const EC_GROUP *group = EC_KEY_get0_group(key_impl->ec_key);
 
@@ -267,7 +326,11 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     const BIGNUM *private_key_num = EC_KEY_get0_private_key(key_impl->ec_key);
     size_t priv_key_size = BN_num_bytes(private_key_num);
-    aws_byte_buf_init(&key_impl->key_pair.priv_d, allocator, priv_key_size);
+
+    if (aws_byte_buf_init(&key_impl->key_pair.priv_d, allocator, priv_key_size)) {
+        goto error;
+    }
+
     BN_bn2bin(private_key_num, key_impl->key_pair.priv_d.buffer);
 
     const EC_POINT *pub_key_point = EC_KEY_get0_public_key(key_impl->ec_key);
@@ -276,9 +339,13 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         if (!s_fill_in_public_key_info(key_impl, group, pub_key_point)) {
             return &key_impl->key_pair;
         }
-        s_key_pair_destroy(&key_impl->key_pair);
-        return NULL;
+        goto error;
     }
 
     return &key_impl->key_pair;
+
+error:
+    s_key_pair_destroy(&key_impl->key_pair);
+
+    return NULL;
 }

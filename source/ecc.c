@@ -47,3 +47,15 @@ size_t aws_ecc_key_pair_signature_length(const struct aws_ecc_key_pair *key_pair
         key_pair->vtable->signature_length_fn && "ECC KEY PAIR signature length must be included on the vtable");
     return key_pair->vtable->signature_length_fn(key_pair);
 }
+
+void aws_ecc_key_pair_get_public_key(
+    const struct aws_ecc_key_pair *key_pair,
+    struct aws_byte_cursor *pub_x,
+    struct aws_byte_cursor *pub_y) {
+    *pub_x = aws_byte_cursor_from_buf(&key_pair->pub_x);
+    *pub_y = aws_byte_cursor_from_buf(&key_pair->pub_y);
+}
+
+void aws_ecc_key_pair_get_private_key(const struct aws_ecc_key_pair *key_pair, struct aws_byte_cursor *private_d) {
+    *private_d = aws_byte_cursor_from_buf(&key_pair->priv_d);
+}

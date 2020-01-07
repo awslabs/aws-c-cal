@@ -60,33 +60,94 @@ struct aws_ecc_key_pair {
 
 AWS_EXTERN_C_BEGIN
 
+/**
+ * Creates a Eliptic Curve private key that can be used for signing.
+ * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
+ * Otherwise returns NULL. Note: priv_key::len must match the appropriate length
+ * for the selected curve_name.
+ */
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key);
+
+/**
+ * Creates a Eliptic Curve public/private key pair that can be used for signing and verifying.
+ * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
+ * Otherwise returns NULL.
+ */
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name);
+
+/**
+ * Creates a Eliptic Curve public key that can be used for verifying.
+ * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
+ * Otherwise returns NULL. Note: public_key_x::len and public_key_y::len must
+ * match the appropriate length for the selected curve_name.
+ */
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *public_key_x,
     const struct aws_byte_cursor *public_key_y);
+
+/**
+ * Creates a Eliptic Curve public/private key pair from a DER encoded key pair.
+ * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
+ * Otherwise returns NULL. Whether or not signing or verification can be perform depends
+ * on if encoded_keys is a public/private pair or a public key.
+ */
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys);
+
+/**
+ * Destroys any allocated resources on key_pair and deallocates key_pair.
+ */
 AWS_CAL_API void aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair);
 
+/**
+ * Derives a public key from the private key if supported by this operating system (not supported on OSX).
+ * key_pair::pub_x and key_pair::pub_y will be set with the raw key buffers.
+ */
 AWS_CAL_API int aws_ecc_key_pair_derive_public_key(struct aws_ecc_key_pair *key_pair);
+
+/**
+ * Uses the key_pair's private key to sign message. The output will be in signature. Signature must be large enough
+ * to hold the signature. Check aws_ecc_key_pair_signature_length() for the appropriate size. Signature will be DER
+ * encoded.
+ *
+ * It is the callers job to make sure message is the appropriate cryptographic digest for this operation. It's usually
+ * something like a SHA256.
+ */
 AWS_CAL_API int aws_ecc_key_pair_sign_message(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     struct aws_byte_buf *signature);
+
+/**
+ * Uses the key_pair's public key to verify signature of message. Signature should be DER
+ * encoded.
+ *
+ * It is the callers job to make sure message is the appropriate cryptographic digest for this operation. It's usually
+ * something like a SHA256.
+ *
+ * returns AWS_OP_SUCCESS if the signature is valid.
+ */
 AWS_CAL_API int aws_ecc_key_pair_verify_signature(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     const struct aws_byte_cursor *signature);
 AWS_CAL_API size_t aws_ecc_key_pair_signature_length(const struct aws_ecc_key_pair *key_pair);
+
+AWS_CAL_API void aws_ecc_key_pair_get_public_key(
+    const struct aws_ecc_key_pair *key_pair,
+    struct aws_byte_cursor *pub_x,
+    struct aws_byte_cursor *pub_y);
+AWS_CAL_API void aws_ecc_key_pair_get_private_key(
+    const struct aws_ecc_key_pair *key_pair,
+    struct aws_byte_cursor *private_d);
 
 AWS_EXTERN_C_END
 

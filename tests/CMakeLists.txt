@@ -41,4 +41,4 @@ add_test_case(sha256_hmac_test_oneshot)
 add_test_case(sha256_hmac_test_invalid_buffer)
 add_test_case(sha256_hmac_test_invalid_state)
 
-generate_test_driver(${CMAKE_PROJECT_NAME}-tests)
+generate_test_driver(${PROJECT_NAME}-tests)

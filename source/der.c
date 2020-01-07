@@ -17,6 +17,11 @@
 
 #include <aws/common/byte_buf.h>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4204 4221) /* non-standard aggregate initializer warnings */
+#endif
+
 struct der_tlv {
     uint8_t tag;
     uint32_t length; /* length of value in bytes */
@@ -114,7 +119,7 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
         if (!aws_byte_buf_write_u8(buf, 0x82)) {
             return AWS_OP_ERR;
         }
-        if (!aws_byte_buf_write_be16(buf, len)) {
+        if (!aws_byte_buf_write_be16(buf, (uint16_t)len)) {
             return AWS_OP_ERR;
         }
     } else if (len > INT8_MAX) {
@@ -122,11 +127,11 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
         if (!aws_byte_buf_write_u8(buf, 0x81)) {
             return AWS_OP_ERR;
         }
-        if (!aws_byte_buf_write_u8(buf, len)) {
+        if (!aws_byte_buf_write_u8(buf, (uint8_t)len)) {
             return AWS_OP_ERR;
         }
     } else {
-        if (!aws_byte_buf_write_u8(buf, len)) {
+        if (!aws_byte_buf_write_u8(buf, (uint8_t)len)) {
             return AWS_OP_ERR;
         }
     }
@@ -198,9 +203,10 @@ void aws_der_encoder_clean_up(struct aws_der_encoder *encoder) {
 }
 
 int aws_der_encoder_write_integer(struct aws_der_encoder *encoder, struct aws_byte_cursor integer) {
+    AWS_FATAL_ASSERT(integer.len <= UINT32_MAX);
     struct der_tlv tlv = {
         .tag = AWS_DER_INTEGER,
-        .length = integer.len,
+        .length = (uint32_t)integer.len,
         .value = integer.ptr,
     };
 
@@ -224,9 +230,10 @@ int aws_der_encoder_write_null(struct aws_der_encoder *encoder) {
 }
 
 int aws_der_encoder_write_bit_string(struct aws_der_encoder *encoder, struct aws_byte_cursor bit_string) {
+    AWS_FATAL_ASSERT(bit_string.len <= UINT32_MAX);
     struct der_tlv tlv = {
         .tag = AWS_DER_BIT_STRING,
-        .length = bit_string.len,
+        .length = (uint32_t)bit_string.len,
         .value = bit_string.ptr,
     };
 
@@ -234,9 +241,10 @@ int aws_der_encoder_write_bit_string(struct aws_der_encoder *encoder, struct aws
 }
 
 int aws_der_encoder_write_octet_string(struct aws_der_encoder *encoder, struct aws_byte_cursor octet_string) {
+    AWS_FATAL_ASSERT(octet_string.len <= UINT32_MAX);
     struct der_tlv tlv = {
         .tag = AWS_DER_OCTET_STRING,
-        .length = octet_string.len,
+        .length = (uint32_t)octet_string.len,
         .value = octet_string.ptr,
     };
 
@@ -280,7 +288,7 @@ static int s_der_encoder_end_container(struct aws_der_encoder *encoder) {
     }
 
     struct aws_byte_buf *seq_buf = (struct aws_byte_buf *)tlv.value;
-    tlv.length = seq_buf->len;
+    tlv.length = (uint32_t)seq_buf->len;
     tlv.value = seq_buf->buffer;
     int result = s_der_write_tlv(&tlv, encoder->buffer);
     aws_byte_buf_clean_up_secure(seq_buf);
@@ -360,7 +368,7 @@ int aws_der_decoder_parse(struct aws_der_decoder *decoder) {
             return AWS_OP_ERR;
         }
         /* update the number of inner objects */
-        tlv->count = decoder->tlvs.length - prev_count;
+        tlv->count = (uint32_t)(decoder->tlvs.length - prev_count);
     }
     return AWS_OP_SUCCESS;
 }
@@ -418,3 +426,7 @@ int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) 
     *boolean = *tlv.value != 0;
     return AWS_OP_SUCCESS;
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif

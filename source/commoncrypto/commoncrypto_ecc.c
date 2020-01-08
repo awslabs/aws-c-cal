@@ -15,6 +15,8 @@
 #include <Security/SecKey.h>
 #include <Security/SecSignVerifyTransform.h>
 #include <Security/Security.h>
+#include <aws/cal/cal.h>
+#include <aws/cal/der.h>
 #include <aws/cal/ecc.h>
 
 struct commoncrypto_ecc_key_pair {
@@ -49,6 +51,10 @@ static int s_sign_message_fn(
     struct aws_byte_buf *signature_output) {
     struct commoncrypto_ecc_key_pair *cc_key = key_pair->impl;
 
+    if (!cc_key->priv_key_ref) {
+        return aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+    }
+
     CFDataRef hash_ref =
         CFDataCreateWithBytesNoCopy(cc_key->cf_allocator, message->ptr, message->len, kCFAllocatorNull);
 
@@ -77,6 +83,10 @@ static int s_verify_signature_fn(
     const struct aws_byte_cursor *signature) {
     struct commoncrypto_ecc_key_pair *cc_key = key_pair->impl;
 
+    if (!cc_key->pub_key_ref) {
+        return aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+    }
+
     CFDataRef hash_ref =
         CFDataCreateWithBytesNoCopy(cc_key->cf_allocator, message->ptr, message->len, kCFAllocatorNull);
     CFDataRef signature_ref =
@@ -90,10 +100,15 @@ static int s_verify_signature_fn(
     CFRelease(signature_ref);
     CFRelease(hash_ref);
 
-    return verified ? AWS_OP_SUCCESS : AWS_OP_ERR;
+    return verified ? AWS_OP_SUCCESS : aws_raise_error(AWS_CAL_ERROR_SIGNATURE_VALIDATION_FAILED);
 }
 
 static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
+    /* we already have a public key, just lie and tell them we succeeded */
+    if (key_pair->pub_x.buffer && key_pair->pub_x.len) {
+        return AWS_OP_SUCCESS;
+    }
+
     return aws_raise_error(AWS_ERROR_UNSUPPORTED_OPERATION);
 }
 
@@ -269,6 +284,173 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     return &cc_key_pair->key_pair;
 
 error:
+    s_destroy_key_fn(&cc_key_pair->key_pair);
+    return NULL;
+}
+
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name) {
+    struct commoncrypto_ecc_key_pair *cc_key_pair =
+        aws_mem_calloc(allocator, 1, sizeof(struct commoncrypto_ecc_key_pair));
+
+    if (!cc_key_pair) {
+        return NULL;
+    }
+
+    CFDataRef sec_key_export_data = NULL;
+    CFMutableDictionaryRef key_attributes = NULL;
+    CFStringRef key_size_cf_str = NULL;
+
+    cc_key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
+    cc_key_pair->key_pair.allocator = allocator;
+
+    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+
+    if (!key_coordinate_size) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto error;
+    }
+
+    size_t total_buffer_size = key_coordinate_size * 3 + 1;
+
+    if (aws_byte_buf_init(&cc_key_pair->key_pair.key_buf, allocator, total_buffer_size)) {
+        goto error;
+    }
+
+    aws_byte_buf_secure_zero(&cc_key_pair->key_pair.key_buf);
+
+    key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+    CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom);
+    CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
+    CFIndex key_size_bits = key_coordinate_size * 8;
+    char key_size_str[32] = {0};
+    snprintf(key_size_str, sizeof(key_size_str), "%d", (int)key_size_bits);
+    key_size_cf_str = CFStringCreateWithCString(cc_key_pair->cf_allocator, key_size_str, kCFStringEncodingASCII);
+    CFDictionaryAddValue(key_attributes, kSecAttrKeySizeInBits, key_size_cf_str);
+
+    CFErrorRef error = NULL;
+
+    cc_key_pair->priv_key_ref = SecKeyCreateRandomKey(key_attributes, &error);
+    cc_key_pair->pub_key_ref = SecKeyCopyPublicKey(cc_key_pair->priv_key_ref);
+
+    /* OKAY up to here was incredibly reasonable, after this we get attacked by the bad API design
+     * dragons.
+     *
+     * Summary: Apple assumed we'd never need the raw key data. Apple was wrong. So we have to export each component
+     * into the OpenSSL format (just fancy words for DER), but the public key and private key are exported separately
+     * for some reason. Anyways, we export the keys, use our handy dandy DER decoder and grab the raw key data out. */
+    OSStatus ret_code = SecItemExport(cc_key_pair->pub_key_ref, kSecFormatOpenSSL, 0, NULL, &sec_key_export_data);
+
+    if (ret_code != errSecSuccess) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto error;
+    }
+
+    /* now we need to DER decode data */
+    struct aws_der_decoder decoder;
+    struct aws_byte_buf key_buf =
+        aws_byte_buf_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
+
+    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
+        goto error;
+    }
+
+    if (aws_der_decoder_parse(&decoder)) {
+        aws_der_decoder_clean_up(&decoder);
+        goto error;
+    }
+
+    while (aws_der_decoder_next(&decoder)) {
+        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
+
+        /* public key is BIT_STRING.
+         * It should be in uncompressed form with:
+         * 0x04 followed by x/y in sequence. */
+        if (type == AWS_DER_BIT_STRING) {
+            aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
+        }
+    }
+
+    aws_der_decoder_clean_up(&decoder);
+    CFRelease(sec_key_export_data);
+    sec_key_export_data = NULL;
+
+    if (cc_key_pair->key_pair.key_buf.len < key_coordinate_size * 2) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto error;
+    }
+
+    ret_code = SecItemExport(cc_key_pair->priv_key_ref, kSecFormatOpenSSL, 0, NULL, &sec_key_export_data);
+
+    if (ret_code != errSecSuccess) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto error;
+    }
+
+    key_buf = aws_byte_buf_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
+
+    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
+        goto error;
+    }
+
+    if (aws_der_decoder_parse(&decoder)) {
+        aws_der_decoder_clean_up(&decoder);
+        goto error;
+    }
+
+    while (aws_der_decoder_next(&decoder)) {
+        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
+
+        /* private key is OCTET_STRING.
+         * It should be just be key_coordinate_size long. */
+        if (type == AWS_DER_OCTET_STRING) {
+            aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
+        }
+    }
+
+    aws_der_decoder_clean_up(&decoder);
+    CFRelease(sec_key_export_data);
+    CFRelease(key_attributes);
+    CFRelease(key_size_cf_str);
+
+    if (cc_key_pair->key_pair.key_buf.len < key_coordinate_size * 3 + 1) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto error;
+    }
+
+    /* cc_key_pair->key_pair.key_buf is contiguous memory, so just load up the offsets. */
+    cc_key_pair->key_pair.pub_x =
+        aws_byte_buf_from_array(cc_key_pair->key_pair.key_buf.buffer + 1, key_coordinate_size);
+    cc_key_pair->key_pair.pub_y =
+        aws_byte_buf_from_array(cc_key_pair->key_pair.pub_x.buffer + key_coordinate_size, key_coordinate_size);
+    cc_key_pair->key_pair.priv_d =
+        aws_byte_buf_from_array(cc_key_pair->key_pair.pub_y.buffer + key_coordinate_size, key_coordinate_size);
+
+    cc_key_pair->key_pair.impl = cc_key_pair;
+    cc_key_pair->key_pair.allocator = allocator;
+    cc_key_pair->key_pair.vtable = &s_key_pair_vtable;
+
+    if (error) {
+        CFRelease(error);
+        goto error;
+    }
+
+    return &cc_key_pair->key_pair;
+
+error:
+    if (sec_key_export_data) {
+        CFRelease(sec_key_export_data);
+    }
+
+    if (key_attributes) {
+        CFRelease(key_attributes);
+    }
+
+    if (key_size_cf_str) {
+        CFRelease(key_size_cf_str);
+    }
+
     s_destroy_key_fn(&cc_key_pair->key_pair);
     return NULL;
 }

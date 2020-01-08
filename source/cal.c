@@ -19,9 +19,16 @@
 #define AWS_DEFINE_ERROR_INFO_CAL(CODE, STR) [(CODE)-0x1C00] = AWS_DEFINE_ERROR_INFO(CODE, STR, "aws-c-cal")
 
 static struct aws_error_info s_errors[] = {
-    AWS_DEFINE_ERROR_INFO_CAL(AWS_CAL_SIGNATURE_VALIDATION_FAILED, "Verify on a cryptographic signature failed."),
+    AWS_DEFINE_ERROR_INFO_CAL(AWS_CAL_ERROR_SIGNATURE_VALIDATION_FAILED, "Verify on a cryptographic signature failed."),
     AWS_DEFINE_ERROR_INFO_CAL(
-        AWS_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM,
+        AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT,
+        "An attempt was made to perform an "
+        "Asymmetric cryptographic operation with the"
+        "wrong key component. For example, attempt to"
+        "verify a signature with a private key or "
+        "sign a message with a public key."),
+    AWS_DEFINE_ERROR_INFO_CAL(
+        AWS_CAL_ERROR_INVALID_KEY_LENGTH_FOR_ALGORITHM,
         "A key length was used for an algorithm that needs a different key length"),
 };
 

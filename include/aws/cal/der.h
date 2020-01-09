@@ -32,6 +32,8 @@ struct aws_der_decoder {
     struct aws_array_list tlvs;  /* parsed elements */
     int tlv_idx;                 /* index to elements after parsing */
     struct aws_byte_buf *buffer; /* input buffer, no ownership */
+    uint32_t depth;              /* recursion depth when expanding containers */
+    struct der_tlv *container;   /* currently expanding container */
 };
 
 enum aws_der_type {
@@ -47,13 +49,23 @@ enum aws_der_type {
     AWS_DER_IA5String = 0x16, /* Unsupported */
     AWS_DER_PrintableString = 0x13,
     AWS_DER_TeletexString = 0x14, /* Unsupported */
+
+    /* Constructed types */
     AWS_DER_SEQUENCE = 0x30,
     AWS_DER_SEQUENCE_OF = AWS_DER_SEQUENCE,
     AWS_DER_SET = 0x31,
     AWS_DER_SET_OF = AWS_DER_SET,
-
-    /* Constructed types */
     AWS_DER_UTF8_STRING = 0x0c,
+
+    /* class types */
+    AWS_DER_CLASS_UNIVERSAL = 0x00,
+    AWS_DER_CLASS_APPLICATION = 0x40,
+    AWS_DER_CLASS_CONTEXT = 0x80,
+    AWS_DER_CLASS_PRIVATE = 0xc0,
+
+    /* forms */
+    AWS_DER_FORM_CONSTRUCTED = 0x20,
+    AWS_DER_FORM_PRIMITIVE = 0x00,
 };
 
 AWS_EXTERN_C_BEGIN
@@ -197,18 +209,11 @@ AWS_CAL_API enum aws_der_type aws_der_decoder_tlv_type(struct aws_der_decoder *d
 AWS_CAL_API size_t aws_der_decoder_tlv_length(struct aws_der_decoder *decoder);
 
 /**
- * The number of elements in the current TLV SEQUENCE
+ * The number of elements in the current TLV container
  * @param decoder The decoder to inspect
- * @return Number of elements in the current SEQUENCE
+ * @return Number of elements in the current container
  */
-AWS_CAL_API size_t aws_der_decoder_tlv_sequence_count(struct aws_der_decoder *decoder);
-
-/**
- * The number of elements in the current TLV SET
- * @param decoder The decoder to inspect
- * @return Number of elements in the current SET
- */
-AWS_CAL_API size_t aws_der_decoder_tlv_set_count(struct aws_der_decoder *decoder);
+AWS_CAL_API size_t aws_der_decoder_tlv_count(struct aws_der_decoder *decoder);
 
 /**
  * Extracts the current TLV string value (BIT_STRING, OCTET_STRING)
@@ -233,6 +238,14 @@ AWS_CAL_API int aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, str
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
 AWS_CAL_API int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean);
+
+/**
+ * Extracts the current TLV value as a blob
+ * @param decoder The decoder to extract from
+ * @param blob The buffer to store the value into
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
+AWS_CAL_API int aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_buf *blob);
 
 AWS_EXTERN_C_END
 

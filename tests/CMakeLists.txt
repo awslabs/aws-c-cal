@@ -61,5 +61,6 @@ add_test_case(der_decode_bit_string)
 add_test_case(der_decode_octet_string)
 add_test_case(der_decode_sequence)
 add_test_case(der_decode_set)
+add_test_case(der_decode_key_pair)
 
 generate_test_driver(${PROJECT_NAME}-tests)

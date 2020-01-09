@@ -331,6 +331,8 @@ int aws_der_decoder_init(
     decoder->allocator = allocator;
     decoder->buffer = buffer;
     decoder->tlv_idx = -1;
+    decoder->depth = 0;
+    decoder->container = NULL;
     if (aws_array_list_init_dynamic(&decoder->tlvs, decoder->allocator, 16, sizeof(struct der_tlv))) {
         return AWS_OP_ERR;
     }
@@ -343,34 +345,42 @@ void aws_der_decoder_clean_up(struct aws_der_decoder *decoder) {
 }
 
 int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) {
+    if (++decoder->depth > 16) {
+        /* stream contains too many nested containers, probably malformed/attack */
+        return AWS_OP_ERR;
+    }
+
     while (cur.len) {
         struct der_tlv tlv = {0};
         if (s_der_read_tlv(&cur, &tlv)) {
             return AWS_OP_ERR;
         }
         aws_array_list_push_back(&decoder->tlvs, &tlv);
+        if (decoder->container) {
+            decoder->container->count++;
+        }
+        /* if the last element was a container, expand it recursively to maintain order */
+        if (tlv.tag & AWS_DER_FORM_CONSTRUCTED) {
+            struct der_tlv *outer_container = decoder->container;
+            struct der_tlv *container = NULL;
+            aws_array_list_get_at_ptr(&decoder->tlvs, (void**)&container, decoder->tlvs.length - 1);
+            decoder->container = container;
+            struct aws_byte_cursor container_cur = aws_byte_cursor_from_array(container->value, container->length);
+            if (s_parse_cursor(decoder, container_cur)) {
+                return AWS_OP_ERR;
+            }
+            decoder->container = outer_container; /* restore the container stack */
+        }
     }
+
+    --decoder->depth;
+
     return AWS_OP_SUCCESS;
 }
 
 int aws_der_decoder_parse(struct aws_der_decoder *decoder) {
     struct aws_byte_cursor cur = aws_byte_cursor_from_buf(decoder->buffer);
-    if (s_parse_cursor(decoder, cur)) {
-        return AWS_OP_ERR;
-    }
-    /* If the last thing parsed was a container, continually parse until all containers are expanded */
-    struct der_tlv *tlv = NULL;
-    while (!aws_array_list_get_at_ptr(&decoder->tlvs, (void **)&tlv, decoder->tlvs.length - 1) &&
-           (tlv->tag == AWS_DER_SEQUENCE || tlv->tag == AWS_DER_SET)) {
-        size_t prev_count = decoder->tlvs.length;
-        cur = aws_byte_cursor_from_array(tlv->value, tlv->length);
-        if (s_parse_cursor(decoder, cur)) {
-            return AWS_OP_ERR;
-        }
-        /* update the number of inner objects */
-        tlv->count = (uint32_t)(decoder->tlvs.length - prev_count);
-    }
-    return AWS_OP_SUCCESS;
+    return s_parse_cursor(decoder, cur);
 }
 
 bool aws_der_decoder_next(struct aws_der_decoder *decoder) {
@@ -394,30 +404,28 @@ size_t aws_der_decoder_tlv_length(struct aws_der_decoder *decoder) {
     return tlv.length;
 }
 
-size_t aws_der_decoder_tlv_sequence_count(struct aws_der_decoder *decoder) {
+size_t aws_der_decoder_tlv_count(struct aws_der_decoder *decoder) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_SEQUENCE);
+    AWS_FATAL_ASSERT(tlv.tag & AWS_DER_FORM_CONSTRUCTED);
     return tlv.count;
 }
 
-size_t aws_der_decoder_tlv_set_count(struct aws_der_decoder *decoder) {
-    struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_SET);
-    return tlv.count;
+static int s_tlv_to_blob(struct der_tlv *tlv, struct aws_byte_buf *blob) {
+    AWS_FATAL_ASSERT(tlv->tag != AWS_DER_NULL);
+    struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv->value, tlv->length);
+    return aws_byte_buf_append(blob, &from);
 }
 
 int aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_buf *string) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
     AWS_FATAL_ASSERT(tlv.tag == AWS_DER_OCTET_STRING || tlv.tag == AWS_DER_BIT_STRING);
-    struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv.value, tlv.length);
-    return aws_byte_buf_append(string, &from);
+    return s_tlv_to_blob(&tlv, string);
 }
 
 int aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_buf *integer) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
     AWS_FATAL_ASSERT(tlv.tag == AWS_DER_INTEGER);
-    struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv.value, tlv.length);
-    return aws_byte_buf_append(integer, &from);
+    return s_tlv_to_blob(&tlv, integer);
 }
 
 int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) {
@@ -425,6 +433,11 @@ int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) 
     AWS_FATAL_ASSERT(tlv.tag == AWS_DER_BOOLEAN);
     *boolean = *tlv.value != 0;
     return AWS_OP_SUCCESS;
+}
+
+int aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_buf *blob) {
+    struct der_tlv tlv = s_decoder_tlv(decoder);
+    return s_tlv_to_blob(&tlv, blob);
 }
 
 #ifdef _MSC_VER

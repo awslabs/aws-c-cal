@@ -130,6 +130,23 @@ static uint8_t s_encoded_set[] = {
     0x01, 0x01, 0xff, /* BOOLEAN true */
     0x01, 0x01, 0x00, /* BOOLEAN false */
 };
+
+static uint8_t s_encoded_key_pair[] = {
+    0x30, 0x74, /* SEQUENCE, 116 bytes */
+    0x02, 0x01, 0x01, /* INTEGER, 1 byte, value: 1 */
+    0x04, 0x20, /* OCTET_STRING, 32 bytes */
+    0x9d, 0x6d, 0x10, 0x36, 0xbe, 0x66, 0x10, 0xeb, 0x8c, 0x66, 0xe6, 0x39, 0xa3, 0x1e, 0x47, 0xbc,
+    0x46, 0x6f, 0x46, 0x70, 0x59, 0x36, 0x32, 0x84, 0x46, 0x0c, 0x97, 0xb8, 0xda, 0x00, 0x19, 0xe2,
+    0xa0, 0x07, /* context-defined container 0, 7 bytes */
+    0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x0a, /* OID, 5 bytes */
+    0xa1, 0x44, /* context-defined container 1, 68 bytes */
+    0x03, 0x42, /* BIT_STRING, 66 bytes */
+    0x00, 0x04, 0xd1, 0xcf, 0x9c, 0x8a, 0xb4, 0x76, 0x58, 0x70, 0xd9, 0x35, 0x1c, 0xdc, 0x88, 0xbb,
+    0x43, 0x19, 0x77, 0xe4, 0xde, 0xba, 0xda, 0x81, 0x58, 0x54, 0x92, 0x93, 0x8d, 0x85, 0xce, 0xf9,
+    0x04, 0xf3, 0x8e, 0x86, 0x95, 0x46, 0xa3, 0x43, 0xdd, 0x67, 0x8c, 0x8e, 0xb5, 0xf4, 0x33, 0x8e,
+    0x95, 0x4a, 0x93, 0x96, 0xcf, 0xe4, 0x8f, 0x32, 0x78, 0x88, 0xe8, 0x5a, 0xde, 0x59, 0x3f, 0x63,
+    0xaf, 0xf2,
+};
 /* clang-format on */
 
 static int s_der_encode_integer(struct aws_allocator *allocator, void *ctx) {
@@ -389,7 +406,7 @@ static int s_der_decode_sequence(struct aws_allocator *allocator, void *ctx) {
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
     ASSERT_INT_EQUALS(AWS_DER_SEQUENCE, aws_der_decoder_tlv_type(&decoder));
     ASSERT_INT_EQUALS(decoded_size, aws_der_decoder_tlv_length(&decoder));
-    ASSERT_INT_EQUALS(2, aws_der_decoder_tlv_sequence_count(&decoder));
+    ASSERT_INT_EQUALS(2, aws_der_decoder_tlv_count(&decoder));
 
     /* Verify true, then false */
     bool decoded_flag = false;
@@ -425,7 +442,7 @@ static int s_der_decode_set(struct aws_allocator *allocator, void *ctx) {
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
     ASSERT_INT_EQUALS(AWS_DER_SET, aws_der_decoder_tlv_type(&decoder));
     ASSERT_INT_EQUALS(decoded_size, aws_der_decoder_tlv_length(&decoder));
-    ASSERT_INT_EQUALS(2, aws_der_decoder_tlv_set_count(&decoder));
+    ASSERT_INT_EQUALS(2, aws_der_decoder_tlv_count(&decoder));
 
     /* Verify true, then false */
     bool decoded_flag = false;
@@ -447,3 +464,68 @@ static int s_der_decode_set(struct aws_allocator *allocator, void *ctx) {
 }
 
 AWS_TEST_CASE(der_decode_set, s_der_decode_set)
+
+static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_key_pair);
+    struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_key_pair, encoded_size);
+    struct aws_der_decoder decoder;
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
+
+    /* SEQUENCE */
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+    ASSERT_INT_EQUALS(AWS_DER_SEQUENCE, aws_der_decoder_tlv_type(&decoder));
+    ASSERT_INT_EQUALS(4, aws_der_decoder_tlv_count(&decoder));
+
+    /* INTEGER 1 */
+    struct aws_byte_buf integer;
+    ASSERT_SUCCESS(aws_byte_buf_init(&integer, allocator, 16));
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+    ASSERT_INT_EQUALS(AWS_DER_INTEGER, aws_der_decoder_tlv_type(&decoder));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_integer(&decoder, &integer));
+    ASSERT_BIN_ARRAYS_EQUALS("\x01", 1, integer.buffer, integer.len);
+
+    /* 32 byte private key */
+    struct aws_byte_buf private_key;
+    ASSERT_SUCCESS(aws_byte_buf_init(&private_key, allocator, 128));
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+    ASSERT_INT_EQUALS(AWS_DER_OCTET_STRING, aws_der_decoder_tlv_type(&decoder));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_string(&decoder, &private_key));
+    ASSERT_INT_EQUALS(32, private_key.len);
+
+    /* container */
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+    ASSERT_TRUE(aws_der_decoder_tlv_type(&decoder) & (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED));
+    ASSERT_INT_EQUALS(7, aws_der_decoder_tlv_length(&decoder));
+    ASSERT_INT_EQUALS(1, aws_der_decoder_tlv_count(&decoder));
+
+    /* 5 byte OID */
+    struct aws_byte_buf oid;
+    ASSERT_SUCCESS(aws_byte_buf_init(&oid, allocator, 8));
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+    ASSERT_INT_EQUALS(AWS_DER_OBJECT_IDENTIFIER, aws_der_decoder_tlv_type(&decoder));
+    ASSERT_INT_EQUALS(5, aws_der_decoder_tlv_length(&decoder));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_blob(&decoder, &oid));
+    ASSERT_BIN_ARRAYS_EQUALS("\x2b\x81\x04\x00\x0a", 5, oid.buffer, oid.len);
+
+    /* container */
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+    ASSERT_TRUE(aws_der_decoder_tlv_type(&decoder) & (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED));
+    ASSERT_INT_EQUALS(68, aws_der_decoder_tlv_length(&decoder));
+    ASSERT_INT_EQUALS(1, aws_der_decoder_tlv_count(&decoder));
+
+    /* 64 byte public key */
+    struct aws_byte_buf public_key;
+    ASSERT_SUCCESS(aws_byte_buf_init(&public_key, allocator, 128));
+    ASSERT_TRUE(aws_der_decoder_next(&decoder));
+    ASSERT_INT_EQUALS(AWS_DER_BIT_STRING, aws_der_decoder_tlv_type(&decoder));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_string(&decoder, &public_key));
+    ASSERT_INT_EQUALS(65, public_key.len);
+
+    ASSERT_FALSE(aws_der_decoder_next(&decoder));
+    aws_der_decoder_clean_up(&decoder);
+    return 0;
+}
+
+AWS_TEST_CASE(der_decode_key_pair, s_der_decode_key_pair)

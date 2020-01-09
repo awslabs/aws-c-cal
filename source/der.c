@@ -363,7 +363,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         if (tlv.tag & AWS_DER_FORM_CONSTRUCTED) {
             struct der_tlv *outer_container = decoder->container;
             struct der_tlv *container = NULL;
-            aws_array_list_get_at_ptr(&decoder->tlvs, (void**)&container, decoder->tlvs.length - 1);
+            aws_array_list_get_at_ptr(&decoder->tlvs, (void **)&container, decoder->tlvs.length - 1);
             decoder->container = container;
             struct aws_byte_cursor container_cur = aws_byte_cursor_from_array(container->value, container->length);
             if (s_parse_cursor(decoder, container_cur)) {

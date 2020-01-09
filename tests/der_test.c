@@ -485,6 +485,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(AWS_DER_INTEGER, aws_der_decoder_tlv_type(&decoder));
     ASSERT_SUCCESS(aws_der_decoder_tlv_integer(&decoder, &integer));
     ASSERT_BIN_ARRAYS_EQUALS("\x01", 1, integer.buffer, integer.len);
+    aws_byte_buf_clean_up(&integer);
 
     /* 32 byte private key */
     struct aws_byte_buf private_key;
@@ -493,6 +494,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(AWS_DER_OCTET_STRING, aws_der_decoder_tlv_type(&decoder));
     ASSERT_SUCCESS(aws_der_decoder_tlv_string(&decoder, &private_key));
     ASSERT_INT_EQUALS(32, private_key.len);
+    aws_byte_buf_clean_up(&private_key);
 
     /* container */
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
@@ -508,6 +510,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(5, aws_der_decoder_tlv_length(&decoder));
     ASSERT_SUCCESS(aws_der_decoder_tlv_blob(&decoder, &oid));
     ASSERT_BIN_ARRAYS_EQUALS("\x2b\x81\x04\x00\x0a", 5, oid.buffer, oid.len);
+    aws_byte_buf_clean_up(&oid);
 
     /* container */
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
@@ -522,6 +525,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(AWS_DER_BIT_STRING, aws_der_decoder_tlv_type(&decoder));
     ASSERT_SUCCESS(aws_der_decoder_tlv_string(&decoder, &public_key));
     ASSERT_INT_EQUALS(65, public_key.len);
+    aws_byte_buf_clean_up(&public_key);
 
     ASSERT_FALSE(aws_der_decoder_next(&decoder));
     aws_der_decoder_clean_up(&decoder);

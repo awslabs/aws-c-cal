@@ -398,6 +398,8 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
         !aws_ecc_curve_name_from_oid(&oid, &exported_curve_name) && exported_curve_name == curve_name &&
         "If this assertion pops, just set your computer on fire and give up on this industry having any sanity.");
 
+    (void)exported_curve_name;
+
     struct aws_byte_cursor *private_key = NULL;
     struct aws_byte_cursor *public_key = NULL;
 

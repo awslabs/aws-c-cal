@@ -357,7 +357,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         }
         /* skip trailing newlines in the stream after any TLV */
         while (cur.len && *cur.ptr == '\n') {
-            cur = aws_byte_cursor_advance(&cur, 1);
+            aws_byte_cursor_advance(&cur, 1);
         }
         aws_array_list_push_back(&decoder->tlvs, &tlv);
         if (decoder->container) {

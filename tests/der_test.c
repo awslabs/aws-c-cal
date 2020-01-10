@@ -129,6 +129,7 @@ static uint8_t s_encoded_set[] = {
     0x06, /* 6 bytes */
     0x01, 0x01, 0xff, /* BOOLEAN true */
     0x01, 0x01, 0x00, /* BOOLEAN false */
+    0x0a, /* trailing newline */
 };
 
 static uint8_t s_encoded_key_pair[] = {
@@ -146,6 +147,7 @@ static uint8_t s_encoded_key_pair[] = {
     0x04, 0xf3, 0x8e, 0x86, 0x95, 0x46, 0xa3, 0x43, 0xdd, 0x67, 0x8c, 0x8e, 0xb5, 0xf4, 0x33, 0x8e,
     0x95, 0x4a, 0x93, 0x96, 0xcf, 0xe4, 0x8f, 0x32, 0x78, 0x88, 0xe8, 0x5a, 0xde, 0x59, 0x3f, 0x63,
     0xaf, 0xf2,
+    0x0a, /* trailing newline */
 };
 /* clang-format on */
 
@@ -266,7 +268,7 @@ static int s_der_encode_set(struct aws_allocator *allocator, void *ctx) {
     struct aws_byte_cursor encoded;
     ASSERT_SUCCESS(aws_der_encoder_get_contents(&encoder, &encoded));
 
-    ASSERT_BIN_ARRAYS_EQUALS(s_encoded_set, AWS_ARRAY_SIZE(s_encoded_set), encoded.ptr, encoded.len);
+    ASSERT_BIN_ARRAYS_EQUALS(s_encoded_set, AWS_ARRAY_SIZE(s_encoded_set) - 1, encoded.ptr, encoded.len);
     aws_der_encoder_clean_up(&encoder);
     return 0;
 }

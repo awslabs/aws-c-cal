@@ -78,6 +78,7 @@ static int s_ecdsa_p256_test_known_signing_value_fn(struct aws_allocator *alloca
 
     struct aws_ecc_key_pair *signing_key =
         aws_ecc_key_pair_new_from_private_key(allocator, AWS_CAL_ECDSA_P256, &private_key);
+    ASSERT_NOT_NULL(signing_key);
 
     uint8_t x[] = {
         0x1c, 0xcb, 0xe9, 0x1c, 0x07, 0x5f, 0xc7, 0xf4, 0xf0, 0x33, 0xbf, 0xa2, 0x48, 0xdb, 0x8f, 0xcc,
@@ -93,6 +94,7 @@ static int s_ecdsa_p256_test_known_signing_value_fn(struct aws_allocator *alloca
     struct aws_byte_cursor pub_y = aws_byte_cursor_from_array(y, sizeof(y));
     struct aws_ecc_key_pair *verifying_key =
         aws_ecc_key_pair_new_from_public_key(allocator, AWS_CAL_ECDSA_P256, &pub_x, &pub_y);
+    ASSERT_NOT_NULL(verifying_key);
 
     uint8_t message[] = {
         0x59, 0x05, 0x23, 0x88, 0x77, 0xc7, 0x74, 0x21, 0xf7, 0x3e, 0x43, 0xee, 0x3d, 0xa6, 0xf2, 0xd9,

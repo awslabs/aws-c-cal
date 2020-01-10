@@ -101,7 +101,7 @@ static int s_fill_in_public_key_info(
 
     int ret_val = AWS_OP_ERR;
 
-    if (EC_POINT_get_affine_coordinates(group, pub_key_point, big_num_x, big_num_y, NULL) != 1) {
+    if (EC_POINT_get_affine_coordinates_GFp(group, pub_key_point, big_num_x, big_num_y, NULL) != 1) {
         aws_raise_error(AWS_ERROR_INVALID_STATE);
         goto clean_up;
     }
@@ -260,7 +260,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     const EC_GROUP *group = EC_KEY_get0_group(key_impl->ec_key);
     point = EC_POINT_new(group);
 
-    if (EC_POINT_set_affine_coordinates(group, point, pub_x_num, pub_y_num, NULL) != 1) {
+    if (EC_POINT_set_affine_coordinates_GFp(group, point, pub_x_num, pub_y_num, NULL) != 1) {
         goto error;
     }
 

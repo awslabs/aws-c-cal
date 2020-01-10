@@ -113,6 +113,9 @@ AWS_CAL_API void aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair);
  */
 AWS_CAL_API int aws_ecc_key_pair_derive_public_key(struct aws_ecc_key_pair *key_pair);
 
+AWS_CAL_API int aws_ecc_curve_name_from_oid(struct aws_byte_cursor *oid, enum aws_ecc_curve_name *curve_name);
+AWS_CAL_API int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_byte_cursor *oid);
+
 /**
  * Uses the key_pair's private key to sign message. The output will be in signature. Signature must be large enough
  * to hold the signature. Check aws_ecc_key_pair_signature_length() for the appropriate size. Signature will be DER

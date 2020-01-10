@@ -45,6 +45,7 @@ add_test_case(ecdsa_p256_test_pub_key_derivation)
 add_test_case(ecdsa_p256_test_known_signing_value)
 add_test_case(ecdsa_p256_test_key_gen)
 add_test_case(ecdsa_p256_test_key_gen_export)
+add_test_case(ecdsa_p256_test_import_asn1_private_key)
 
 add_test_case(der_encode_integer)
 add_test_case(der_encode_boolean)

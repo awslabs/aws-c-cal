@@ -410,34 +410,32 @@ size_t aws_der_decoder_tlv_count(struct aws_der_decoder *decoder) {
     return tlv.count;
 }
 
-static int s_tlv_to_blob(struct der_tlv *tlv, struct aws_byte_buf *blob) {
+static void s_tlv_to_blob(struct der_tlv *tlv, struct aws_byte_cursor *blob) {
     AWS_FATAL_ASSERT(tlv->tag != AWS_DER_NULL);
-    struct aws_byte_cursor from = aws_byte_cursor_from_array(tlv->value, tlv->length);
-    return aws_byte_buf_append(blob, &from);
+    *blob = aws_byte_cursor_from_array(tlv->value, tlv->length);
 }
 
-int aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_buf *string) {
+void aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_cursor *string) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
     AWS_FATAL_ASSERT(tlv.tag == AWS_DER_OCTET_STRING || tlv.tag == AWS_DER_BIT_STRING);
-    return s_tlv_to_blob(&tlv, string);
+    s_tlv_to_blob(&tlv, string);
 }
 
-int aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_buf *integer) {
+void aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_cursor *integer) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
     AWS_FATAL_ASSERT(tlv.tag == AWS_DER_INTEGER);
-    return s_tlv_to_blob(&tlv, integer);
+    s_tlv_to_blob(&tlv, integer);
 }
 
-int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) {
+void aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
     AWS_FATAL_ASSERT(tlv.tag == AWS_DER_BOOLEAN);
     *boolean = *tlv.value != 0;
-    return AWS_OP_SUCCESS;
 }
 
-int aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_buf *blob) {
+void aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_cursor *blob) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    return s_tlv_to_blob(&tlv, blob);
+    s_tlv_to_blob(&tlv, blob);
 }
 
 #ifdef _MSC_VER

@@ -12,7 +12,75 @@
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#include <aws/cal/cal.h>
 #include <aws/cal/ecc.h>
+
+#define STATIC_INIT_BYTE_CURSOR(a, name)                                                                               \
+    static struct aws_byte_cursor s_##name = {                                                                         \
+        .ptr = a,                                                                                                      \
+        .len = sizeof(a),                                                                                              \
+    };
+
+static uint8_t s_p256_oid[] = {
+    0x2A,
+    0x86,
+    0x48,
+    0xCE,
+    0x3D,
+    0x03,
+    0x01,
+    0x07,
+};
+STATIC_INIT_BYTE_CURSOR(s_p256_oid, ecc_p256_oid)
+
+static uint8_t s_p384_oid[] = {
+    0x2B,
+    0x81,
+    0x04,
+    0x00,
+    0x22,
+};
+STATIC_INIT_BYTE_CURSOR(s_p384_oid, ecc_p384_oid)
+
+static uint8_t s_p521_oid[] = {
+    0x2B,
+    0x81,
+    0x04,
+    0x00,
+    0x23,
+};
+STATIC_INIT_BYTE_CURSOR(s_p521_oid, ecc_p521_oid)
+
+static struct aws_byte_cursor *s_ecc_curve_oids[] = {
+    [AWS_CAL_ECDSA_P256] = &s_ecc_p256_oid,
+    [AWS_CAL_ECDSA_P384] = &s_ecc_p384_oid,
+    [AWS_CAL_ECDSA_P521] = &s_ecc_p521_oid,
+};
+
+int aws_ecc_curve_name_from_oid(struct aws_byte_cursor *oid, enum aws_ecc_curve_name *curve_name) {
+    if (aws_byte_cursor_eq(oid, &s_ecc_p256_oid)) {
+        *curve_name = AWS_CAL_ECDSA_P256;
+        return AWS_OP_SUCCESS;
+    }
+
+    if (aws_byte_cursor_eq(oid, &s_ecc_p384_oid)) {
+        *curve_name = AWS_CAL_ECDSA_P384;
+        return AWS_OP_SUCCESS;
+    }
+
+    if (aws_byte_cursor_eq(oid, &s_ecc_p521_oid)) {
+        *curve_name = AWS_CAL_ECDSA_P521;
+        return AWS_OP_SUCCESS;
+    }
+
+    return aws_raise_error(AWS_CAL_ERROR_UNKNOWN_OBJECT_IDENTIFIER);
+}
+
+int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_byte_cursor *oid) {
+    AWS_ASSERT(curve_name <= AWS_CAL_ECDSA_P521);
+    *oid = *s_ecc_curve_oids[curve_name];
+    return AWS_OP_SUCCESS;
+}
 
 void aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair) {
     AWS_FATAL_ASSERT(key_pair->vtable->destroy_fn && "ECC KEY PAIR destroy function must be included on the vtable");

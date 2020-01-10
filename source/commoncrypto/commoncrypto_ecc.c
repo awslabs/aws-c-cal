@@ -299,7 +299,6 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     }
 
     CFDataRef sec_key_export_data = NULL;
-    CFMutableDictionaryRef key_attributes = NULL;
     CFStringRef key_size_cf_str = NULL;
 
     cc_key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
@@ -320,7 +319,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     aws_byte_buf_secure_zero(&cc_key_pair->key_pair.key_buf);
 
-    key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+    CFMutableDictionaryRef key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
     CFIndex key_size_bits = key_coordinate_size * 8;
@@ -333,6 +332,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     cc_key_pair->priv_key_ref = SecKeyCreateRandomKey(key_attributes, &error);
     cc_key_pair->pub_key_ref = SecKeyCopyPublicKey(cc_key_pair->priv_key_ref);
+    CFRelease(key_attributes);
 
     /* OKAY up to here was incredibly reasonable, after this we get attacked by the bad API design
      * dragons.
@@ -368,7 +368,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
          * It should be in uncompressed form with:
          * 0x04 followed by x/y in sequence. */
         if (type == AWS_DER_BIT_STRING) {
-            aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
+            // aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
         }
     }
 
@@ -405,13 +405,12 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
         /* private key is OCTET_STRING.
          * It should be just be key_coordinate_size long. */
         if (type == AWS_DER_OCTET_STRING) {
-            aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
+            // aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
         }
     }
 
     aws_der_decoder_clean_up(&decoder);
     CFRelease(sec_key_export_data);
-    CFRelease(key_attributes);
     CFRelease(key_size_cf_str);
 
     if (cc_key_pair->key_pair.key_buf.len < key_coordinate_size * 3 + 1) {
@@ -443,14 +442,144 @@ error:
         CFRelease(sec_key_export_data);
     }
 
-    if (key_attributes) {
-        CFRelease(key_attributes);
-    }
-
     if (key_size_cf_str) {
         CFRelease(key_size_cf_str);
     }
 
     s_destroy_key_fn(&cc_key_pair->key_pair);
+    return NULL;
+}
+
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *encoded_keys) {
+
+    struct aws_der_decoder decoder;
+
+    struct aws_byte_buf key_buf = aws_byte_buf_from_array(encoded_keys->ptr, encoded_keys->len);
+    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
+        goto error;
+    }
+
+    if (aws_der_decoder_parse(&decoder)) {
+        aws_der_decoder_clean_up(&decoder);
+        goto error;
+    }
+
+    struct aws_byte_cursor pair_part_1;
+    AWS_ZERO_STRUCT(pair_part_1);
+    struct aws_byte_cursor pair_part_2;
+    AWS_ZERO_STRUCT(pair_part_2);
+    struct aws_byte_cursor oid;
+    AWS_ZERO_STRUCT(oid);
+
+    struct aws_byte_cursor *current_part = &pair_part_1;
+
+    while (aws_der_decoder_next(&decoder)) {
+        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
+
+        if (type == AWS_DER_OBJECT_IDENTIFIER) {
+            aws_der_decoder_tlv_blob(&decoder, &oid);
+            continue;
+        }
+
+        if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
+            aws_der_decoder_tlv_string(&decoder, current_part);
+            current_part = &pair_part_2;
+        }
+    }
+
+    if (!(oid.ptr && oid.len)) {
+        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        goto error;
+    }
+
+    enum aws_ecc_curve_name curve_name;
+    if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+        goto error;
+    }
+
+    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+
+    struct aws_byte_cursor *private_key = NULL;
+    struct aws_byte_cursor *public_key = NULL;
+
+    size_t public_key_blob_size = key_coordinate_size * 2 + 1;
+
+    if (pair_part_1.ptr && pair_part_1.len) {
+        if (pair_part_1.len == key_coordinate_size) {
+            private_key = &pair_part_1;
+        } else if (pair_part_1.len == public_key_blob_size) {
+            public_key = &pair_part_1;
+        }
+    }
+
+    if (pair_part_2.ptr && pair_part_2.len) {
+        if (pair_part_2.len == key_coordinate_size) {
+            private_key = &pair_part_2;
+        } else if (pair_part_2.len == public_key_blob_size) {
+            public_key = &pair_part_2;
+        }
+    }
+
+    if (!private_key && !public_key) {
+        aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+        goto error;
+    }
+
+    struct aws_byte_cursor pub_x_cur;
+    struct aws_byte_cursor pub_y_cur;
+    struct aws_byte_cursor *pub_x = NULL;
+    struct aws_byte_cursor *pub_y = NULL;
+
+    if (public_key) {
+        aws_byte_cursor_advance(public_key, 1);
+        pub_x_cur = *public_key;
+        pub_x_cur.len = key_coordinate_size;
+        pub_y_cur.ptr = public_key->ptr + key_coordinate_size;
+        pub_y_cur.len = key_coordinate_size;
+        pub_x = &pub_x_cur;
+        pub_y = &pub_y_cur;
+    }
+
+    struct commoncrypto_ecc_key_pair *cc_key_pair =
+        s_alloc_pair_and_init_buffers(allocator, curve_name, pub_x, pub_y, private_key);
+    aws_der_decoder_clean_up(&decoder);
+
+    CFDataRef key_data = CFDataCreate(
+        cc_key_pair->cf_allocator, cc_key_pair->key_pair.key_buf.buffer, cc_key_pair->key_pair.key_buf.len);
+
+    CFMutableDictionaryRef key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+    CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom);
+
+    if (private_key) {
+        CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
+
+        if (public_key) {
+            CFDictionaryAddValue(key_attributes, kSecAttrCanVerify, kCFBooleanTrue);
+        } else {
+            CFDictionaryAddValue(key_attributes, kSecAttrCanSign, kCFBooleanTrue);
+            CFDictionaryAddValue(key_attributes, kSecAttrCanDerive, kCFBooleanTrue);
+        }
+    } else if (public_key) {
+        CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPublic);
+        CFDictionaryAddValue(key_attributes, kSecAttrCanSign, kCFBooleanFalse);
+        CFDictionaryAddValue(key_attributes, kSecAttrCanVerify, kCFBooleanTrue);
+    }
+
+    CFErrorRef error = NULL;
+
+    cc_key_pair->priv_key_ref = SecKeyCreateWithData(key_data, key_attributes, &error);
+
+    if (public_key) {
+        cc_key_pair->pub_key_ref = SecKeyCopyPublicKey(cc_key_pair->priv_key_ref);
+    }
+
+    CFRelease(key_attributes);
+    CFRelease(key_data);
+
+    return cc_key_pair->key_pair.impl;
+
+error:
     return NULL;
 }

@@ -188,13 +188,15 @@ static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
     cc_key_pair->key_pair.impl = cc_key_pair;
     cc_key_pair->key_pair.allocator = allocator;
 
-    cc_key_pair->key_pair.pub_x.buffer = cc_key_pair->key_pair.key_buf.buffer + 1;
-    cc_key_pair->key_pair.pub_x.len = s_key_coordinate_size;
+    if (pub_x) {
+        cc_key_pair->key_pair.pub_x.buffer = cc_key_pair->key_pair.key_buf.buffer + 1;
+        cc_key_pair->key_pair.pub_x.len = s_key_coordinate_size;
 
-    cc_key_pair->key_pair.pub_y.buffer = cc_key_pair->key_pair.pub_x.buffer + s_key_coordinate_size;
-    cc_key_pair->key_pair.pub_y.len = s_key_coordinate_size;
+        cc_key_pair->key_pair.pub_y.buffer = cc_key_pair->key_pair.pub_x.buffer + s_key_coordinate_size;
+        cc_key_pair->key_pair.pub_y.len = s_key_coordinate_size;
+    }
 
-    cc_key_pair->key_pair.priv_d.buffer = cc_key_pair->key_pair.pub_y.buffer + s_key_coordinate_size;
+    cc_key_pair->key_pair.priv_d.buffer = cc_key_pair->key_pair.key_buf.buffer + 1 + (s_key_coordinate_size * 2);
     cc_key_pair->key_pair.priv_d.len = s_key_coordinate_size;
     cc_key_pair->key_pair.vtable = &s_key_pair_vtable;
 
@@ -340,7 +342,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
      * Summary: Apple assumed we'd never need the raw key data. Apple was wrong. So we have to export each component
      * into the OpenSSL format (just fancy words for DER), but the public key and private key are exported separately
      * for some reason. Anyways, we export the keys, use our handy dandy DER decoder and grab the raw key data out. */
-    OSStatus ret_code = SecItemExport(cc_key_pair->pub_key_ref, kSecFormatOpenSSL, 0, NULL, &sec_key_export_data);
+    OSStatus ret_code = SecItemExport(cc_key_pair->priv_key_ref, kSecFormatOpenSSL, 0, NULL, &sec_key_export_data);
 
     if (ret_code != errSecSuccess) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -361,53 +363,65 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
         goto error;
     }
 
-    while (aws_der_decoder_next(&decoder)) {
-        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
+    /* we could have private key or a public key, or a full pair. */
+    struct aws_byte_cursor pair_part_1;
+    AWS_ZERO_STRUCT(pair_part_1);
+    struct aws_byte_cursor pair_part_2;
+    AWS_ZERO_STRUCT(pair_part_2);
+    struct aws_byte_cursor oid;
+    AWS_ZERO_STRUCT(oid);
 
-        /* public key is BIT_STRING.
-         * It should be in uncompressed form with:
-         * 0x04 followed by x/y in sequence. */
-        if (type == AWS_DER_BIT_STRING) {
-            // aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
-        }
-    }
-
-    aws_der_decoder_clean_up(&decoder);
-    CFRelease(sec_key_export_data);
-    sec_key_export_data = NULL;
-
-    if (cc_key_pair->key_pair.key_buf.len < key_coordinate_size * 2) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-        goto error;
-    }
-
-    ret_code = SecItemExport(cc_key_pair->priv_key_ref, kSecFormatOpenSSL, 0, NULL, &sec_key_export_data);
-
-    if (ret_code != errSecSuccess) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-        goto error;
-    }
-
-    key_buf = aws_byte_buf_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
-
-    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
-        goto error;
-    }
-
-    if (aws_der_decoder_parse(&decoder)) {
-        aws_der_decoder_clean_up(&decoder);
-        goto error;
-    }
+    /* work with this pointer and move it to the next after using it. We need
+     * to know which curve we're dealing with before we can figure out which is which. */
+    struct aws_byte_cursor *current_part = &pair_part_1;
 
     while (aws_der_decoder_next(&decoder)) {
         enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
 
-        /* private key is OCTET_STRING.
-         * It should be just be key_coordinate_size long. */
-        if (type == AWS_DER_OCTET_STRING) {
-            // aws_der_decoder_tlv_string(&decoder, &cc_key_pair->key_pair.key_buf);
+        if (type == AWS_DER_OBJECT_IDENTIFIER) {
+            aws_der_decoder_tlv_blob(&decoder, &oid);
+            continue;
+        }
+
+        /* you'd think we'd get some type hints on which key this is, but it's not consistent
+         * as far as I can tell. */
+        if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
+            aws_der_decoder_tlv_string(&decoder, current_part);
+            current_part = &pair_part_2;
+            continue;
         }
     }
+
+    /* we only know about 3 curves at the moment, it had better be one of those. */
+    enum aws_ecc_curve_name exported_curve_name;
+    AWS_ASSERT(
+        !aws_ecc_curve_name_from_oid(&oid, &exported_curve_name) && exported_curve_name == curve_name &&
+        "If this assertion pops, just set your computer on fire and give up on this industry having any sanity.");
+
+    struct aws_byte_cursor *private_key = NULL;
+    struct aws_byte_cursor *public_key = NULL;
+
+    size_t public_key_blob_size = key_coordinate_size * 2 + 1;
+
+    if (pair_part_1.ptr && pair_part_1.len) {
+        if (pair_part_1.len == key_coordinate_size) {
+            private_key = &pair_part_1;
+        } else if (pair_part_1.len == public_key_blob_size) {
+            public_key = &pair_part_1;
+        }
+    }
+
+    if (pair_part_2.ptr && pair_part_2.len) {
+        if (pair_part_2.len == key_coordinate_size) {
+            private_key = &pair_part_2;
+        } else if (pair_part_2.len == public_key_blob_size) {
+            public_key = &pair_part_2;
+        }
+    }
+
+    AWS_ASSERT(private_key && public_key && "Apple Security Framework had better have exported the full pair.");
+    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, public_key);
+    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, private_key);
 
     aws_der_decoder_clean_up(&decoder);
     CFRelease(sec_key_export_data);
@@ -485,6 +499,8 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
             continue;
         }
 
+        /* you'd think we'd get some type hints on which key this is, but it's not consistent
+         * as far as I can tell. */
         if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
             aws_der_decoder_tlv_string(&decoder, current_part);
             current_part = &pair_part_2;
@@ -557,11 +573,11 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     if (private_key) {
         CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
 
+        CFDictionaryAddValue(key_attributes, kSecAttrCanSign, kCFBooleanTrue);
+        CFDictionaryAddValue(key_attributes, kSecAttrCanDerive, kCFBooleanTrue);
+
         if (public_key) {
             CFDictionaryAddValue(key_attributes, kSecAttrCanVerify, kCFBooleanTrue);
-        } else {
-            CFDictionaryAddValue(key_attributes, kSecAttrCanSign, kCFBooleanTrue);
-            CFDictionaryAddValue(key_attributes, kSecAttrCanDerive, kCFBooleanTrue);
         }
     } else if (public_key) {
         CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPublic);

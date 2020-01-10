@@ -355,6 +355,10 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         if (s_der_read_tlv(&cur, &tlv)) {
             return AWS_OP_ERR;
         }
+        /* skip trailing newlines in the stream after any TLV */
+        while (cur.len && *cur.ptr == '\n') {
+            cur = aws_byte_cursor_advance(&cur, 1);
+        }
         aws_array_list_push_back(&decoder->tlvs, &tlv);
         if (decoder->container) {
             decoder->container->count++;

@@ -82,7 +82,7 @@ static int s_verify_payload_fn(
 
     return ECDSA_verify(0, hash->ptr, hash->len, signature->ptr, signature->len, libcrypto_key_pair->ec_key) == 1
                ? AWS_OP_SUCCESS
-               : aws_raise_error(AWS_CAL_SIGNATURE_VALIDATION_FAILED);
+               : aws_raise_error(AWS_CAL_ERROR_SIGNATURE_VALIDATION_FAILED);
 }
 
 static size_t s_signature_length_fn(const struct aws_ecc_key_pair *key_pair) {
@@ -212,6 +212,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     }
 
     BN_bn2bin(private_key_num, key_impl->key_pair.priv_d.buffer);
+    key_impl->key_pair.priv_d.len = priv_key_size;
 
     if (!s_fill_in_public_key_info(key_impl, group, pub_key_point)) {
         return &key_impl->key_pair;
@@ -296,9 +297,9 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
 
-    if (d2i_ECParameters(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len)) {
+    if (!d2i_ECPrivateKey(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len)) {
         aws_mem_release(allocator, key_impl);
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
         return NULL;
     }
 

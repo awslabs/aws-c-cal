@@ -16,17 +16,21 @@
 #include <aws/cal/ecc.h>
 
 #include <aws/cal/cal.h>
+#include <aws/cal/der.h>
 
 #include <aws/common/thread.h>
 
-#include <windows.h>
-
 #include <bcrypt.h>
+#include <windows.h>
 #include <winerror.h>
 
 static BCRYPT_ALG_HANDLE s_ecdsa_p256_alg = NULL;
 static BCRYPT_ALG_HANDLE s_ecdsa_p384_alg = NULL;
 static BCRYPT_ALG_HANDLE s_ecdsa_p521_alg = NULL;
+
+/* size of the P521 curve's signatures. This is the largest we support at the moment.
+   Since msvc doesn't support variable length arrays, we need to handle this with a macro. */
+#define MAX_SIGNATURE_LENGTH (68 * 2)
 
 static aws_thread_once s_ecdsa_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
 
@@ -107,24 +111,45 @@ static int s_sign_message_fn(
     struct aws_byte_buf *signature_output) {
     struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
 
-    size_t signature_length = signature_output->capacity - signature_output->len;
+    uint8_t temp_signature[MAX_SIGNATURE_LENGTH] = {0};
+    struct aws_byte_buf temp_signature_buf = aws_byte_buf_from_empty_array(temp_signature, sizeof(temp_signature));
+    size_t signature_length = temp_signature_buf.capacity;
 
-    /* TODO, the result of this needs to be DER encoded:
-       0x30 <len of r|s plus padding> 0x02 <len of r plus padding if it's negative> <r with padding> 0x02
-       < len of s plus padding > < s plus padding if it's negative >
-    */
     NTSTATUS status = BCryptSignHash(
         key_impl->key_handle,
         NULL,
         message->ptr,
         (ULONG)message->len,
-        signature_output->buffer + signature_output->len,
+        temp_signature_buf.buffer,
         (ULONG)signature_length,
         (ULONG *)&signature_length,
         0);
-    signature_output->len += signature_length;
 
-    (void)status;
+    if (status != 0) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    temp_signature_buf.len += signature_length;
+    size_t coordinate_len = temp_signature_buf.len / 2;
+
+    /* okay. Windows doesn't DER encode this to ASN.1, so we need to do it manually. */
+    struct aws_der_encoder encoder;
+    if (aws_der_encoder_init(&encoder, key_pair->allocator, signature_output->capacity - signature_output->len)) {
+        return AWS_OP_ERR;
+    }
+
+    aws_der_encoder_begin_sequence(&encoder);
+    struct aws_byte_cursor integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer, coordinate_len);
+    aws_der_encoder_write_integer(&encoder, integer_cur);
+    integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer + coordinate_len, coordinate_len);
+    aws_der_encoder_write_integer(&encoder, integer_cur);
+    aws_der_encoder_end_sequence(&encoder);
+
+    struct aws_byte_cursor signature_out_cur;
+    AWS_ZERO_STRUCT(signature_out_cur);
+    aws_der_encoder_get_contents(&encoder, &signature_out_cur);
+    aws_byte_buf_append(signature_output, &signature_out_cur);
+    aws_der_encoder_clean_up(&encoder);
 
     return AWS_OP_SUCCESS;
 }
@@ -138,10 +163,10 @@ static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
         NULL,
         BCRYPT_ECCPRIVATE_BLOB,
         key_pair->key_buf.buffer,
-        (ULONG)key_pair->key_buf.len,
+        (ULONG)key_pair->key_buf.capacity,
         &result,
         0);
-
+    key_pair->key_buf.len = result;
     (void)result;
     (void)status;
 
@@ -154,14 +179,65 @@ static int s_verify_signature_fn(
     const struct aws_byte_cursor *signature) {
     struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
 
-    /* TODO, the signature  needs to be DER decoded:
-      0x30 <len of r|s plus padding> 0x02 <len of r plus padding if it's negative> <r with padding> 0x02
-      < len of s plus padding > < s plus padding if it's negative >
-    */
-    NTSTATUS status = BCryptVerifySignature(
-        key_impl->key_handle, NULL, message->ptr, (ULONG)message->len, signature->ptr, (ULONG)signature->len, 0);
+    /* OKAY Windows doesn't do the whole standard internet formats thing. So we need to manually decode
+       the DER encoded ASN.1 format first.*/
+    uint8_t temp_signature[MAX_SIGNATURE_LENGTH] = {0};
+    struct aws_byte_buf temp_signature_buf = aws_byte_buf_from_empty_array(temp_signature, sizeof(temp_signature));
 
-    return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_CAL_SIGNATURE_VALIDATION_FAILED);
+    struct aws_byte_buf der_encoded_signature = aws_byte_buf_from_array(signature->ptr, signature->len);
+
+    struct aws_der_decoder decoder;
+    if (aws_der_decoder_init(&decoder, key_pair->allocator, &der_encoded_signature)) {
+        return AWS_OP_ERR;
+    }
+
+    if (aws_der_decoder_parse(&decoder)) {
+        goto error;
+    }
+
+    aws_der_decoder_next(&decoder);
+    if (aws_der_decoder_tlv_type(&decoder) != AWS_DER_SEQUENCE) {
+        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        goto error;
+    }
+
+    aws_der_decoder_next(&decoder);
+    if (aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
+        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        goto error;
+    }
+
+    /* there will be two coordinates. They need to be concatenated together. */
+    struct aws_byte_cursor coordinate;
+    AWS_ZERO_STRUCT(coordinate);
+    aws_der_decoder_tlv_integer(&decoder, &coordinate);
+    aws_byte_buf_append(&temp_signature_buf, &coordinate);
+
+    aws_der_decoder_next(&decoder);
+    if (aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
+        return aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+    }
+    AWS_ZERO_STRUCT(coordinate);
+    aws_der_decoder_tlv_integer(&decoder, &coordinate);
+    aws_byte_buf_append(&temp_signature_buf, &coordinate);
+
+    aws_der_decoder_clean_up(&decoder);
+
+    /* okay, now we've got a windows compatible signature, let's verify it. */
+    NTSTATUS status = BCryptVerifySignature(
+        key_impl->key_handle,
+        NULL,
+        message->ptr,
+        (ULONG)message->len,
+        temp_signature_buf.buffer,
+        (ULONG)temp_signature_buf.len,
+        0);
+
+    return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_CAL_ERROR_SIGNATURE_VALIDATION_FAILED);
+
+error:
+    aws_der_decoder_clean_up(&decoder);
+    return AWS_OP_ERR;
 }
 
 static size_t s_signature_length_fn(const struct aws_ecc_key_pair *key_pair) {
@@ -206,7 +282,7 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
 
     if ((pub_x && pub_x->len != s_key_coordinate_size) || (pub_y && pub_y->len != s_key_coordinate_size) ||
         (priv_key && priv_key->len != s_key_coordinate_size)) {
-        aws_raise_error(AWS_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
+        aws_raise_error(AWS_CAL_ERROR_INVALID_KEY_LENGTH_FOR_ALGORITHM);
         goto error;
     }
 
@@ -284,4 +360,167 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     const struct aws_byte_cursor *public_key_y) {
 
     return s_alloc_pair_and_init_buffers(allocator, curve_name, public_key_x, public_key_y, NULL);
+}
+
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name) {
+    aws_thread_call_once(&s_ecdsa_thread_once, s_load_alg_handle, NULL);
+
+    struct bcrypt_ecc_key_pair *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_ecc_key_pair));
+
+    if (!key_impl) {
+        return NULL;
+    }
+
+    key_impl->key_pair.allocator = allocator;
+    key_impl->key_pair.curve_name = curve_name;
+    key_impl->key_pair.impl = key_impl;
+    key_impl->key_pair.vtable = &s_vtable;
+
+    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+
+    if (!key_coordinate_size) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto error;
+    }
+
+    BCRYPT_ALG_HANDLE alg_handle = s_key_alg_handle_from_curve_name(curve_name);
+
+    ULONG key_bit_length = (ULONG)key_coordinate_size * 8;
+    NTSTATUS status = BCryptGenerateKeyPair(alg_handle, &key_impl->key_handle, key_bit_length, 0);
+    status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);
+    (status);
+    size_t total_buffer_size = key_coordinate_size * 3 + sizeof(BCRYPT_ECCKEY_BLOB);
+
+    if (aws_byte_buf_init(&key_impl->key_pair.key_buf, allocator, total_buffer_size)) {
+        goto error;
+    }
+
+    aws_byte_buf_secure_zero(&key_impl->key_pair.key_buf);
+
+    key_impl->key_pair.pub_x.buffer = key_impl->key_pair.key_buf.buffer + sizeof(BCRYPT_ECCKEY_BLOB);
+    key_impl->key_pair.pub_x.len = key_impl->key_pair.pub_x.capacity = key_coordinate_size;
+
+    key_impl->key_pair.pub_y.buffer = key_impl->key_pair.pub_x.buffer + key_coordinate_size;
+    key_impl->key_pair.pub_y.len = key_impl->key_pair.pub_y.capacity = key_coordinate_size;
+
+    key_impl->key_pair.priv_d.buffer = key_impl->key_pair.pub_y.buffer + key_coordinate_size;
+    key_impl->key_pair.priv_d.len = key_impl->key_pair.priv_d.capacity = key_coordinate_size;
+
+    if (s_derive_public_key_fn(&key_impl->key_pair)) {
+        goto error;
+    }
+
+    return &key_impl->key_pair;
+
+error:
+    s_destroy_key_fn(&key_impl->key_pair);
+    return NULL;
+}
+
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *encoded_keys) {
+    struct aws_der_decoder decoder;
+
+    struct aws_byte_buf key_buf = aws_byte_buf_from_array(encoded_keys->ptr, encoded_keys->len);
+    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
+        goto error;
+    }
+
+    if (aws_der_decoder_parse(&decoder)) {
+        goto error;
+    }
+
+    /* we could have private key or a public key, or a full pair. */
+    struct aws_byte_cursor pair_part_1;
+    AWS_ZERO_STRUCT(pair_part_1);
+    struct aws_byte_cursor pair_part_2;
+    AWS_ZERO_STRUCT(pair_part_2);
+    struct aws_byte_cursor oid;
+    AWS_ZERO_STRUCT(oid);
+
+    /* work with this pointer and move it to the next after using it. We need
+     * to know which curve we're dealing with before we can figure out which is which. */
+    struct aws_byte_cursor *current_part = &pair_part_1;
+
+    while (aws_der_decoder_next(&decoder)) {
+        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
+
+        if (type == AWS_DER_OBJECT_IDENTIFIER) {
+            aws_der_decoder_tlv_blob(&decoder, &oid);
+            continue;
+        }
+
+        /* you'd think we'd get some type hints on which key this is, but it's not consistent
+         * as far as I can tell. */
+        if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
+            aws_der_decoder_tlv_string(&decoder, current_part);
+            current_part = &pair_part_2;
+        }
+    }
+
+    if (!(oid.ptr && oid.len)) {
+        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        goto error;
+    }
+
+    /* we only know about 3 curves at the moment, it had better be one of those. */
+    enum aws_ecc_curve_name curve_name;
+    if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+        goto error;
+    }
+
+    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+
+    struct aws_byte_cursor *private_key = NULL;
+    struct aws_byte_cursor *public_key = NULL;
+
+    size_t public_key_blob_size = key_coordinate_size * 2 + 1;
+
+    if (pair_part_1.ptr && pair_part_1.len) {
+        if (pair_part_1.len == key_coordinate_size) {
+            private_key = &pair_part_1;
+        } else if (pair_part_1.len == public_key_blob_size) {
+            public_key = &pair_part_1;
+        }
+    }
+
+    if (pair_part_2.ptr && pair_part_2.len) {
+        if (pair_part_2.len == key_coordinate_size) {
+            private_key = &pair_part_2;
+        } else if (pair_part_2.len == public_key_blob_size) {
+            public_key = &pair_part_2;
+        }
+    }
+
+    if (!private_key && !public_key) {
+        aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+        goto error;
+    }
+
+    struct aws_byte_cursor pub_x_cur;
+    struct aws_byte_cursor pub_y_cur;
+    struct aws_byte_cursor *pub_x = NULL;
+    struct aws_byte_cursor *pub_y = NULL;
+
+    if (public_key) {
+        aws_byte_cursor_advance(public_key, 1);
+        pub_x_cur = *public_key;
+        pub_x_cur.len = key_coordinate_size;
+        pub_y_cur.ptr = public_key->ptr + key_coordinate_size;
+        pub_y_cur.len = key_coordinate_size;
+        pub_x = &pub_x_cur;
+        pub_y = &pub_y_cur;
+    }
+
+    /* now that we have the buffers, we can just use the normal code path. */
+    struct aws_ecc_key_pair *key_pair = s_alloc_pair_and_init_buffers(allocator, curve_name, pub_x, pub_y, private_key);
+    aws_der_decoder_clean_up(&decoder);
+
+    return key_pair;
+error:
+    aws_der_decoder_clean_up(&decoder);
+    return NULL;
 }

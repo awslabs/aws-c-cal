@@ -113,7 +113,15 @@ AWS_CAL_API void aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair);
  */
 AWS_CAL_API int aws_ecc_key_pair_derive_public_key(struct aws_ecc_key_pair *key_pair);
 
+/**
+ * Get the curve name from the oid. OID here is the payload of the DER encoded ASN.1 part (doesn't include
+ * type specifier or length. On success, the value of curve_name will be set.
+ */
 AWS_CAL_API int aws_ecc_curve_name_from_oid(struct aws_byte_cursor *oid, enum aws_ecc_curve_name *curve_name);
+
+/**
+ * Get the DER encoded OID from the curve_name. The OID in this case will not contain the type or the length specifier.
+ */
 AWS_CAL_API int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_byte_cursor *oid);
 
 /**
@@ -148,6 +156,7 @@ AWS_CAL_API void aws_ecc_key_pair_get_public_key(
     const struct aws_ecc_key_pair *key_pair,
     struct aws_byte_cursor *pub_x,
     struct aws_byte_cursor *pub_y);
+
 AWS_CAL_API void aws_ecc_key_pair_get_private_key(
     const struct aws_ecc_key_pair *key_pair,
     struct aws_byte_cursor *private_d);

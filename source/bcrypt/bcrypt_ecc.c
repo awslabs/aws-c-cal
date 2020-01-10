@@ -20,8 +20,10 @@
 
 #include <aws/common/thread.h>
 
-#include <bcrypt.h>
 #include <windows.h>
+
+#include <bcrypt.h>
+
 #include <winerror.h>
 
 static BCRYPT_ALG_HANDLE s_ecdsa_p256_alg = NULL;
@@ -195,14 +197,12 @@ static int s_verify_signature_fn(
         goto error;
     }
 
-    aws_der_decoder_next(&decoder);
-    if (aws_der_decoder_tlv_type(&decoder) != AWS_DER_SEQUENCE) {
+    if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_SEQUENCE) {
         aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
 
-    aws_der_decoder_next(&decoder);
-    if (aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
+    if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
         aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
@@ -213,8 +213,7 @@ static int s_verify_signature_fn(
     aws_der_decoder_tlv_integer(&decoder, &coordinate);
     aws_byte_buf_append(&temp_signature_buf, &coordinate);
 
-    aws_der_decoder_next(&decoder);
-    if (aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
+    if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
         return aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
     }
     AWS_ZERO_STRUCT(coordinate);

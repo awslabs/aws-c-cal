@@ -247,7 +247,7 @@ static int s_ecdsa_p256_test_key_gen_export_fn(struct aws_allocator *allocator, 
 
 AWS_TEST_CASE(ecdsa_p256_test_key_gen_export, s_ecdsa_p256_test_key_gen_export_fn)
 
-static int s_ecdsa_p256_test_import_asn1_private_key_fn(struct aws_allocator *allocator, void *ctx) {
+static int s_ecdsa_p256_test_import_asn1_key_pair_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
     uint8_t asn1_encoded_key_raw[] = {
@@ -262,10 +262,42 @@ static int s_ecdsa_p256_test_import_asn1_private_key_fn(struct aws_allocator *al
 
     struct aws_byte_cursor asn1_encoded_key =
         aws_byte_cursor_from_array(asn1_encoded_key_raw, sizeof(asn1_encoded_key_raw));
+
     struct aws_ecc_key_pair *imported_key = aws_ecc_key_pair_new_from_asn1(allocator, &asn1_encoded_key);
     ASSERT_NOT_NULL(imported_key);
+
+    uint8_t message[] = {
+        0x59, 0x05, 0x23, 0x88, 0x77, 0xc7, 0x74, 0x21, 0xf7, 0x3e, 0x43, 0xee, 0x3d, 0xa6, 0xf2, 0xd9,
+        0xe2, 0xcc, 0xad, 0x5f, 0xc9, 0x42, 0xdc, 0xec, 0x0c, 0xbd, 0x25, 0x48, 0x29, 0x35, 0xfa, 0xaf,
+        0x41, 0x69, 0x83, 0xfe, 0x16, 0x5b, 0x1a, 0x04, 0x5e, 0xe2, 0xbc, 0xd2, 0xe6, 0xdc, 0xa3, 0xbd,
+        0xf4, 0x6c, 0x43, 0x10, 0xa7, 0x46, 0x1f, 0x9a, 0x37, 0x96, 0x0c, 0xa6, 0x72, 0xd3, 0xfe, 0xb5,
+        0x47, 0x3e, 0x25, 0x36, 0x05, 0xfb, 0x1d, 0xdf, 0xd2, 0x80, 0x65, 0xb5, 0x3c, 0xb5, 0x85, 0x8a,
+        0x8a, 0xd2, 0x81, 0x75, 0xbf, 0x9b, 0xd3, 0x86, 0xa5, 0xe4, 0x71, 0xea, 0x7a, 0x65, 0xc1, 0x7c,
+        0xc9, 0x34, 0xa9, 0xd7, 0x91, 0xe9, 0x14, 0x91, 0xeb, 0x37, 0x54, 0xd0, 0x37, 0x99, 0x79, 0x0f,
+        0xe2, 0xd3, 0x08, 0xd1, 0x61, 0x46, 0xd5, 0xc9, 0xb0, 0xd0, 0xde, 0xbd, 0x97, 0xd7, 0x9c, 0xe8,
+    };
+    struct aws_byte_cursor message_input = aws_byte_cursor_from_array(message, sizeof(message));
+    uint8_t hash[AWS_SHA256_LEN];
+    AWS_ZERO_ARRAY(hash);
+    struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
+    aws_sha256_compute(allocator, &message_input, &hash_value, 0);
+
+    size_t signature_size = aws_ecc_key_pair_signature_length(imported_key);
+
+    struct aws_byte_buf signature_buf;
+    AWS_ZERO_STRUCT(signature_buf);
+    aws_byte_buf_init(&signature_buf, allocator, signature_size);
+
+    struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
+    ASSERT_SUCCESS(aws_ecc_key_pair_sign_message(imported_key, &hash_cur, &signature_buf));
+
+    struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
+    ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(imported_key, &hash_cur, &signature_cur));
+
+    aws_byte_buf_clean_up(&signature_buf);
+    aws_ecc_key_pair_destroy(imported_key);
 
     return AWS_OP_SUCCESS;
 }
 
-AWS_TEST_CASE(ecdsa_p256_test_import_asn1_private_key, s_ecdsa_p256_test_import_asn1_private_key_fn)
+AWS_TEST_CASE(ecdsa_p256_test_import_asn1_key_pair, s_ecdsa_p256_test_import_asn1_key_pair_fn)

@@ -462,10 +462,10 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     }
 
     if (aws_der_decoder_parse(&decoder)) {
-        aws_der_decoder_clean_up(&decoder);
         goto error;
     }
 
+    /* we could have private key or a public key, or a full pair. */
     struct aws_byte_cursor pair_part_1;
     AWS_ZERO_STRUCT(pair_part_1);
     struct aws_byte_cursor pair_part_2;
@@ -473,6 +473,8 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_byte_cursor oid;
     AWS_ZERO_STRUCT(oid);
 
+    /* work with this pointer and move it to the next after using it. We need
+     * to know which curve we're dealing with before we can figure out which is which. */
     struct aws_byte_cursor *current_part = &pair_part_1;
 
     while (aws_der_decoder_next(&decoder)) {
@@ -494,6 +496,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         goto error;
     }
 
+    /* we only know about 3 curves at the moment, it had better be one of those. */
     enum aws_ecc_curve_name curve_name;
     if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
         goto error;
@@ -544,7 +547,6 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     struct commoncrypto_ecc_key_pair *cc_key_pair =
         s_alloc_pair_and_init_buffers(allocator, curve_name, pub_x, pub_y, private_key);
-    aws_der_decoder_clean_up(&decoder);
 
     CFDataRef key_data = CFDataCreate(
         cc_key_pair->cf_allocator, cc_key_pair->key_pair.key_buf.buffer, cc_key_pair->key_pair.key_buf.len);
@@ -577,9 +579,11 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     CFRelease(key_attributes);
     CFRelease(key_data);
+    aws_der_decoder_clean_up(&decoder);
 
     return cc_key_pair->key_pair.impl;
 
 error:
+    aws_der_decoder_clean_up(&decoder);
     return NULL;
 }

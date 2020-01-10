@@ -17,8 +17,8 @@
 #include <aws/cal/cal.h>
 
 #include <openssl/bn.h>
-#include <openssl/ecdsa.h>
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
 
 struct libcrypto_ecc_key {

@@ -46,6 +46,7 @@ add_test_case(ecdsa_p256_test_known_signing_value)
 add_test_case(ecdsa_p256_test_key_gen)
 add_test_case(ecdsa_p256_test_key_gen_export)
 add_test_case(ecdsa_p256_test_import_asn1_key_pair)
+add_test_case(ecdsa_p256_test_signature_format)
 
 add_test_case(der_encode_integer)
 add_test_case(der_encode_boolean)

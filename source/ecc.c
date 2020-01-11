@@ -73,7 +73,7 @@ int aws_ecc_curve_name_from_oid(struct aws_byte_cursor *oid, enum aws_ecc_curve_
         return AWS_OP_SUCCESS;
     }
 
-    return aws_raise_error(AWS_CAL_ERROR_UNKNOWN_OBJECT_IDENTIFIER);
+    return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
 }
 
 int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_byte_cursor *oid) {

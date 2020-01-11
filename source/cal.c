@@ -19,22 +19,28 @@
 #define AWS_DEFINE_ERROR_INFO_CAL(CODE, STR) [(CODE)-0x1C00] = AWS_DEFINE_ERROR_INFO(CODE, STR, "aws-c-cal")
 
 static struct aws_error_info s_errors[] = {
-    AWS_DEFINE_ERROR_INFO_CAL(AWS_CAL_ERROR_SIGNATURE_VALIDATION_FAILED, "Verify on a cryptographic signature failed."),
+    AWS_DEFINE_ERROR_INFO_CAL(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED, "Verify on a cryptographic signature failed."),
     AWS_DEFINE_ERROR_INFO_CAL(
-        AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT,
+        AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT,
         "An attempt was made to perform an "
         "Asymmetric cryptographic operation with the"
         "wrong key component. For example, attempt to"
         "verify a signature with a private key or "
         "sign a message with a public key."),
     AWS_DEFINE_ERROR_INFO_CAL(
-        AWS_CAL_ERROR_INVALID_KEY_LENGTH_FOR_ALGORITHM,
+        AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM,
         "A key length was used for an algorithm that needs a different key length"),
-};
+    AWS_DEFINE_ERROR_INFO_CAL(
+        AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER,
+        "An ASN.1 OID was encountered that wasn't expected or understood. Most likely, you're using an unsupported "
+        "algorithm."),
+    AWS_DEFINE_ERROR_INFO_CAL(
+        AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED,
+        "An ASN.1 DER decoding operation failed on malformed input.")};
 
 static struct aws_error_info_list s_list = {
     .error_list = s_errors,
-    .count = sizeof(s_errors) / sizeof(struct aws_error_info),
+    .count = AWS_ARRAY_SIZE(s_errors),
 };
 
 static bool s_cal_library_initialized = false;

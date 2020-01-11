@@ -52,7 +52,7 @@ static int s_sign_message_fn(
     struct commoncrypto_ecc_key_pair *cc_key = key_pair->impl;
 
     if (!cc_key->priv_key_ref) {
-        return aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+        return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
     CFDataRef hash_ref =
@@ -84,7 +84,7 @@ static int s_verify_signature_fn(
     struct commoncrypto_ecc_key_pair *cc_key = key_pair->impl;
 
     if (!cc_key->pub_key_ref) {
-        return aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+        return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
     CFDataRef hash_ref =
@@ -100,7 +100,7 @@ static int s_verify_signature_fn(
     CFRelease(signature_ref);
     CFRelease(hash_ref);
 
-    return verified ? AWS_OP_SUCCESS : aws_raise_error(AWS_CAL_ERROR_SIGNATURE_VALIDATION_FAILED);
+    return verified ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 }
 
 static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
@@ -510,7 +510,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     }
 
     if (!(oid.ptr && oid.len)) {
-        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
 
@@ -544,7 +544,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     }
 
     if (!private_key && !public_key) {
-        aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+        aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
         goto error;
     }
 

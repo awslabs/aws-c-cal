@@ -198,12 +198,12 @@ static int s_verify_signature_fn(
     }
 
     if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_SEQUENCE) {
-        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
 
     if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
-        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
 
@@ -214,7 +214,7 @@ static int s_verify_signature_fn(
     aws_byte_buf_append(&temp_signature_buf, &coordinate);
 
     if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
-        return aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
     AWS_ZERO_STRUCT(coordinate);
     aws_der_decoder_tlv_integer(&decoder, &coordinate);
@@ -232,7 +232,7 @@ static int s_verify_signature_fn(
         (ULONG)temp_signature_buf.len,
         0);
 
-    return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_CAL_ERROR_SIGNATURE_VALIDATION_FAILED);
+    return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 
 error:
     aws_der_decoder_clean_up(&decoder);
@@ -281,7 +281,7 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
 
     if ((pub_x && pub_x->len != s_key_coordinate_size) || (pub_y && pub_y->len != s_key_coordinate_size) ||
         (priv_key && priv_key->len != s_key_coordinate_size)) {
-        aws_raise_error(AWS_CAL_ERROR_INVALID_KEY_LENGTH_FOR_ALGORITHM);
+        aws_raise_error(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
         goto error;
     }
 
@@ -461,7 +461,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     }
 
     if (!(oid.ptr && oid.len)) {
-        aws_raise_error(AWS_CAL_ERROR_MALFORMED_ASN1_ENCOUNTERED);
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
 
@@ -495,7 +495,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     }
 
     if (!private_key && !public_key) {
-        aws_raise_error(AWS_CAL_ERROR_MISSING_REQUIRED_KEY_COMPONENT);
+        aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
         goto error;
     }
 

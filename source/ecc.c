@@ -17,7 +17,7 @@
 
 #define STATIC_INIT_BYTE_CURSOR(a, name)                                                                               \
     static struct aws_byte_cursor s_##name = {                                                                         \
-        .ptr = (a),                                                                                                      \
+        .ptr = (a),                                                                                                    \
         .len = sizeof(a),                                                                                              \
     };
 

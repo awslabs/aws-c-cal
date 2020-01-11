@@ -397,7 +397,7 @@ bool aws_der_decoder_next(struct aws_der_decoder *decoder) {
 }
 
 static struct der_tlv s_decoder_tlv(struct aws_der_decoder *decoder) {
-    AWS_FATAL_ASSERT(decoder->tlv_idx < decoder->tlvs.length);
+    AWS_FATAL_ASSERT(decoder->tlv_idx < (int)decoder->tlvs.length);
     struct der_tlv tlv = {0};
     aws_array_list_get_at(&decoder->tlvs, &tlv, decoder->tlv_idx);
     return tlv;

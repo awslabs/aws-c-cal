@@ -22,6 +22,22 @@
 #    pragma warning(disable : 4204 4221) /* non-standard aggregate initializer warnings */
 #endif
 
+struct aws_der_encoder {
+    struct aws_allocator *allocator;
+    struct aws_byte_buf storage;
+    struct aws_byte_buf *buffer; /* buffer being written to, might be storage, might be a sequence/set buffer */
+    struct aws_array_list stack;
+};
+
+struct aws_der_decoder {
+    struct aws_allocator *allocator;
+    struct aws_array_list tlvs;     /* parsed elements */
+    int tlv_idx;                    /* index to elements after parsing */
+    struct aws_byte_cursor input;   /* input buffer */
+    uint32_t depth;                 /* recursion depth when expanding containers */
+    struct der_tlv *container;      /* currently expanding container */
+};
+
 struct der_tlv {
     uint8_t tag;
     uint32_t length; /* length of value in bytes */
@@ -183,23 +199,35 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
     return AWS_OP_SUCCESS;
 }
 
-int aws_der_encoder_init(struct aws_der_encoder *encoder, struct aws_allocator *allocator, size_t capacity) {
+struct aws_der_encoder *aws_der_encoder_new(struct aws_allocator *allocator, size_t capacity) {
+    struct aws_der_encoder *encoder = aws_mem_calloc(allocator, 1, sizeof(struct aws_der_encoder));
+    AWS_FATAL_ASSERT(encoder);
+
     encoder->allocator = allocator;
     if (aws_byte_buf_init(&encoder->storage, encoder->allocator, capacity)) {
-        return AWS_OP_ERR;
+        goto error;
     }
     if (aws_array_list_init_dynamic(&encoder->stack, encoder->allocator, 4, sizeof(struct der_tlv))) {
-        return AWS_OP_ERR;
+        goto error;
     }
 
     encoder->buffer = &encoder->storage;
+    return encoder;
 
-    return AWS_OP_SUCCESS;
+error:
+    aws_array_list_clean_up(&encoder->stack);
+    aws_byte_buf_clean_up(&encoder->storage);
+    aws_mem_release(allocator, encoder);
+    return NULL;
 }
 
-void aws_der_encoder_clean_up(struct aws_der_encoder *encoder) {
+void aws_der_encoder_destroy(struct aws_der_encoder *encoder) {
+    if (!encoder) {
+        return;
+    }
     aws_byte_buf_clean_up_secure(&encoder->storage);
     aws_array_list_clean_up(&encoder->stack);
+    aws_mem_release(encoder->allocator, encoder);
 }
 
 int aws_der_encoder_write_integer(struct aws_der_encoder *encoder, struct aws_byte_cursor integer) {
@@ -329,24 +357,39 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
  */
 int s_decoder_parse(struct aws_der_decoder *decoder);
 
-int aws_der_decoder_init(
-    struct aws_der_decoder *decoder,
+struct aws_der_decoder *aws_der_decoder_new(
     struct aws_allocator *allocator,
     struct aws_byte_cursor input) {
+    struct aws_der_decoder *decoder = aws_mem_calloc(allocator, 1, sizeof(struct aws_der_decoder));
+    AWS_FATAL_ASSERT(decoder);
+
     decoder->allocator = allocator;
     decoder->input = input;
     decoder->tlv_idx = -1;
     decoder->depth = 0;
     decoder->container = NULL;
     if (aws_array_list_init_dynamic(&decoder->tlvs, decoder->allocator, 16, sizeof(struct der_tlv))) {
-        return AWS_OP_ERR;
+        goto error;
     }
 
-    return s_decoder_parse(decoder);
+    if (s_decoder_parse(decoder)) {
+        goto error;
+    }
+
+    return decoder;
+
+error:
+    aws_array_list_clean_up(&decoder->tlvs);
+    aws_mem_release(allocator, decoder);
+    return NULL;
 }
 
-void aws_der_decoder_clean_up(struct aws_der_decoder *decoder) {
+void aws_der_decoder_destroy(struct aws_der_decoder *decoder) {
+    if (!decoder) {
+        return;
+    }
     aws_array_list_clean_up(&decoder->tlvs);
+    aws_mem_release(decoder->allocator, decoder);
 }
 
 int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) {

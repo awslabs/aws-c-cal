@@ -135,23 +135,23 @@ static int s_sign_message_fn(
     size_t coordinate_len = temp_signature_buf.len / 2;
 
     /* okay. Windows doesn't DER encode this to ASN.1, so we need to do it manually. */
-    struct aws_der_encoder encoder;
-    if (aws_der_encoder_init(&encoder, key_pair->allocator, signature_output->capacity - signature_output->len)) {
+    struct aws_der_encoder *encoder = aws_der_encoder_new(key_pair->allocator, signature_output->capacity - signature_output->len);
+    if (!encoder) {
         return AWS_OP_ERR;
     }
 
-    aws_der_encoder_begin_sequence(&encoder);
+    aws_der_encoder_begin_sequence(encoder);
     struct aws_byte_cursor integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer, coordinate_len);
-    aws_der_encoder_write_integer(&encoder, integer_cur);
+    aws_der_encoder_write_integer(encoder, integer_cur);
     integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer + coordinate_len, coordinate_len);
-    aws_der_encoder_write_integer(&encoder, integer_cur);
-    aws_der_encoder_end_sequence(&encoder);
+    aws_der_encoder_write_integer(encoder, integer_cur);
+    aws_der_encoder_end_sequence(encoder);
 
     struct aws_byte_cursor signature_out_cur;
     AWS_ZERO_STRUCT(signature_out_cur);
-    aws_der_encoder_get_contents(&encoder, &signature_out_cur);
+    aws_der_encoder_get_contents(encoder, &signature_out_cur);
     aws_byte_buf_append(signature_output, &signature_out_cur);
-    aws_der_encoder_clean_up(&encoder);
+    aws_der_encoder_clean_up(encoder);
 
     return AWS_OP_SUCCESS;
 }
@@ -188,17 +188,17 @@ static int s_verify_signature_fn(
 
     struct aws_byte_cursor der_encoded_signature = aws_byte_cursor_from_array(signature->ptr, signature->len);
 
-    struct aws_der_decoder decoder;
-    if (aws_der_decoder_init(&decoder, key_pair->allocator, der_encoded_signature)) {
+    struct aws_der_decoder *decoder = aws_der_decoder_new(key_pair->allocator, der_encoded_signature);
+    if (!decoder) {
         return AWS_OP_ERR;
     }
 
-    if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_SEQUENCE) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
 
-    if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_INTEGER) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
@@ -206,17 +206,17 @@ static int s_verify_signature_fn(
     /* there will be two coordinates. They need to be concatenated together. */
     struct aws_byte_cursor coordinate;
     AWS_ZERO_STRUCT(coordinate);
-    aws_der_decoder_tlv_integer(&decoder, &coordinate);
+    aws_der_decoder_tlv_integer(decoder, &coordinate);
     aws_byte_buf_append(&temp_signature_buf, &coordinate);
 
-    if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_INTEGER) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_INTEGER) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
     AWS_ZERO_STRUCT(coordinate);
-    aws_der_decoder_tlv_integer(&decoder, &coordinate);
+    aws_der_decoder_tlv_integer(decoder, &coordinate);
     aws_byte_buf_append(&temp_signature_buf, &coordinate);
 
-    aws_der_decoder_clean_up(&decoder);
+    aws_der_decoder_destroy(decoder);
 
     /* okay, now we've got a windows compatible signature, let's verify it. */
     NTSTATUS status = BCryptVerifySignature(
@@ -231,7 +231,7 @@ static int s_verify_signature_fn(
     return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 
 error:
-    aws_der_decoder_clean_up(&decoder);
+    aws_der_decoder_destroy(decoder);
     return AWS_OP_ERR;
 }
 

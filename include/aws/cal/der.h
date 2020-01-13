@@ -20,21 +20,8 @@
 #include <aws/common/array_list.h>
 #include <aws/common/byte_buf.h>
 
-struct aws_der_encoder {
-    struct aws_allocator *allocator;
-    struct aws_byte_buf storage;
-    struct aws_byte_buf *buffer; /* buffer being written to, might be storage, might be a sequence/set buffer */
-    struct aws_array_list stack;
-};
-
-struct aws_der_decoder {
-    struct aws_allocator *allocator;
-    struct aws_array_list tlvs;     /* parsed elements */
-    int tlv_idx;                    /* index to elements after parsing */
-    struct aws_byte_cursor input;   /* input buffer */
-    uint32_t depth;                 /* recursion depth when expanding containers */
-    struct der_tlv *container;      /* currently expanding container */
-};
+struct aws_der_encoder;
+struct aws_der_decoder;
 
 enum aws_der_type {
     /* Primitives */
@@ -72,19 +59,19 @@ AWS_EXTERN_C_BEGIN
 
 /**
  * Initializes a DER encoder
- * @param encoder The encoder to initialize
  * @param allocator The allocator to use for all allocations within the encoder
- * @param capacity The capacity of the encoder scratch buffer (the max size of all encoded TLVs)
+ * @param capacity The initial capacity of the encoder scratch buffer (the max size of all encoded TLVs)
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-AWS_CAL_API int aws_der_encoder_init(struct aws_der_encoder *encoder, struct aws_allocator *allocator, size_t capacity);
+AWS_CAL_API struct aws_der_encoder *aws_der_encoder_new(struct aws_allocator *allocator, size_t capacity);
+
 /**
  * Cleans up a DER encoder
  * @param encoder The encoder to clean up
  *
  * Note that this destroys the encoder buffer, invalidating any references to the contents given via get_contents()
  */
-AWS_CAL_API void aws_der_encoder_clean_up(struct aws_der_encoder *encoder);
+AWS_CAL_API void aws_der_encoder_destroy(struct aws_der_encoder *encoder);
 
 /**
  * Writes an arbitrarily sized integer to the DER stream
@@ -164,13 +151,11 @@ AWS_CAL_API int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, st
 
 /**
  * Initializes an DER decoder
- * @param decoder The decoder to initialize
  * @param allocator The allocator to use
  * @param input The DER formatted buffer to parse
- * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ * @return Initialized decoder, or NULL
  */
-AWS_CAL_API int aws_der_decoder_init(
-    struct aws_der_decoder *decoder,
+AWS_CAL_API struct aws_der_decoder *aws_der_decoder_new(
     struct aws_allocator *allocator,
     struct aws_byte_cursor input);
 
@@ -178,7 +163,7 @@ AWS_CAL_API int aws_der_decoder_init(
  * Cleans up a DER encoder
  * @param decoder The encoder to clean up
  */
-AWS_CAL_API void aws_der_decoder_clean_up(struct aws_der_decoder *decoder);
+AWS_CAL_API void aws_der_decoder_destroy(struct aws_der_decoder *decoder);
 
 /**
  * Allows for iteration over the decoded TLVs.

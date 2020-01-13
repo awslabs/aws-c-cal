@@ -186,15 +186,11 @@ static int s_verify_signature_fn(
     uint8_t temp_signature[MAX_SIGNATURE_LENGTH] = {0};
     struct aws_byte_buf temp_signature_buf = aws_byte_buf_from_empty_array(temp_signature, sizeof(temp_signature));
 
-    struct aws_byte_buf der_encoded_signature = aws_byte_buf_from_array(signature->ptr, signature->len);
+    struct aws_byte_cursor der_encoded_signature = aws_byte_cursor_from_array(signature->ptr, signature->len);
 
     struct aws_der_decoder decoder;
-    if (aws_der_decoder_init(&decoder, key_pair->allocator, &der_encoded_signature)) {
+    if (aws_der_decoder_init(&decoder, key_pair->allocator, der_encoded_signature)) {
         return AWS_OP_ERR;
-    }
-
-    if (aws_der_decoder_parse(&decoder)) {
-        goto error;
     }
 
     if (!aws_der_decoder_next(&decoder) || aws_der_decoder_tlv_type(&decoder) != AWS_DER_SEQUENCE) {
@@ -423,12 +419,8 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     const struct aws_byte_cursor *encoded_keys) {
     struct aws_der_decoder decoder;
 
-    struct aws_byte_buf key_buf = aws_byte_buf_from_array(encoded_keys->ptr, encoded_keys->len);
-    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
-        goto error;
-    }
-
-    if (aws_der_decoder_parse(&decoder)) {
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(encoded_keys->ptr, encoded_keys->len);
+    if (aws_der_decoder_init(&decoder, allocator, key_cur)) {
         goto error;
     }
 

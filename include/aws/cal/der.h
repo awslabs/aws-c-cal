@@ -181,13 +181,6 @@ AWS_CAL_API int aws_der_decoder_init(
 AWS_CAL_API void aws_der_decoder_clean_up(struct aws_der_decoder *decoder);
 
 /**
- * Parses the internal buffer into a TLV or sequence/set of TLVs
- * @param decoder The decoder to parse
- * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
- */
-AWS_CAL_API int aws_der_decoder_parse(struct aws_der_decoder *decoder);
-
-/**
  * Allows for iteration over the decoded TLVs.
  * @param decoder The decoder to iterate over
  * @return true if there is a tlv to read after advancing, false when done

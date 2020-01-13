@@ -324,6 +324,11 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
     return AWS_OP_SUCCESS;
 }
 
+/*
+ * DECODER
+ */
+int s_decoder_parse(struct aws_der_decoder *decoder);
+
 int aws_der_decoder_init(
     struct aws_der_decoder *decoder,
     struct aws_allocator *allocator,
@@ -337,7 +342,7 @@ int aws_der_decoder_init(
         return AWS_OP_ERR;
     }
 
-    return AWS_OP_SUCCESS;
+    return s_decoder_parse(decoder);
 }
 
 void aws_der_decoder_clean_up(struct aws_der_decoder *decoder) {
@@ -387,7 +392,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
     return AWS_OP_SUCCESS;
 }
 
-int aws_der_decoder_parse(struct aws_der_decoder *decoder) {
+int s_decoder_parse(struct aws_der_decoder *decoder) {
     return s_parse_cursor(decoder, decoder->input);
 }
 

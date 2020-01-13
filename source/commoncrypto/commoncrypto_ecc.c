@@ -351,15 +351,10 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     /* now we need to DER decode data */
     struct aws_der_decoder decoder;
-    struct aws_byte_buf key_buf =
+    struct aws_byte_cursor key_cur =
         aws_byte_buf_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
 
-    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
-        goto error;
-    }
-
-    if (aws_der_decoder_parse(&decoder)) {
-        aws_der_decoder_clean_up(&decoder);
+    if (aws_der_decoder_init(&decoder, allocator, key_cur)) {
         goto error;
     }
 
@@ -472,12 +467,8 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     struct aws_der_decoder decoder;
 
-    struct aws_byte_buf key_buf = aws_byte_buf_from_array(encoded_keys->ptr, encoded_keys->len);
-    if (aws_der_decoder_init(&decoder, allocator, &key_buf)) {
-        goto error;
-    }
-
-    if (aws_der_decoder_parse(&decoder)) {
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(encoded_keys->ptr, encoded_keys->len);
+    if (aws_der_decoder_init(&decoder, allocator, key_cur)) {
         goto error;
     }
 

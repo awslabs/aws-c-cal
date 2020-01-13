@@ -206,14 +206,18 @@ static int s_verify_signature_fn(
     /* there will be two coordinates. They need to be concatenated together. */
     struct aws_byte_cursor coordinate;
     AWS_ZERO_STRUCT(coordinate);
-    aws_der_decoder_tlv_integer(decoder, &coordinate);
+    if (!aws_der_decoder_tlv_integer(decoder, &coordinate)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
     aws_byte_buf_append(&temp_signature_buf, &coordinate);
 
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_INTEGER) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
     AWS_ZERO_STRUCT(coordinate);
-    aws_der_decoder_tlv_integer(decoder, &coordinate);
+    if (!aws_der_decoder_tlv_integer(decoder, &coordinate)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
     aws_byte_buf_append(&temp_signature_buf, &coordinate);
 
     aws_der_decoder_destroy(decoder);
@@ -440,14 +444,20 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
 
         if (type == AWS_DER_OBJECT_IDENTIFIER) {
-            aws_der_decoder_tlv_blob(&decoder, &oid);
+            if (aws_der_decoder_tlv_blob(&decoder, &oid)) {
+                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                goto error;
+            }
             continue;
         }
 
         /* you'd think we'd get some type hints on which key this is, but it's not consistent
          * as far as I can tell. */
         if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
-            aws_der_decoder_tlv_string(&decoder, current_part);
+            if (aws_der_decoder_tlv_string(&decoder, current_part)) {
+                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                goto error;
+            }
             current_part = &pair_part_2;
         }
     }

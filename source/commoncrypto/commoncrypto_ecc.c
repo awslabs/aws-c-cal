@@ -374,14 +374,20 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
         enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
 
         if (type == AWS_DER_OBJECT_IDENTIFIER) {
-            aws_der_decoder_tlv_blob(&decoder, &oid);
+            if (aws_der_decoder_tlv_blob(&decoder, &oid)) {
+                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                goto error;
+            }
             continue;
         }
 
         /* you'd think we'd get some type hints on which key this is, but it's not consistent
          * as far as I can tell. */
         if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
-            aws_der_decoder_tlv_string(&decoder, current_part);
+            if (aws_der_decoder_tlv_string(&decoder, current_part)) {
+                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                goto error;
+            }
             current_part = &pair_part_2;
             continue;
         }

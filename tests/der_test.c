@@ -281,7 +281,7 @@ static int s_der_decode_integer(struct aws_allocator *allocator, void *ctx) {
     const size_t decoded_size = AWS_ARRAY_SIZE(s_bigint);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_bigint, encoded_size);
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
 
@@ -304,7 +304,7 @@ static int s_der_decode_boolean(struct aws_allocator *allocator, void *ctx) {
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_true);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_true, encoded_size);
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
     ASSERT_INT_EQUALS(AWS_DER_BOOLEAN, aws_der_decoder_tlv_type(&decoder));
@@ -315,7 +315,7 @@ static int s_der_decode_boolean(struct aws_allocator *allocator, void *ctx) {
     aws_der_decoder_clean_up(&decoder);
 
     buffer = aws_byte_buf_from_array(s_encoded_false, encoded_size);
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
     ASSERT_INT_EQUALS(AWS_DER_BOOLEAN, aws_der_decoder_tlv_type(&decoder));
@@ -333,7 +333,7 @@ static int s_der_decode_null(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_null, AWS_ARRAY_SIZE(s_encoded_null));
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
     ASSERT_INT_EQUALS(AWS_DER_NULL, aws_der_decoder_tlv_type(&decoder));
@@ -351,7 +351,7 @@ static int s_der_decode_bit_string(struct aws_allocator *allocator, void *ctx) {
     const size_t decoded_size = AWS_ARRAY_SIZE(s_bit_string);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_bit_string, encoded_size);
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
 
@@ -373,7 +373,7 @@ static int s_der_decode_octet_string(struct aws_allocator *allocator, void *ctx)
     const size_t decoded_size = AWS_ARRAY_SIZE(s_bit_string);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_octet_string, encoded_size);
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
     ASSERT_TRUE(aws_der_decoder_next(&decoder));
 
@@ -395,7 +395,7 @@ static int s_der_decode_sequence(struct aws_allocator *allocator, void *ctx) {
     const size_t decoded_size = AWS_ARRAY_SIZE(s_encoded_true) + AWS_ARRAY_SIZE(s_encoded_false);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_sequence, encoded_size);
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
 
     /* Verify SEQUENCE */
@@ -431,7 +431,7 @@ static int s_der_decode_set(struct aws_allocator *allocator, void *ctx) {
     const size_t decoded_size = AWS_ARRAY_SIZE(s_encoded_true) + AWS_ARRAY_SIZE(s_encoded_false);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_set, encoded_size);
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
 
     /* Verify SET */
@@ -466,7 +466,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
     const size_t encoded_size = AWS_ARRAY_SIZE(s_encoded_key_pair);
     struct aws_byte_buf buffer = aws_byte_buf_from_array(s_encoded_key_pair, encoded_size);
     struct aws_der_decoder decoder;
-    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, &buffer));
+    ASSERT_SUCCESS(aws_der_decoder_init(&decoder, allocator, aws_byte_cursor_from_buf(&buffer)));
     ASSERT_SUCCESS(aws_der_decoder_parse(&decoder));
 
     /* SEQUENCE */

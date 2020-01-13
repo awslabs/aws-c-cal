@@ -29,11 +29,11 @@ struct aws_der_encoder {
 
 struct aws_der_decoder {
     struct aws_allocator *allocator;
-    struct aws_array_list tlvs;  /* parsed elements */
-    int tlv_idx;                 /* index to elements after parsing */
-    struct aws_byte_buf *buffer; /* input buffer, no ownership */
-    uint32_t depth;              /* recursion depth when expanding containers */
-    struct der_tlv *container;   /* currently expanding container */
+    struct aws_array_list tlvs;     /* parsed elements */
+    int tlv_idx;                    /* index to elements after parsing */
+    struct aws_byte_cursor input;   /* input buffer */
+    uint32_t depth;                 /* recursion depth when expanding containers */
+    struct der_tlv *container;      /* currently expanding container */
 };
 
 enum aws_der_type {
@@ -166,13 +166,13 @@ AWS_CAL_API int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, st
  * Initializes an DER decoder
  * @param decoder The decoder to initialize
  * @param allocator The allocator to use
- * @param buffer The DER formatted buffer to parse
+ * @param input The DER formatted buffer to parse
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
 AWS_CAL_API int aws_der_decoder_init(
     struct aws_der_decoder *decoder,
     struct aws_allocator *allocator,
-    struct aws_byte_buf *buffer);
+    struct aws_byte_cursor input);
 
 /**
  * Cleans up a DER encoder

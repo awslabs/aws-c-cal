@@ -327,9 +327,9 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
 int aws_der_decoder_init(
     struct aws_der_decoder *decoder,
     struct aws_allocator *allocator,
-    struct aws_byte_buf *buffer) {
+    struct aws_byte_cursor input) {
     decoder->allocator = allocator;
-    decoder->buffer = buffer;
+    decoder->input = input;
     decoder->tlv_idx = -1;
     decoder->depth = 0;
     decoder->container = NULL;
@@ -388,8 +388,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
 }
 
 int aws_der_decoder_parse(struct aws_der_decoder *decoder) {
-    struct aws_byte_cursor cur = aws_byte_cursor_from_buf(decoder->buffer);
-    return s_parse_cursor(decoder, cur);
+    return s_parse_cursor(decoder, decoder->input);
 }
 
 bool aws_der_decoder_next(struct aws_der_decoder *decoder) {

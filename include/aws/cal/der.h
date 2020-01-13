@@ -197,22 +197,25 @@ AWS_CAL_API size_t aws_der_decoder_tlv_count(struct aws_der_decoder *decoder);
  * Extracts the current TLV string value (BIT_STRING, OCTET_STRING)
  * @param decoder The decoder to extract from
  * @param string The buffer to store the string into
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-AWS_CAL_API void aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_cursor *string);
+AWS_CAL_API int aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_cursor *string);
 
 /**
  * Extracts the current TLV INTEGER value (INTEGER)
  * @param decoder The decoder to extract from
  * @param integer The buffer to store the integer into
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-AWS_CAL_API void aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_cursor *integer);
+AWS_CAL_API int aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_cursor *integer);
 
 /**
  * Extracts the current TLV BOOLEAN value (BOOLEAN)
  * @param decoder The decoder to extract from
  * @param boolean The boolean to store the value into
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-AWS_CAL_API void aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean);
+AWS_CAL_API int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean);
 
 /**
  * Extracts the current TLV value as a blob
@@ -220,7 +223,7 @@ AWS_CAL_API void aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bo
  * @param blob The buffer to store the value into
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-AWS_CAL_API void aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_cursor *blob);
+AWS_CAL_API int aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_cursor *blob);
 
 AWS_EXTERN_C_END
 

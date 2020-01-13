@@ -15,6 +15,7 @@
 
 #include <aws/cal/der.h>
 
+#include <aws/cal/cal.h>
 #include <aws/common/byte_buf.h>
 
 #ifdef _MSC_VER
@@ -471,27 +472,37 @@ static void s_tlv_to_blob(struct der_tlv *tlv, struct aws_byte_cursor *blob) {
     *blob = aws_byte_cursor_from_array(tlv->value, tlv->length);
 }
 
-void aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_cursor *string) {
+int aws_der_decoder_tlv_string(struct aws_der_decoder *decoder, struct aws_byte_cursor *string) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_OCTET_STRING || tlv.tag == AWS_DER_BIT_STRING);
+    if (tlv.tag != AWS_DER_OCTET_STRING && tlv.tag != AWS_DER_BIT_STRING) {
+        return aws_raise_error(AWS_ERROR_CAL_MISMATCHED_DER_TYPE);
+    }
     s_tlv_to_blob(&tlv, string);
+    return AWS_OP_SUCCESS;
 }
 
-void aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_cursor *integer) {
+int aws_der_decoder_tlv_integer(struct aws_der_decoder *decoder, struct aws_byte_cursor *integer) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_INTEGER);
+    if (tlv.tag != AWS_DER_INTEGER) {
+        return aws_raise_error(AWS_ERROR_CAL_MISMATCHED_DER_TYPE);
+    }
     s_tlv_to_blob(&tlv, integer);
+    return AWS_OP_SUCCESS;
 }
 
-void aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) {
+int aws_der_decoder_tlv_boolean(struct aws_der_decoder *decoder, bool *boolean) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
-    AWS_FATAL_ASSERT(tlv.tag == AWS_DER_BOOLEAN);
+    if (tlv.tag != AWS_DER_BOOLEAN) {
+        return aws_raise_error(AWS_ERROR_CAL_MISMATCHED_DER_TYPE);
+    }
     *boolean = *tlv.value != 0;
+    return AWS_OP_SUCCESS;
 }
 
-void aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_cursor *blob) {
+int aws_der_decoder_tlv_blob(struct aws_der_decoder *decoder, struct aws_byte_cursor *blob) {
     struct der_tlv tlv = s_decoder_tlv(decoder);
     s_tlv_to_blob(&tlv, blob);
+    return AWS_OP_SUCCESS;
 }
 
 #ifdef _MSC_VER

@@ -39,8 +39,7 @@ static struct aws_error_info s_errors[] = {
         "An ASN.1 DER decoding operation failed on malformed input."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_MISMATCHED_DER_TYPE,
-        "A DER type was requested that does not match the current element during decoding")
-};
+        "An invalid DER type was requested during encoding/decoding")};
 
 static struct aws_error_info_list s_list = {
     .error_list = s_errors,

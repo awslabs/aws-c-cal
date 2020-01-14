@@ -32,11 +32,11 @@ struct aws_der_encoder {
 
 struct aws_der_decoder {
     struct aws_allocator *allocator;
-    struct aws_array_list tlvs;     /* parsed elements */
-    int tlv_idx;                    /* index to elements after parsing */
-    struct aws_byte_cursor input;   /* input buffer */
-    uint32_t depth;                 /* recursion depth when expanding containers */
-    struct der_tlv *container;      /* currently expanding container */
+    struct aws_array_list tlvs;   /* parsed elements */
+    int tlv_idx;                  /* index to elements after parsing */
+    struct aws_byte_cursor input; /* input buffer */
+    uint32_t depth;               /* recursion depth when expanding containers */
+    struct der_tlv *container;    /* currently expanding container */
 };
 
 struct der_tlv {
@@ -75,23 +75,25 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
      * the length */
     if (len_bytes & 0x80) {
         len_bytes &= 0x7f;
-        AWS_FATAL_ASSERT(len_bytes <= 4 && "Only 32-bit sizes of DER TLV elements are supported");
-        if (len_bytes == 1) {
-            if (!aws_byte_cursor_read_u8(cur, (uint8_t *)&len)) {
-                return AWS_OP_ERR;
-            }
-        } else if (len_bytes == 2) {
-            if (!aws_byte_cursor_read_be16(cur, (uint16_t *)&len)) {
-                return AWS_OP_ERR;
-            }
-        } else if (len_bytes == 4) {
-            if (!aws_byte_cursor_read_be32(cur, &len)) {
-                return AWS_OP_ERR;
-            }
-        } else {
-            AWS_FATAL_ASSERT(len_bytes == 1 || len_bytes == 2 || len_bytes == 4);
+        switch (len_bytes) {
+            case 1:
+                if (!aws_byte_cursor_read_u8(cur, (uint8_t *)&len)) {
+                    return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                }
+                break;
+            case 2:
+                if (!aws_byte_cursor_read_be16(cur, (uint16_t *)&len)) {
+                    return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                }
+                break;
+            case 4:
+                if (!aws_byte_cursor_read_be32(cur, &len)) {
+                    return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                }
+                break;
+            default:
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
-
     } else {
         len = len_bytes;
     }
@@ -120,36 +122,36 @@ static uint32_t s_encoded_len(struct der_tlv *tlv) {
 
 static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
     if (!aws_byte_buf_write_u8(buf, tlv->tag)) {
-        return AWS_OP_ERR;
+        return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
     }
     uint32_t len = s_encoded_len(tlv);
     if (len > UINT16_MAX) {
         /* write the high bit plus 4 byte length */
         if (!aws_byte_buf_write_u8(buf, 0x84)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
         }
         if (!aws_byte_buf_write_be32(buf, len)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
         }
     } else if (len > UINT8_MAX) {
         /* write the high bit plus 2 byte length */
         if (!aws_byte_buf_write_u8(buf, 0x82)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
         }
         if (!aws_byte_buf_write_be16(buf, (uint16_t)len)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
         }
     } else if (len > INT8_MAX) {
         /* Write the high bit + 1 byte length */
         if (!aws_byte_buf_write_u8(buf, 0x81)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
         }
         if (!aws_byte_buf_write_u8(buf, (uint8_t)len)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
         }
     } else {
         if (!aws_byte_buf_write_u8(buf, (uint8_t)len)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
         }
     }
 
@@ -159,22 +161,22 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
             uint8_t first_byte = tlv->value[0];
             if (first_byte & 0x80) {
                 if (!aws_byte_buf_write_u8(buf, 0)) {
-                    return AWS_OP_ERR;
+                    return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
                 }
             }
             if (!aws_byte_buf_write(buf, tlv->value, tlv->length)) {
-                return AWS_OP_ERR;
+                return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
             }
         } break;
         case AWS_DER_BOOLEAN:
             if (!aws_byte_buf_write_u8(buf, (*tlv->value) ? 0xff : 0x00)) {
-                return AWS_OP_ERR;
+                return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
             }
             break;
         case AWS_DER_BIT_STRING:
             /* Write that there are 0 skipped bits */
             if (!aws_byte_buf_write_u8(buf, 0)) {
-                return AWS_OP_ERR;
+                return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
             }
             /* FALLTHROUGH */
         case AWS_DER_BMPString:
@@ -186,15 +188,14 @@ static int s_der_write_tlv(struct der_tlv *tlv, struct aws_byte_buf *buf) {
         case AWS_DER_SEQUENCE:
         case AWS_DER_SET:
             if (!aws_byte_buf_write(buf, tlv->value, tlv->length)) {
-                return AWS_OP_ERR;
+                return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
             }
             break;
         case AWS_DER_NULL:
             /* No value bytes */
             break;
         default:
-            AWS_FATAL_ASSERT(!"TLV tag is not a supported encoding type");
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_CAL_MISMATCHED_DER_TYPE);
     }
 
     return AWS_OP_SUCCESS;
@@ -358,9 +359,7 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
  */
 int s_decoder_parse(struct aws_der_decoder *decoder);
 
-struct aws_der_decoder *aws_der_decoder_new(
-    struct aws_allocator *allocator,
-    struct aws_byte_cursor input) {
+struct aws_der_decoder *aws_der_decoder_new(struct aws_allocator *allocator, struct aws_byte_cursor input) {
     struct aws_der_decoder *decoder = aws_mem_calloc(allocator, 1, sizeof(struct aws_der_decoder));
     AWS_FATAL_ASSERT(decoder);
 
@@ -396,19 +395,21 @@ void aws_der_decoder_destroy(struct aws_der_decoder *decoder) {
 int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) {
     if (++decoder->depth > 16) {
         /* stream contains too many nested containers, probably malformed/attack */
-        return AWS_OP_ERR;
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     while (cur.len) {
         struct der_tlv tlv = {0};
         if (s_der_read_tlv(&cur, &tlv)) {
-            return AWS_OP_ERR;
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
         /* skip trailing newlines in the stream after any TLV */
         while (cur.len && *cur.ptr == '\n') {
             aws_byte_cursor_advance(&cur, 1);
         }
-        aws_array_list_push_back(&decoder->tlvs, &tlv);
+        if (aws_array_list_push_back(&decoder->tlvs, &tlv)) {
+            return aws_raise_error(AWS_ERROR_INVALID_STATE);
+        }
         if (decoder->container) {
             decoder->container->count++;
         }
@@ -420,12 +421,12 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
             decoder->container = container;
 
             if (!container) {
-                return AWS_OP_ERR;
+                return aws_raise_error(AWS_ERROR_INVALID_STATE);
             }
 
             struct aws_byte_cursor container_cur = aws_byte_cursor_from_array(container->value, container->length);
             if (s_parse_cursor(decoder, container_cur)) {
-                return AWS_OP_ERR;
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }
             decoder->container = outer_container; /* restore the container stack */
         }

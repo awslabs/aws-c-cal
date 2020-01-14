@@ -135,7 +135,8 @@ static int s_sign_message_fn(
     size_t coordinate_len = temp_signature_buf.len / 2;
 
     /* okay. Windows doesn't DER encode this to ASN.1, so we need to do it manually. */
-    struct aws_der_encoder *encoder = aws_der_encoder_new(key_pair->allocator, signature_output->capacity - signature_output->len);
+    struct aws_der_encoder *encoder =
+        aws_der_encoder_new(key_pair->allocator, signature_output->capacity - signature_output->len);
     if (!encoder) {
         return AWS_OP_ERR;
     }

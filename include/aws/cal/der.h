@@ -155,9 +155,7 @@ AWS_CAL_API int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, st
  * @param input The DER formatted buffer to parse
  * @return Initialized decoder, or NULL
  */
-AWS_CAL_API struct aws_der_decoder *aws_der_decoder_new(
-    struct aws_allocator *allocator,
-    struct aws_byte_cursor input);
+AWS_CAL_API struct aws_der_decoder *aws_der_decoder_new(struct aws_allocator *allocator, struct aws_byte_cursor input);
 
 /**
  * Cleans up a DER encoder

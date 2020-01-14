@@ -447,7 +447,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     }
 
     memset(cc_key_pair->key_pair.key_buf.buffer, 0, cc_key_pair->key_pair.key_buf.len);
-    aws_byte_buf_write_u8(&cc_key_pair->key_pair.key_buf, 0x04);
+    aws_byte_buf_write_u8(&cc_key_pair->key_pair.key_buf, s_preamble);
     aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_x);
     aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_y);
     aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &priv_d);

@@ -29,11 +29,10 @@
 
 static BCRYPT_ALG_HANDLE s_ecdsa_p256_alg = NULL;
 static BCRYPT_ALG_HANDLE s_ecdsa_p384_alg = NULL;
-static BCRYPT_ALG_HANDLE s_ecdsa_p521_alg = NULL;
 
-/* size of the P521 curve's signatures. This is the largest we support at the moment.
+/* size of the P384 curve's signatures. This is the largest we support at the moment.
    Since msvc doesn't support variable length arrays, we need to handle this with a macro. */
-#define MAX_SIGNATURE_LENGTH (68 * 2)
+#define MAX_SIGNATURE_LENGTH (48 * 2)
 
 static aws_thread_once s_ecdsa_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
 
@@ -47,9 +46,6 @@ static void s_load_alg_handle(void *user_data) {
     status = BCryptOpenAlgorithmProvider(&s_ecdsa_p384_alg, BCRYPT_ECDSA_P384_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
     AWS_ASSERT(s_ecdsa_p384_alg && "BCryptOpenAlgorithmProvider() failed");
 
-    status = BCryptOpenAlgorithmProvider(&s_ecdsa_p521_alg, BCRYPT_ECDSA_P521_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
-    AWS_ASSERT(s_ecdsa_p521_alg && "BCryptOpenAlgorithmProvider() failed");
-
     (void)status;
 }
 
@@ -58,27 +54,12 @@ struct bcrypt_ecc_key_pair {
     BCRYPT_KEY_HANDLE key_handle;
 };
 
-static size_t s_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name curve_name) {
-    switch (curve_name) {
-        case AWS_CAL_ECDSA_P256:
-            return 32;
-        case AWS_CAL_ECDSA_P384:
-            return 48;
-        case AWS_CAL_ECDSA_P521:
-            return 68;
-        default:
-            return 0;
-    }
-}
-
 static BCRYPT_ALG_HANDLE s_key_alg_handle_from_curve_name(enum aws_ecc_curve_name curve_name) {
     switch (curve_name) {
         case AWS_CAL_ECDSA_P256:
             return s_ecdsa_p256_alg;
         case AWS_CAL_ECDSA_P384:
             return s_ecdsa_p384_alg;
-        case AWS_CAL_ECDSA_P521:
-            return s_ecdsa_p521_alg;
         default:
             return 0;
     }
@@ -90,8 +71,6 @@ static ULONG s_get_magic_from_curve_name(enum aws_ecc_curve_name curve_name, boo
             return private_key ? BCRYPT_ECDSA_PRIVATE_P256_MAGIC : BCRYPT_ECDSA_PUBLIC_P256_MAGIC;
         case AWS_CAL_ECDSA_P384:
             return private_key ? BCRYPT_ECDSA_PRIVATE_P384_MAGIC : BCRYPT_ECDSA_PUBLIC_P384_MAGIC;
-        case AWS_CAL_ECDSA_P521:
-            return private_key ? BCRYPT_ECDSA_PRIVATE_P521_MAGIC : BCRYPT_ECDSA_PUBLIC_P521_MAGIC;
         default:
             return 0;
     }
@@ -112,7 +91,7 @@ static void s_destroy_key(struct aws_ecc_key_pair *key_pair) {
 
 static size_t s_signature_length(const struct aws_ecc_key_pair *key_pair) {
     static size_t s_der_overhead = 8;
-    return s_der_overhead + s_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2;
+    return s_der_overhead + aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2;
 }
 
 static int s_sign_message(

@@ -13,7 +13,7 @@
  * permissions and limitations under the License.
  */
 
-#include <aws/cal/der.h>
+#include <aws/cal/private/der.h>
 
 #include <aws/testing/aws_test_harness.h>
 

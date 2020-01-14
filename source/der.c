@@ -13,7 +13,7 @@
  * permissions and limitations under the License.
  */
 
-#include <aws/cal/der.h>
+#include <aws/cal/private/der.h>
 
 #include <aws/cal/cal.h>
 #include <aws/common/byte_buf.h>

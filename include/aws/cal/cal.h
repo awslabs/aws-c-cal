@@ -26,6 +26,7 @@ enum aws_cal_errors {
     AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER,
     AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED,
     AWS_ERROR_CAL_MISMATCHED_DER_TYPE,
+    AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM,
 };
 
 AWS_CAL_API void aws_cal_library_init(struct aws_allocator *allocator);

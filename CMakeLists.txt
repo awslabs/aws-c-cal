@@ -66,7 +66,7 @@ if (WIN32)
     if (MSVC)
         source_group("Header Files\\aws\\cal" FILES ${AWS_CAL_HEADERS})
         source_group("Source Files" FILES ${AWS_CAL_SRC})
-        source_group("Source Files\\bcrypt" FILES ${AWS_CAL_OS_SRC})
+        source_group("Source Files\\windows" FILES ${AWS_CAL_OS_SRC})
     endif ()
 
 elseif (APPLE)

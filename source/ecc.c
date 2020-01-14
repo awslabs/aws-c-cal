@@ -79,7 +79,9 @@ int aws_ecc_curve_name_from_oid(struct aws_byte_cursor *oid, enum aws_ecc_curve_
 }
 
 int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_byte_cursor *oid) {
-    AWS_ASSERT(curve_name <= AWS_CAL_ECDSA_P521);
+    if (curve_name < AWS_CAL_ECDSA_P256 || curve_name > AWS_CAL_ECDSA_P521) {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    }
     *oid = *s_ecc_curve_oids[curve_name];
     return AWS_OP_SUCCESS;
 }

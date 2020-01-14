@@ -32,14 +32,18 @@ static struct aws_error_info s_errors[] = {
         "A key length was used for an algorithm that needs a different key length"),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER,
-        "An ASN.1 OID was encountered that wasn't expected or understood. Most likely, you're using an unsupported "
-        "algorithm."),
+        "An ASN.1 OID was encountered that wasn't expected or understood. Most likely, an unsupported algorithm was "
+        "encountered."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED,
         "An ASN.1 DER decoding operation failed on malformed input."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_MISMATCHED_DER_TYPE,
-        "An invalid DER type was requested during encoding/decoding")};
+        "An invalid DER type was requested during encoding/decoding"),
+    AWS_DEFINE_ERROR_INFO_CAL(
+        AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM,
+        "The specified algorithim is unsupported on this platform."),
+};
 
 static struct aws_error_info_list s_list = {
     .error_list = s_errors,

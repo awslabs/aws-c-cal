@@ -17,6 +17,7 @@
 
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
+#include <aws/cal/private/ecc.h>
 
 #include <aws/common/thread.h>
 
@@ -41,13 +42,13 @@ static void s_load_alg_handle(void *user_data) {
     /* this function is incredibly slow, LET IT LEAK*/
     NTSTATUS status =
         BCryptOpenAlgorithmProvider(&s_ecdsa_p256_alg, BCRYPT_ECDSA_P256_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
-    AWS_ASSERT(s_ecdsa_p256_alg);
+    AWS_ASSERT(s_ecdsa_p256_alg && "BCryptOpenAlgorithmProvider() failed");
 
     status = BCryptOpenAlgorithmProvider(&s_ecdsa_p384_alg, BCRYPT_ECDSA_P384_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
-    AWS_ASSERT(s_ecdsa_p384_alg);
+    AWS_ASSERT(s_ecdsa_p384_alg && "BCryptOpenAlgorithmProvider() failed");
 
     status = BCryptOpenAlgorithmProvider(&s_ecdsa_p521_alg, BCRYPT_ECDSA_P521_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
-    AWS_ASSERT(s_ecdsa_p521_alg);
+    AWS_ASSERT(s_ecdsa_p521_alg && "BCryptOpenAlgorithmProvider() failed");
 
     (void)status;
 }
@@ -96,22 +97,35 @@ static ULONG s_get_magic_from_curve_name(enum aws_ecc_curve_name curve_name, boo
     }
 }
 
-static void s_destroy_key_fn(struct aws_ecc_key_pair *key_pair) {
-    struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
+static void s_destroy_key(struct aws_ecc_key_pair *key_pair) {
+    if (key_pair) {
+        struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
 
-    if (key_impl->key_handle) {
-        BCryptDestroyKey(key_impl->key_handle);
+        if (key_impl->key_handle) {
+            BCryptDestroyKey(key_impl->key_handle);
+        }
+
+        aws_byte_buf_clean_up_secure(&key_pair->key_buf);
+        aws_mem_release(key_pair->allocator, key_impl);
     }
-
-    aws_byte_buf_clean_up_secure(&key_pair->key_buf);
-    aws_mem_release(key_pair->allocator, key_impl);
 }
 
-static int s_sign_message_fn(
+static size_t s_signature_length(const struct aws_ecc_key_pair *key_pair) {
+    static size_t s_der_overhead = 8;
+    return s_der_overhead + s_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2;
+}
+
+static int s_sign_message(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     struct aws_byte_buf *signature_output) {
     struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
+
+    size_t output_buf_space = signature_output->capacity - signature_output->len;
+
+    if (output_buf_space < s_signature_length(key_pair)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    }
 
     uint8_t temp_signature[MAX_SIGNATURE_LENGTH] = {0};
     struct aws_byte_buf temp_signature_buf = aws_byte_buf_from_empty_array(temp_signature, sizeof(temp_signature));
@@ -152,12 +166,12 @@ static int s_sign_message_fn(
     AWS_ZERO_STRUCT(signature_out_cur);
     aws_der_encoder_get_contents(encoder, &signature_out_cur);
     aws_byte_buf_append(signature_output, &signature_out_cur);
-    aws_der_encoder_clean_up(encoder);
+    aws_der_encoder_destroy(encoder);
 
     return AWS_OP_SUCCESS;
 }
 
-static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
+static int s_derive_public_key(struct aws_ecc_key_pair *key_pair) {
     struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
 
     ULONG result = 0;
@@ -171,12 +185,15 @@ static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
         0);
     key_pair->key_buf.len = result;
     (void)result;
-    (void)status;
+
+    if (status) {
+        return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
+    }
 
     return AWS_OP_SUCCESS;
 }
 
-static int s_verify_signature_fn(
+static int s_verify_signature(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     const struct aws_byte_cursor *signature) {
@@ -207,19 +224,28 @@ static int s_verify_signature_fn(
     /* there will be two coordinates. They need to be concatenated together. */
     struct aws_byte_cursor coordinate;
     AWS_ZERO_STRUCT(coordinate);
-    if (!aws_der_decoder_tlv_integer(decoder, &coordinate)) {
-        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    if (aws_der_decoder_tlv_integer(decoder, &coordinate)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto error;
     }
-    aws_byte_buf_append(&temp_signature_buf, &coordinate);
+
+    if (aws_byte_buf_append(&temp_signature_buf, &coordinate)) {
+        goto error;
+    }
 
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_INTEGER) {
-        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto error;
     }
     AWS_ZERO_STRUCT(coordinate);
-    if (!aws_der_decoder_tlv_integer(decoder, &coordinate)) {
-        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    if (aws_der_decoder_tlv_integer(decoder, &coordinate)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto error;
     }
-    aws_byte_buf_append(&temp_signature_buf, &coordinate);
+
+    if (aws_byte_buf_append(&temp_signature_buf, &coordinate)) {
+        goto error;
+    }
 
     aws_der_decoder_destroy(decoder);
 
@@ -236,29 +262,26 @@ static int s_verify_signature_fn(
     return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 
 error:
-    aws_der_decoder_destroy(decoder);
+    if (decoder) {
+        aws_der_decoder_destroy(decoder);
+    }
     return AWS_OP_ERR;
 }
 
-static size_t s_signature_length_fn(const struct aws_ecc_key_pair *key_pair) {
-    static size_t s_der_overhead = 8;
-    return s_der_overhead + s_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2;
-}
-
 static struct aws_ecc_key_pair_vtable s_vtable = {
-    .destroy_fn = s_destroy_key_fn,
-    .derive_pub_key_fn = s_derive_public_key_fn,
-    .sign_message_fn = s_sign_message_fn,
-    .verify_signature_fn = s_verify_signature_fn,
-    .signature_length_fn = s_signature_length_fn,
+    .destroy = s_destroy_key,
+    .derive_pub_key = s_derive_public_key,
+    .sign_message = s_sign_message,
+    .verify_signature = s_verify_signature,
+    .signature_length = s_signature_length,
 };
 
 static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
-    const struct aws_byte_cursor *pub_x,
-    const struct aws_byte_cursor *pub_y,
-    const struct aws_byte_cursor *priv_key) {
+    struct aws_byte_cursor pub_x,
+    struct aws_byte_cursor pub_y,
+    struct aws_byte_cursor priv_key) {
 
     aws_thread_call_once(&s_ecdsa_thread_once, s_load_alg_handle, NULL);
 
@@ -280,8 +303,8 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
         goto error;
     }
 
-    if ((pub_x && pub_x->len != s_key_coordinate_size) || (pub_y && pub_y->len != s_key_coordinate_size) ||
-        (priv_key && priv_key->len != s_key_coordinate_size)) {
+    if ((pub_x.ptr && pub_x.len != s_key_coordinate_size) || (pub_y.ptr && pub_y.len != s_key_coordinate_size) ||
+        (priv_key.ptr && priv_key.len != s_key_coordinate_size)) {
         aws_raise_error(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
         goto error;
     }
@@ -296,7 +319,7 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
 
     BCRYPT_ECCKEY_BLOB key_blob;
     AWS_ZERO_STRUCT(key_blob);
-    key_blob.dwMagic = s_get_magic_from_curve_name(curve_name, priv_key && priv_key->len);
+    key_blob.dwMagic = s_get_magic_from_curve_name(curve_name, priv_key.ptr && priv_key.len);
     key_blob.cbKey = (ULONG)s_key_coordinate_size;
 
     struct aws_byte_cursor header = aws_byte_cursor_from_array(&key_blob, sizeof(key_blob));
@@ -304,17 +327,17 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
 
     LPCWSTR blob_type = BCRYPT_ECCPUBLIC_BLOB;
     ULONG flags = 0;
-    if (pub_x && pub_y) {
-        aws_byte_buf_append(&key_impl->key_pair.key_buf, pub_x);
-        aws_byte_buf_append(&key_impl->key_pair.key_buf, pub_y);
+    if (pub_x.ptr && pub_y.ptr) {
+        aws_byte_buf_append(&key_impl->key_pair.key_buf, &pub_x);
+        aws_byte_buf_append(&key_impl->key_pair.key_buf, &pub_y);
     } else {
         key_impl->key_pair.key_buf.len += s_key_coordinate_size * 2;
         flags = BCRYPT_NO_KEY_VALIDATION;
     }
 
-    if (priv_key) {
+    if (priv_key.ptr) {
         blob_type = BCRYPT_ECCPRIVATE_BLOB;
-        aws_byte_buf_append(&key_impl->key_pair.key_buf, priv_key);
+        aws_byte_buf_append(&key_impl->key_pair.key_buf, &priv_key);
     }
 
     key_impl->key_pair.pub_x.buffer = key_impl->key_pair.key_buf.buffer + sizeof(key_blob);
@@ -336,12 +359,15 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
         (ULONG)key_impl->key_pair.key_buf.len,
         flags);
 
-    (void)status;
+    if (status) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto error;
+    }
 
     return &key_impl->key_pair;
 
 error:
-    s_destroy_key_fn(&key_impl->key_pair);
+    s_destroy_key(&key_impl->key_pair);
     return NULL;
 }
 
@@ -350,7 +376,9 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key) {
 
-    return s_alloc_pair_and_init_buffers(allocator, curve_name, NULL, NULL, priv_key);
+    struct aws_byte_cursor empty;
+    AWS_ZERO_STRUCT(empty);
+    return s_alloc_pair_and_init_buffers(allocator, curve_name, empty, empty, *priv_key);
 }
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
@@ -359,7 +387,9 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     const struct aws_byte_cursor *public_key_x,
     const struct aws_byte_cursor *public_key_y) {
 
-    return s_alloc_pair_and_init_buffers(allocator, curve_name, public_key_x, public_key_y, NULL);
+    struct aws_byte_cursor empty;
+    AWS_ZERO_STRUCT(empty);
+    return s_alloc_pair_and_init_buffers(allocator, curve_name, *public_key_x, *public_key_y, empty);
 }
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
@@ -389,8 +419,19 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     ULONG key_bit_length = (ULONG)key_coordinate_size * 8;
     NTSTATUS status = BCryptGenerateKeyPair(alg_handle, &key_impl->key_handle, key_bit_length, 0);
+
+    if (status) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto error;
+    }
+
     status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);
-    (status);
+
+    if (status) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto error;
+    }
+
     size_t total_buffer_size = key_coordinate_size * 3 + sizeof(BCRYPT_ECCKEY_BLOB);
 
     if (aws_byte_buf_init(&key_impl->key_pair.key_buf, allocator, total_buffer_size)) {
@@ -408,121 +449,43 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     key_impl->key_pair.priv_d.buffer = key_impl->key_pair.pub_y.buffer + key_coordinate_size;
     key_impl->key_pair.priv_d.len = key_impl->key_pair.priv_d.capacity = key_coordinate_size;
 
-    if (s_derive_public_key_fn(&key_impl->key_pair)) {
+    if (s_derive_public_key(&key_impl->key_pair)) {
         goto error;
     }
 
     return &key_impl->key_pair;
 
 error:
-    s_destroy_key_fn(&key_impl->key_pair);
+    s_destroy_key(&key_impl->key_pair);
     return NULL;
 }
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys) {
-    struct aws_der_decoder decoder;
-
-    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(encoded_keys->ptr, encoded_keys->len);
-    if (aws_der_decoder_init(&decoder, allocator, key_cur)) {
-        goto error;
-    }
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, *encoded_keys);
 
     /* we could have private key or a public key, or a full pair. */
-    struct aws_byte_cursor pair_part_1;
-    AWS_ZERO_STRUCT(pair_part_1);
-    struct aws_byte_cursor pair_part_2;
-    AWS_ZERO_STRUCT(pair_part_2);
-    struct aws_byte_cursor oid;
-    AWS_ZERO_STRUCT(oid);
+    struct aws_byte_cursor pub_x;
+    AWS_ZERO_STRUCT(pub_x);
+    struct aws_byte_cursor pub_y;
+    AWS_ZERO_STRUCT(pub_y);
+    struct aws_byte_cursor priv_d;
+    AWS_ZERO_STRUCT(priv_d);
 
-    /* work with this pointer and move it to the next after using it. We need
-     * to know which curve we're dealing with before we can figure out which is which. */
-    struct aws_byte_cursor *current_part = &pair_part_1;
-
-    while (aws_der_decoder_next(&decoder)) {
-        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
-
-        if (type == AWS_DER_OBJECT_IDENTIFIER) {
-            if (aws_der_decoder_tlv_blob(&decoder, &oid)) {
-                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-                goto error;
-            }
-            continue;
-        }
-
-        /* you'd think we'd get some type hints on which key this is, but it's not consistent
-         * as far as I can tell. */
-        if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
-            if (aws_der_decoder_tlv_string(&decoder, current_part)) {
-                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-                goto error;
-            }
-            current_part = &pair_part_2;
-        }
-    }
-
-    if (!(oid.ptr && oid.len)) {
-        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        goto error;
-    }
-
-    /* we only know about 3 curves at the moment, it had better be one of those. */
     enum aws_ecc_curve_name curve_name;
-    if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+    if (aws_der_decoder_load_ecc_key_pair(decoder, &pub_x, &pub_y, &priv_d, &curve_name)) {
         goto error;
-    }
-
-    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
-
-    struct aws_byte_cursor *private_key = NULL;
-    struct aws_byte_cursor *public_key = NULL;
-
-    size_t public_key_blob_size = key_coordinate_size * 2 + 1;
-
-    if (pair_part_1.ptr && pair_part_1.len) {
-        if (pair_part_1.len == key_coordinate_size) {
-            private_key = &pair_part_1;
-        } else if (pair_part_1.len == public_key_blob_size) {
-            public_key = &pair_part_1;
-        }
-    }
-
-    if (pair_part_2.ptr && pair_part_2.len) {
-        if (pair_part_2.len == key_coordinate_size) {
-            private_key = &pair_part_2;
-        } else if (pair_part_2.len == public_key_blob_size) {
-            public_key = &pair_part_2;
-        }
-    }
-
-    if (!private_key && !public_key) {
-        aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
-        goto error;
-    }
-
-    struct aws_byte_cursor pub_x_cur;
-    struct aws_byte_cursor pub_y_cur;
-    struct aws_byte_cursor *pub_x = NULL;
-    struct aws_byte_cursor *pub_y = NULL;
-
-    if (public_key) {
-        aws_byte_cursor_advance(public_key, 1);
-        pub_x_cur = *public_key;
-        pub_x_cur.len = key_coordinate_size;
-        pub_y_cur.ptr = public_key->ptr + key_coordinate_size;
-        pub_y_cur.len = key_coordinate_size;
-        pub_x = &pub_x_cur;
-        pub_y = &pub_y_cur;
     }
 
     /* now that we have the buffers, we can just use the normal code path. */
-    struct aws_ecc_key_pair *key_pair = s_alloc_pair_and_init_buffers(allocator, curve_name, pub_x, pub_y, private_key);
-    aws_der_decoder_clean_up(&decoder);
+    struct aws_ecc_key_pair *key_pair = s_alloc_pair_and_init_buffers(allocator, curve_name, pub_x, pub_y, priv_d);
+    aws_der_decoder_destroy(decoder);
 
     return key_pair;
 error:
-    aws_der_decoder_clean_up(&decoder);
+    if (decoder) {
+        aws_der_decoder_destroy(decoder);
+    }
     return NULL;
 }

@@ -174,6 +174,12 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key) {
 
+    size_t key_length = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
+    if (priv_key->len != key_length) {
+        aws_raise_error(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
+        return NULL;
+    }
+
     struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
 
     key_impl->ec_key = EC_KEY_new_by_curve_name(s_curve_name_to_nid(curve_name));
@@ -184,9 +190,13 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.priv_d, allocator, *priv_key);
 
     BIGNUM *priv_key_num = BN_bin2bn(key_impl->key_pair.priv_d.buffer, key_impl->key_pair.priv_d.len, NULL);
-    EC_KEY_set_private_key(key_impl->ec_key, priv_key_num);
+    if (!EC_KEY_set_private_key(key_impl->ec_key, priv_key_num)) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        BN_free(priv_key_num);
+        s_key_pair_destroy(&key_impl->key_pair);
+        return NULL;
+    }
     BN_free(priv_key_num);
-
     return &key_impl->key_pair;
 }
 

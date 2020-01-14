@@ -140,7 +140,7 @@ size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name 
         case AWS_CAL_ECDSA_P384:
             return 48;
         case AWS_CAL_ECDSA_P521:
-            return 68;
+            return 66;
         default:
             return 0;
     }

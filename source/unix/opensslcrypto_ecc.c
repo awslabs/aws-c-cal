@@ -34,8 +34,6 @@ static int s_curve_name_to_nid(enum aws_ecc_curve_name curve_name) {
             return NID_X9_62_prime256v1;
         case AWS_CAL_ECDSA_P384:
             return NID_secp384r1;
-        case AWS_CAL_ECDSA_P521:
-            return NID_secp521r1;
     }
 
     AWS_FATAL_ASSERT(!"Unsupported elliptic curve name");

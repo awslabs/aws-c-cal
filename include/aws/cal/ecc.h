@@ -22,7 +22,6 @@
 enum aws_ecc_curve_name {
     AWS_CAL_ECDSA_P256,
     AWS_CAL_ECDSA_P384,
-    AWS_CAL_ECDSA_P521,
 };
 
 struct aws_ecc_key_pair;

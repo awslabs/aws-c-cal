@@ -44,19 +44,9 @@ static uint8_t s_p384_oid[] = {
 };
 STATIC_INIT_BYTE_CURSOR(s_p384_oid, ecc_p384_oid)
 
-static uint8_t s_p521_oid[] = {
-    0x2B,
-    0x81,
-    0x04,
-    0x00,
-    0x23,
-};
-STATIC_INIT_BYTE_CURSOR(s_p521_oid, ecc_p521_oid)
-
 static struct aws_byte_cursor *s_ecc_curve_oids[] = {
     [AWS_CAL_ECDSA_P256] = &s_ecc_p256_oid,
     [AWS_CAL_ECDSA_P384] = &s_ecc_p384_oid,
-    [AWS_CAL_ECDSA_P521] = &s_ecc_p521_oid,
 };
 
 int aws_ecc_curve_name_from_oid(struct aws_byte_cursor *oid, enum aws_ecc_curve_name *curve_name) {
@@ -70,16 +60,11 @@ int aws_ecc_curve_name_from_oid(struct aws_byte_cursor *oid, enum aws_ecc_curve_
         return AWS_OP_SUCCESS;
     }
 
-    if (aws_byte_cursor_eq(oid, &s_ecc_p521_oid)) {
-        *curve_name = AWS_CAL_ECDSA_P521;
-        return AWS_OP_SUCCESS;
-    }
-
     return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
 }
 
 int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_byte_cursor *oid) {
-    if (curve_name < AWS_CAL_ECDSA_P256 || curve_name > AWS_CAL_ECDSA_P521) {
+    if (curve_name < AWS_CAL_ECDSA_P256 || curve_name > AWS_CAL_ECDSA_P384) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
     *oid = *s_ecc_curve_oids[curve_name];
@@ -139,8 +124,6 @@ size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name 
             return 32;
         case AWS_CAL_ECDSA_P384:
             return 48;
-        case AWS_CAL_ECDSA_P521:
-            return 66;
         default:
             return 0;
     }

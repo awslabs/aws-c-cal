@@ -58,7 +58,7 @@ if (WIN32)
 
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/bcrypt/*.c"
+            "source/windows/*.c"
         )
         set(PLATFORM_LIBS BCrypt)
     endif()
@@ -72,7 +72,7 @@ if (WIN32)
 elseif (APPLE)
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-        "source/commoncrypto/*.c"
+        "source/darwin/*.c"
         )
 
         find_library(SECURITY_LIB Security)
@@ -85,7 +85,7 @@ elseif (APPLE)
 else ()
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/opensslcrypto/*.c"
+            "source/unix/*.c"
         )
         find_package(LibCryptoCAL REQUIRED)
         set(PLATFORM_LIBS LibCrypto::Crypto dl)

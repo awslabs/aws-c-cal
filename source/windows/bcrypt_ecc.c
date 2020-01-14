@@ -16,7 +16,7 @@
 #include <aws/cal/ecc.h>
 
 #include <aws/cal/cal.h>
-#include <aws/cal/der.h>
+#include <aws/cal/private/der.h>
 
 #include <aws/common/thread.h>
 

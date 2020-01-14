@@ -40,11 +40,11 @@ typedef int(aws_ecc_key_pair_verify_signature_fn)(
 typedef size_t(aws_ecc_key_pair_signature_length_fn)(const struct aws_ecc_key_pair *signer);
 
 struct aws_ecc_key_pair_vtable {
-    aws_ecc_key_pair_destroy_fn *destroy_fn;
-    aws_ecc_key_pair_derive_public_key_fn *derive_pub_key_fn;
-    aws_ecc_key_pair_sign_message_fn *sign_message_fn;
-    aws_ecc_key_pair_verify_signature_fn *verify_signature_fn;
-    aws_ecc_key_pair_signature_length_fn *signature_length_fn;
+    aws_ecc_key_pair_destroy_fn *destroy;
+    aws_ecc_key_pair_derive_public_key_fn *derive_pub_key;
+    aws_ecc_key_pair_sign_message_fn *sign_message;
+    aws_ecc_key_pair_verify_signature_fn *verify_signature;
+    aws_ecc_key_pair_signature_length_fn *signature_length;
 };
 
 struct aws_ecc_key_pair {

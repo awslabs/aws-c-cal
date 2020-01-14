@@ -15,6 +15,8 @@
 #include <aws/cal/ecc.h>
 
 #include <aws/cal/cal.h>
+#include <aws/cal/private/der.h>
+#include <aws/cal/private/ecc.h>
 
 #include <openssl/bn.h>
 #include <openssl/ec.h>
@@ -56,7 +58,7 @@ static void s_key_pair_destroy(struct aws_ecc_key_pair *key_pair) {
     }
 }
 
-static int s_sign_payload_fn(
+static int s_sign_payload(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *hash,
     struct aws_byte_buf *signature_output) {
@@ -75,7 +77,7 @@ static int s_sign_payload_fn(
     return ret_val == 1 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
 }
 
-static int s_verify_payload_fn(
+static int s_verify_payload(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *hash,
     const struct aws_byte_cursor *signature) {
@@ -86,7 +88,7 @@ static int s_verify_payload_fn(
                : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 }
 
-static size_t s_signature_length_fn(const struct aws_ecc_key_pair *key_pair) {
+static size_t s_signature_length(const struct aws_ecc_key_pair *key_pair) {
     struct libcrypto_ecc_key *libcrypto_key_pair = key_pair->impl;
 
     return ECDSA_size(libcrypto_key_pair->ec_key);
@@ -132,10 +134,10 @@ clean_up:
     return ret_val;
 }
 
-static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
+static int s_derive_public_key(struct aws_ecc_key_pair *key_pair) {
     struct libcrypto_ecc_key *libcrypto_key_pair = key_pair->impl;
 
-    if (!libcrypto_key_pair->key_pair.priv_d.len) {
+    if (!libcrypto_key_pair->key_pair.priv_d.buffer) {
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -160,11 +162,11 @@ static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
 }
 
 static struct aws_ecc_key_pair_vtable vtable = {
-    .sign_message_fn = s_sign_payload_fn,
-    .verify_signature_fn = s_verify_payload_fn,
-    .derive_pub_key_fn = s_derive_public_key_fn,
-    .signature_length_fn = s_signature_length_fn,
-    .destroy_fn = s_key_pair_destroy,
+    .sign_message = s_sign_payload,
+    .verify_signature = s_verify_payload,
+    .derive_pub_key = s_derive_public_key,
+    .signature_length = s_signature_length,
+    .destroy = s_key_pair_destroy,
 };
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
@@ -296,58 +298,76 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys) {
 
-    struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
+    struct aws_ecc_key_pair *key = NULL;
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, *encoded_keys);
 
-    if (!d2i_ECPrivateKey(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len)) {
-        aws_mem_release(allocator, key_impl);
-        aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
+    if (!decoder) {
         return NULL;
     }
 
-    const EC_GROUP *group = EC_KEY_get0_group(key_impl->ec_key);
+    struct aws_byte_cursor pub_x;
+    struct aws_byte_cursor pub_y;
+    struct aws_byte_cursor priv_d;
 
-    switch (EC_GROUP_get_curve_name(group)) {
-        case NID_X9_62_prime256v1:
-            key_impl->key_pair.curve_name = AWS_CAL_ECDSA_P256;
-            break;
-        case NID_secp384r1:
-            key_impl->key_pair.curve_name = AWS_CAL_ECDSA_P384;
-            break;
-        case NID_secp521r1:
-            key_impl->key_pair.curve_name = AWS_CAL_ECDSA_P521;
-            break;
-        default:
-            aws_raise_error(AWS_ERROR_UNSUPPORTED_OPERATION);
-            s_key_pair_destroy(&key_impl->key_pair);
-            return NULL;
-    }
-
-    key_impl->key_pair.allocator = allocator;
-    key_impl->key_pair.vtable = &vtable;
-    key_impl->key_pair.impl = key_impl;
-
-    const BIGNUM *private_key_num = EC_KEY_get0_private_key(key_impl->ec_key);
-    size_t priv_key_size = BN_num_bytes(private_key_num);
-
-    if (aws_byte_buf_init(&key_impl->key_pair.priv_d, allocator, priv_key_size)) {
+    enum aws_ecc_curve_name curve_name;
+    if (aws_der_decoder_load_ecc_key_pair(decoder, &pub_x, &pub_y, &priv_d, &curve_name)) {
         goto error;
     }
 
-    BN_bn2bin(private_key_num, key_impl->key_pair.priv_d.buffer);
-
-    const EC_POINT *pub_key_point = EC_KEY_get0_public_key(key_impl->ec_key);
-
-    if (pub_key_point) {
-        if (!s_fill_in_public_key_info(key_impl, group, pub_key_point)) {
-            return &key_impl->key_pair;
+    if (priv_d.ptr) {
+        struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
+        key_impl->key_pair.curve_name = curve_name;
+        /* as awkward as it seems, there's not a great way to manually set the public key, so let openssl just parse
+         * the der document manually now that we know what parts are what. */
+        if (!d2i_ECPrivateKey(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len)) {
+            aws_mem_release(allocator, key_impl);
+            aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
+            goto error;
         }
-        goto error;
+
+        key_impl->key_pair.allocator = allocator;
+        key_impl->key_pair.vtable = &vtable;
+        key_impl->key_pair.impl = key_impl;
+        key = &key_impl->key_pair;
+
+        struct aws_byte_buf temp_buf;
+        AWS_ZERO_STRUCT(temp_buf);
+
+        if (pub_x.ptr) {
+            temp_buf = aws_byte_buf_from_array(pub_x.ptr, pub_x.len);
+            if (aws_byte_buf_init_copy(&key->pub_x, allocator, &temp_buf)) {
+                goto error;
+            }
+        }
+
+        if (pub_y.ptr) {
+            temp_buf = aws_byte_buf_from_array(pub_y.ptr, pub_y.len);
+            if (aws_byte_buf_init_copy(&key->pub_y, allocator, &temp_buf)) {
+                goto error;
+            }
+        }
+
+        if (priv_d.ptr) {
+            temp_buf = aws_byte_buf_from_array(priv_d.ptr, priv_d.len);
+            if (aws_byte_buf_init_copy(&key->priv_d, allocator, &temp_buf)) {
+                goto error;
+            }
+        }
+
+    } else {
+        key = aws_ecc_key_pair_new_from_public_key(allocator, curve_name, &pub_x, &pub_y);
+
+        if (!key) {
+            goto error;
+        }
     }
 
-    return &key_impl->key_pair;
+    aws_der_decoder_destroy(decoder);
+    return key;
 
 error:
-    s_key_pair_destroy(&key_impl->key_pair);
+    aws_der_decoder_destroy(decoder);
+    s_key_pair_destroy(key);
 
     return NULL;
 }

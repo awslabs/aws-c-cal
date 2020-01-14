@@ -16,8 +16,8 @@
 #include <Security/SecSignVerifyTransform.h>
 #include <Security/Security.h>
 #include <aws/cal/cal.h>
-#include <aws/cal/der.h>
 #include <aws/cal/ecc.h>
+#include <aws/cal/private/der.h>
 
 struct commoncrypto_ecc_key_pair {
     struct aws_ecc_key_pair key_pair;

@@ -85,8 +85,10 @@ int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_b
 }
 
 void aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair) {
-    AWS_FATAL_ASSERT(key_pair->vtable->destroy && "ECC KEY PAIR destroy function must be included on the vtable");
-    key_pair->vtable->destroy(key_pair);
+    if (key_pair) {
+        AWS_FATAL_ASSERT(key_pair->vtable->destroy && "ECC KEY PAIR destroy function must be included on the vtable");
+        key_pair->vtable->destroy(key_pair);
+    }
 }
 
 int aws_ecc_key_pair_derive_public_key(struct aws_ecc_key_pair *key_pair) {

@@ -18,6 +18,7 @@
 #include <aws/cal/cal.h>
 #include <aws/cal/ecc.h>
 #include <aws/cal/private/der.h>
+#include <aws/cal/private/ecc.h>
 
 struct commoncrypto_ecc_key_pair {
     struct aws_ecc_key_pair key_pair;
@@ -26,26 +27,11 @@ struct commoncrypto_ecc_key_pair {
     CFAllocatorRef cf_allocator;
 };
 
-size_t s_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name curve_name) {
-    switch (curve_name) {
-        case AWS_CAL_ECDSA_P256:
-            return 32;
-        case AWS_CAL_ECDSA_P384:
-            return 48;
-        case AWS_CAL_ECDSA_P521:
-            return 68;
-        default:
-            return 0;
-    }
-}
-
-static uint8_t s_preamble[] = {
-    0x04,
-};
+static uint8_t s_preamble = 0x04;
 
 static size_t s_der_overhead = 8;
 
-static int s_sign_message_fn(
+static int s_sign_message(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     struct aws_byte_buf *signature_output) {
@@ -55,29 +41,38 @@ static int s_sign_message_fn(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    CFDataRef hash_ref =
-        CFDataCreateWithBytesNoCopy(cc_key->cf_allocator, message->ptr, message->len, kCFAllocatorNull);
+    CFDataRef hash_ref = CFDataCreateWithBytesNoCopy(NULL, message->ptr, message->len, kCFAllocatorNull);
+    AWS_FATAL_ASSERT(hash_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
     CFDataRef signature =
         SecKeyCreateSignature(cc_key->priv_key_ref, kSecKeyAlgorithmECDSASignatureDigestX962, hash_ref, &error);
 
+    if (error) {
+        CFRelease(hash_ref);
+        return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+    }
+
     struct aws_byte_cursor to_write =
         aws_byte_cursor_from_array(CFDataGetBytePtr(signature), CFDataGetLength(signature));
-    aws_byte_buf_append(signature_output, &to_write);
+
+    if (aws_byte_buf_append(signature_output, &to_write)) {
+        CFRelease(signature);
+        CFRelease(hash_ref);
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    }
 
     CFRelease(signature);
     CFRelease(hash_ref);
 
-    (void)error;
     return AWS_OP_SUCCESS;
 }
 
-static size_t s_signature_length_fn(const struct aws_ecc_key_pair *key_pair) {
-    return s_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2 + s_der_overhead;
+static size_t s_signature_length(const struct aws_ecc_key_pair *key_pair) {
+    return aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2 + s_der_overhead;
 }
 
-static int s_verify_signature_fn(
+static int s_verify_signature(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     const struct aws_byte_cursor *signature) {
@@ -87,10 +82,12 @@ static int s_verify_signature_fn(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    CFDataRef hash_ref =
-        CFDataCreateWithBytesNoCopy(cc_key->cf_allocator, message->ptr, message->len, kCFAllocatorNull);
-    CFDataRef signature_ref =
-        CFDataCreateWithBytesNoCopy(cc_key->cf_allocator, signature->ptr, signature->len, kCFAllocatorNull);
+    CFDataRef hash_ref = CFDataCreateWithBytesNoCopy(NULL, message->ptr, message->len, kCFAllocatorNull);
+    CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(NULL, signature->ptr, signature->len, kCFAllocatorNull);
+
+    AWS_FATAL_ASSERT(hash_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
+    AWS_FATAL_ASSERT(
+        signature_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
 
@@ -103,7 +100,7 @@ static int s_verify_signature_fn(
     return verified ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 }
 
-static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
+static int s_derive_public_key(struct aws_ecc_key_pair *key_pair) {
     /* we already have a public key, just lie and tell them we succeeded */
     if (key_pair->pub_x.buffer && key_pair->pub_x.len) {
         return AWS_OP_SUCCESS;
@@ -112,35 +109,41 @@ static int s_derive_public_key_fn(struct aws_ecc_key_pair *key_pair) {
     return aws_raise_error(AWS_ERROR_UNSUPPORTED_OPERATION);
 }
 
-static void s_destroy_key_fn(struct aws_ecc_key_pair *key_pair) {
-    struct commoncrypto_ecc_key_pair *cc_key = key_pair->impl;
+static void s_destroy_key(struct aws_ecc_key_pair *key_pair) {
+    if (key_pair) {
+        struct commoncrypto_ecc_key_pair *cc_key = key_pair->impl;
 
-    if (cc_key->pub_key_ref) {
-        CFRelease(cc_key->pub_key_ref);
+        if (cc_key->pub_key_ref) {
+            CFRelease(cc_key->pub_key_ref);
+        }
+
+        if (cc_key->priv_key_ref) {
+            CFRelease(cc_key->priv_key_ref);
+        }
+
+        if (cc_key->cf_allocator) {
+            aws_wrapped_cf_allocator_destroy(cc_key->cf_allocator);
+        }
+
+        aws_byte_buf_clean_up_secure(&key_pair->key_buf);
+        aws_mem_release(key_pair->allocator, cc_key);
     }
-
-    if (cc_key->priv_key_ref) {
-        CFRelease(cc_key->priv_key_ref);
-    }
-
-    aws_byte_buf_clean_up_secure(&key_pair->key_buf);
-    aws_mem_release(key_pair->allocator, cc_key);
 }
 
 static struct aws_ecc_key_pair_vtable s_key_pair_vtable = {
-    .sign_message_fn = s_sign_message_fn,
-    .signature_length_fn = s_signature_length_fn,
-    .verify_signature_fn = s_verify_signature_fn,
-    .derive_pub_key_fn = s_derive_public_key_fn,
-    .destroy_fn = s_destroy_key_fn,
+    .sign_message = s_sign_message,
+    .signature_length = s_signature_length,
+    .verify_signature = s_verify_signature,
+    .derive_pub_key = s_derive_public_key,
+    .destroy = s_destroy_key,
 };
 
 static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
-    const struct aws_byte_cursor *pub_x,
-    const struct aws_byte_cursor *pub_y,
-    const struct aws_byte_cursor *priv_key) {
+    struct aws_byte_cursor pub_x,
+    struct aws_byte_cursor pub_y,
+    struct aws_byte_cursor priv_key) {
     struct commoncrypto_ecc_key_pair *cc_key_pair =
         aws_mem_calloc(allocator, 1, sizeof(struct commoncrypto_ecc_key_pair));
 
@@ -148,17 +151,23 @@ static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
         return NULL;
     }
 
+    cc_key_pair->key_pair.impl = cc_key_pair;
+    cc_key_pair->key_pair.allocator = allocator;
     cc_key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
 
-    size_t s_key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+    if (!cc_key_pair->cf_allocator) {
+        goto error;
+    }
+
+    size_t s_key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
 
     if (!s_key_coordinate_size) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         goto error;
     }
 
-    if ((pub_x && pub_x->len != s_key_coordinate_size) || (pub_y && pub_y->len != s_key_coordinate_size) ||
-        (priv_key && priv_key->len != s_key_coordinate_size)) {
+    if ((pub_x.ptr && pub_x.len != s_key_coordinate_size) || (pub_y.ptr && pub_y.len != s_key_coordinate_size) ||
+        (priv_key.ptr && priv_key.len != s_key_coordinate_size)) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         goto error;
     }
@@ -169,26 +178,22 @@ static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
         goto error;
     }
 
-    aws_byte_buf_secure_zero(&cc_key_pair->key_pair.key_buf);
+    memset(cc_key_pair->key_pair.key_buf.buffer, 0, cc_key_pair->key_pair.key_buf.len);
 
-    struct aws_byte_cursor to_append = aws_byte_cursor_from_array(s_preamble, sizeof(s_preamble));
-    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &to_append);
+    aws_byte_buf_write_u8(&cc_key_pair->key_pair.key_buf, s_preamble);
 
-    if (pub_x && pub_y) {
-        aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, pub_x);
-        aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, pub_y);
+    if (pub_x.ptr && pub_y.ptr) {
+        aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_x);
+        aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_y);
     } else {
         cc_key_pair->key_pair.key_buf.len += s_key_coordinate_size * 2;
     }
 
-    if (priv_key) {
-        aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, priv_key);
+    if (priv_key.ptr) {
+        aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &priv_key);
     }
 
-    cc_key_pair->key_pair.impl = cc_key_pair;
-    cc_key_pair->key_pair.allocator = allocator;
-
-    if (pub_x) {
+    if (pub_x.ptr) {
         cc_key_pair->key_pair.pub_x.buffer = cc_key_pair->key_pair.key_buf.buffer + 1;
         cc_key_pair->key_pair.pub_x.len = s_key_coordinate_size;
 
@@ -199,11 +204,12 @@ static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
     cc_key_pair->key_pair.priv_d.buffer = cc_key_pair->key_pair.key_buf.buffer + 1 + (s_key_coordinate_size * 2);
     cc_key_pair->key_pair.priv_d.len = s_key_coordinate_size;
     cc_key_pair->key_pair.vtable = &s_key_pair_vtable;
+    cc_key_pair->key_pair.curve_name = curve_name;
 
     return cc_key_pair;
 
 error:
-    s_destroy_key_fn(&cc_key_pair->key_pair);
+    s_destroy_key(&cc_key_pair->key_pair);
     return NULL;
 }
 
@@ -211,16 +217,30 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key) {
+
+    struct aws_byte_cursor empty_cur;
+    AWS_ZERO_STRUCT(empty_cur);
     struct commoncrypto_ecc_key_pair *cc_key_pair =
-        s_alloc_pair_and_init_buffers(allocator, curve_name, NULL, NULL, priv_key);
+        s_alloc_pair_and_init_buffers(allocator, curve_name, empty_cur, empty_cur, *priv_key);
 
     if (!cc_key_pair) {
         return NULL;
     }
 
+    CFMutableDictionaryRef key_attributes = NULL;
     CFDataRef private_key_data = CFDataCreate(
         cc_key_pair->cf_allocator, cc_key_pair->key_pair.key_buf.buffer, cc_key_pair->key_pair.key_buf.len);
-    CFMutableDictionaryRef key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+
+    if (!private_key_data) {
+        goto error;
+    }
+
+    key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+
+    if (!key_attributes) {
+        goto error;
+    }
+
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
     CFIndex key_size_bits = cc_key_pair->key_pair.priv_d.len * 8;
@@ -233,18 +253,26 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
 
     cc_key_pair->priv_key_ref = SecKeyCreateWithData(private_key_data, key_attributes, &error);
 
-    CFRelease(key_attributes);
-    CFRelease(private_key_data);
-
     if (error) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         CFRelease(error);
         goto error;
     }
 
+    CFRelease(key_attributes);
+    CFRelease(private_key_data);
+
     return &cc_key_pair->key_pair;
 
 error:
-    s_destroy_key_fn(&cc_key_pair->key_pair);
+    if (private_key_data) {
+        CFRelease(private_key_data);
+    }
+
+    if (key_attributes) {
+        CFRelease(key_attributes);
+    }
+    s_destroy_key(&cc_key_pair->key_pair);
     return NULL;
 }
 
@@ -253,16 +281,30 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *public_key_x,
     const struct aws_byte_cursor *public_key_y) {
+
+    struct aws_byte_cursor empty_cur;
+    AWS_ZERO_STRUCT(empty_cur);
     struct commoncrypto_ecc_key_pair *cc_key_pair =
-        s_alloc_pair_and_init_buffers(allocator, curve_name, public_key_x, public_key_y, NULL);
+        s_alloc_pair_and_init_buffers(allocator, curve_name, *public_key_x, *public_key_y, empty_cur);
 
     if (!cc_key_pair) {
         return NULL;
     }
 
+    CFMutableDictionaryRef key_attributes = NULL;
     CFDataRef pub_key_data = CFDataCreate(
         cc_key_pair->cf_allocator, cc_key_pair->key_pair.key_buf.buffer, cc_key_pair->key_pair.key_buf.len);
-    CFMutableDictionaryRef key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+
+    if (!pub_key_data) {
+        goto error;
+    }
+
+    key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+
+    if (!key_attributes) {
+        goto error;
+    }
+
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPublic);
     CFIndex key_size_bits = cc_key_pair->key_pair.pub_x.len * 8;
@@ -275,18 +317,27 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
 
     cc_key_pair->pub_key_ref = SecKeyCreateWithData(pub_key_data, key_attributes, &error);
 
-    CFRelease(key_attributes);
-    CFRelease(pub_key_data);
-
     if (error) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         CFRelease(error);
         goto error;
     }
 
+    CFRelease(key_attributes);
+    CFRelease(pub_key_data);
+
     return &cc_key_pair->key_pair;
 
 error:
-    s_destroy_key_fn(&cc_key_pair->key_pair);
+    if (key_attributes) {
+        CFRelease(key_attributes);
+    }
+
+    if (pub_key_data) {
+        CFRelease(pub_key_data);
+    }
+
+    s_destroy_key(&cc_key_pair->key_pair);
     return NULL;
 }
 
@@ -302,39 +353,54 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     CFDataRef sec_key_export_data = NULL;
     CFStringRef key_size_cf_str = NULL;
+    CFMutableDictionaryRef key_attributes = NULL;
+    struct aws_der_decoder *decoder = NULL;
 
-    cc_key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
+    cc_key_pair->key_pair.impl = cc_key_pair;
     cc_key_pair->key_pair.allocator = allocator;
+    cc_key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
 
-    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+    if (!cc_key_pair->cf_allocator) {
+        goto error;
+    }
+
+    size_t key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
 
     if (!key_coordinate_size) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         goto error;
     }
 
-    size_t total_buffer_size = key_coordinate_size * 3 + 1;
+    key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
 
-    if (aws_byte_buf_init(&cc_key_pair->key_pair.key_buf, allocator, total_buffer_size)) {
+    if (!key_attributes) {
         goto error;
     }
 
-    aws_byte_buf_secure_zero(&cc_key_pair->key_pair.key_buf);
-
-    CFMutableDictionaryRef key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
     CFIndex key_size_bits = key_coordinate_size * 8;
     char key_size_str[32] = {0};
     snprintf(key_size_str, sizeof(key_size_str), "%d", (int)key_size_bits);
     key_size_cf_str = CFStringCreateWithCString(cc_key_pair->cf_allocator, key_size_str, kCFStringEncodingASCII);
+
+    if (!key_size_cf_str) {
+        goto error;
+    }
+
     CFDictionaryAddValue(key_attributes, kSecAttrKeySizeInBits, key_size_cf_str);
 
     CFErrorRef error = NULL;
 
     cc_key_pair->priv_key_ref = SecKeyCreateRandomKey(key_attributes, &error);
+
+    if (error) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        CFRelease(error);
+        goto error;
+    }
+
     cc_key_pair->pub_key_ref = SecKeyCopyPublicKey(cc_key_pair->priv_key_ref);
-    CFRelease(key_attributes);
 
     /* OKAY up to here was incredibly reasonable, after this we get attacked by the bad API design
      * dragons.
@@ -350,90 +416,41 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     }
 
     /* now we need to DER decode data */
-    struct aws_der_decoder decoder;
     struct aws_byte_cursor key_cur =
-        aws_byte_buf_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
+        aws_byte_cursor_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
 
-    if (aws_der_decoder_init(&decoder, allocator, key_cur)) {
+    decoder = aws_der_decoder_new(allocator, key_cur);
+
+    if (!decoder) {
         goto error;
     }
 
-    /* we could have private key or a public key, or a full pair. */
-    struct aws_byte_cursor pair_part_1;
-    AWS_ZERO_STRUCT(pair_part_1);
-    struct aws_byte_cursor pair_part_2;
-    AWS_ZERO_STRUCT(pair_part_2);
-    struct aws_byte_cursor oid;
-    AWS_ZERO_STRUCT(oid);
+    struct aws_byte_cursor pub_x;
+    AWS_ZERO_STRUCT(pub_x);
+    struct aws_byte_cursor pub_y;
+    AWS_ZERO_STRUCT(pub_y);
+    struct aws_byte_cursor priv_d;
+    AWS_ZERO_STRUCT(priv_d);
 
-    /* work with this pointer and move it to the next after using it. We need
-     * to know which curve we're dealing with before we can figure out which is which. */
-    struct aws_byte_cursor *current_part = &pair_part_1;
-
-    while (aws_der_decoder_next(&decoder)) {
-        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
-
-        if (type == AWS_DER_OBJECT_IDENTIFIER) {
-            if (aws_der_decoder_tlv_blob(&decoder, &oid)) {
-                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-                goto error;
-            }
-            continue;
-        }
-
-        /* you'd think we'd get some type hints on which key this is, but it's not consistent
-         * as far as I can tell. */
-        if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
-            if (aws_der_decoder_tlv_string(&decoder, current_part)) {
-                aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-                goto error;
-            }
-            current_part = &pair_part_2;
-            continue;
-        }
+    if (aws_der_decoder_load_ecc_key_pair(decoder, &pub_x, &pub_y, &priv_d, &curve_name)) {
+        goto error;
     }
 
-    /* we only know about 3 curves at the moment, it had better be one of those. */
-    enum aws_ecc_curve_name exported_curve_name;
     AWS_ASSERT(
-        !aws_ecc_curve_name_from_oid(&oid, &exported_curve_name) && exported_curve_name == curve_name &&
-        "If this assertion pops, just set your computer on fire and give up on this industry having any sanity.");
+        priv_d.len == key_coordinate_size && pub_x.len == key_coordinate_size && pub_y.len == key_coordinate_size &&
+        "Apple Security Framework had better have exported the full pair.");
 
-    (void)exported_curve_name;
+    size_t total_buffer_size = key_coordinate_size * 3 + 1;
 
-    struct aws_byte_cursor *private_key = NULL;
-    struct aws_byte_cursor *public_key = NULL;
-
-    size_t public_key_blob_size = key_coordinate_size * 2 + 1;
-
-    if (pair_part_1.ptr && pair_part_1.len) {
-        if (pair_part_1.len == key_coordinate_size) {
-            private_key = &pair_part_1;
-        } else if (pair_part_1.len == public_key_blob_size) {
-            public_key = &pair_part_1;
-        }
-    }
-
-    if (pair_part_2.ptr && pair_part_2.len) {
-        if (pair_part_2.len == key_coordinate_size) {
-            private_key = &pair_part_2;
-        } else if (pair_part_2.len == public_key_blob_size) {
-            public_key = &pair_part_2;
-        }
-    }
-
-    AWS_ASSERT(private_key && public_key && "Apple Security Framework had better have exported the full pair.");
-    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, public_key);
-    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, private_key);
-
-    aws_der_decoder_clean_up(&decoder);
-    CFRelease(sec_key_export_data);
-    CFRelease(key_size_cf_str);
-
-    if (cc_key_pair->key_pair.key_buf.len < key_coordinate_size * 3 + 1) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+    if (aws_byte_buf_init(&cc_key_pair->key_pair.key_buf, allocator, total_buffer_size)) {
         goto error;
     }
+
+    memset(cc_key_pair->key_pair.key_buf.buffer, 0, cc_key_pair->key_pair.key_buf.len);
+    aws_byte_buf_write_u8(&cc_key_pair->key_pair.key_buf, 0x04);
+    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_x);
+    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_y);
+    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &priv_d);
 
     /* cc_key_pair->key_pair.key_buf is contiguous memory, so just load up the offsets. */
     cc_key_pair->key_pair.pub_x =
@@ -443,18 +460,25 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     cc_key_pair->key_pair.priv_d =
         aws_byte_buf_from_array(cc_key_pair->key_pair.pub_y.buffer + key_coordinate_size, key_coordinate_size);
 
-    cc_key_pair->key_pair.impl = cc_key_pair;
-    cc_key_pair->key_pair.allocator = allocator;
+    cc_key_pair->key_pair.curve_name = curve_name;
     cc_key_pair->key_pair.vtable = &s_key_pair_vtable;
 
-    if (error) {
-        CFRelease(error);
-        goto error;
-    }
+    CFRelease(sec_key_export_data);
+    CFRelease(key_size_cf_str);
+    CFRelease(key_attributes);
+    aws_der_decoder_destroy(decoder);
 
     return &cc_key_pair->key_pair;
 
 error:
+    if (decoder) {
+        aws_der_decoder_destroy(decoder);
+    }
+
+    if (key_attributes) {
+        CFRelease(key_attributes);
+    }
+
     if (sec_key_export_data) {
         CFRelease(sec_key_export_data);
     }
@@ -463,7 +487,7 @@ error:
         CFRelease(key_size_cf_str);
     }
 
-    s_destroy_key_fn(&cc_key_pair->key_pair);
+    s_destroy_key(&cc_key_pair->key_pair);
     return NULL;
 }
 
@@ -471,114 +495,67 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys) {
 
-    struct aws_der_decoder decoder;
+    struct aws_ecc_key_pair *key_pair = NULL;
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, *encoded_keys);
+    CFMutableDictionaryRef key_attributes = NULL;
+    CFDataRef key_data = NULL;
 
-    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(encoded_keys->ptr, encoded_keys->len);
-    if (aws_der_decoder_init(&decoder, allocator, key_cur)) {
-        goto error;
+    if (!decoder) {
+        return NULL;
     }
 
     /* we could have private key or a public key, or a full pair. */
-    struct aws_byte_cursor pair_part_1;
-    AWS_ZERO_STRUCT(pair_part_1);
-    struct aws_byte_cursor pair_part_2;
-    AWS_ZERO_STRUCT(pair_part_2);
-    struct aws_byte_cursor oid;
-    AWS_ZERO_STRUCT(oid);
-
-    /* work with this pointer and move it to the next after using it. We need
-     * to know which curve we're dealing with before we can figure out which is which. */
-    struct aws_byte_cursor *current_part = &pair_part_1;
-
-    while (aws_der_decoder_next(&decoder)) {
-        enum aws_der_type type = aws_der_decoder_tlv_type(&decoder);
-
-        if (type == AWS_DER_OBJECT_IDENTIFIER) {
-            aws_der_decoder_tlv_blob(&decoder, &oid);
-            continue;
-        }
-
-        /* you'd think we'd get some type hints on which key this is, but it's not consistent
-         * as far as I can tell. */
-        if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
-            aws_der_decoder_tlv_string(&decoder, current_part);
-            current_part = &pair_part_2;
-        }
-    }
-
-    if (!(oid.ptr && oid.len)) {
-        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        goto error;
-    }
-
-    /* we only know about 3 curves at the moment, it had better be one of those. */
+    struct aws_byte_cursor pub_x;
+    AWS_ZERO_STRUCT(pub_x);
+    struct aws_byte_cursor pub_y;
+    AWS_ZERO_STRUCT(pub_y);
+    struct aws_byte_cursor priv_d;
+    AWS_ZERO_STRUCT(priv_d);
     enum aws_ecc_curve_name curve_name;
-    if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+
+    if (aws_der_decoder_load_ecc_key_pair(decoder, &pub_x, &pub_y, &priv_d, &curve_name)) {
         goto error;
     }
 
-    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
-
-    struct aws_byte_cursor *private_key = NULL;
-    struct aws_byte_cursor *public_key = NULL;
-
-    size_t public_key_blob_size = key_coordinate_size * 2 + 1;
-
-    if (pair_part_1.ptr && pair_part_1.len) {
-        if (pair_part_1.len == key_coordinate_size) {
-            private_key = &pair_part_1;
-        } else if (pair_part_1.len == public_key_blob_size) {
-            public_key = &pair_part_1;
-        }
-    }
-
-    if (pair_part_2.ptr && pair_part_2.len) {
-        if (pair_part_2.len == key_coordinate_size) {
-            private_key = &pair_part_2;
-        } else if (pair_part_2.len == public_key_blob_size) {
-            public_key = &pair_part_2;
-        }
-    }
-
-    if (!private_key && !public_key) {
+    if (!pub_x.ptr && !priv_d.ptr) {
         aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
         goto error;
     }
 
-    struct aws_byte_cursor pub_x_cur;
-    struct aws_byte_cursor pub_y_cur;
-    struct aws_byte_cursor *pub_x = NULL;
-    struct aws_byte_cursor *pub_y = NULL;
+    struct commoncrypto_ecc_key_pair *cc_key_pair =
+        s_alloc_pair_and_init_buffers(allocator, curve_name, pub_x, pub_y, priv_d);
 
-    if (public_key) {
-        aws_byte_cursor_advance(public_key, 1);
-        pub_x_cur = *public_key;
-        pub_x_cur.len = key_coordinate_size;
-        pub_y_cur.ptr = public_key->ptr + key_coordinate_size;
-        pub_y_cur.len = key_coordinate_size;
-        pub_x = &pub_x_cur;
-        pub_y = &pub_y_cur;
+    if (!cc_key_pair) {
+        goto error;
     }
 
-    struct commoncrypto_ecc_key_pair *cc_key_pair =
-        s_alloc_pair_and_init_buffers(allocator, curve_name, pub_x, pub_y, private_key);
+    key_pair = &cc_key_pair->key_pair;
 
-    CFDataRef key_data = CFDataCreate(
+    key_data = CFDataCreate(
         cc_key_pair->cf_allocator, cc_key_pair->key_pair.key_buf.buffer, cc_key_pair->key_pair.key_buf.len);
 
-    CFMutableDictionaryRef key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+    if (!key_data) {
+        goto error;
+    }
+
+    key_attributes = CFDictionaryCreateMutable(cc_key_pair->cf_allocator, 6, NULL, NULL);
+
+    if (!key_attributes) {
+        goto error;
+    }
+
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom);
 
-    if (private_key) {
+    if (priv_d.ptr) {
         CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
 
         CFDictionaryAddValue(key_attributes, kSecAttrCanSign, kCFBooleanTrue);
         CFDictionaryAddValue(key_attributes, kSecAttrCanDerive, kCFBooleanTrue);
 
-        if (public_key) {
+        if (pub_x.ptr) {
             CFDictionaryAddValue(key_attributes, kSecAttrCanVerify, kCFBooleanTrue);
         }
-    } else if (public_key) {
+    } else if (pub_x.ptr) {
         CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPublic);
         CFDictionaryAddValue(key_attributes, kSecAttrCanSign, kCFBooleanFalse);
         CFDictionaryAddValue(key_attributes, kSecAttrCanVerify, kCFBooleanTrue);
@@ -588,17 +565,35 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     cc_key_pair->priv_key_ref = SecKeyCreateWithData(key_data, key_attributes, &error);
 
-    if (public_key) {
+    if (error) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+    }
+
+    if (pub_x.ptr) {
         cc_key_pair->pub_key_ref = SecKeyCopyPublicKey(cc_key_pair->priv_key_ref);
     }
 
     CFRelease(key_attributes);
     CFRelease(key_data);
-    aws_der_decoder_clean_up(&decoder);
+    aws_der_decoder_destroy(decoder);
 
-    return cc_key_pair->key_pair.impl;
+    return key_pair;
 
 error:
-    aws_der_decoder_clean_up(&decoder);
+    if (decoder) {
+        aws_der_decoder_destroy(decoder);
+    }
+
+    if (key_attributes) {
+        CFRelease(key_attributes);
+    }
+
+    if (key_data) {
+        CFRelease(key_data);
+    }
+
+    if (key_pair) {
+        s_destroy_key(key_pair);
+    }
     return NULL;
 }

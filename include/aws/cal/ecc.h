@@ -27,17 +27,17 @@ enum aws_ecc_curve_name {
 
 struct aws_ecc_key_pair;
 
-typedef void(aws_ecc_key_pair_destroy_fn)(struct aws_ecc_key_pair *key_pair);
-typedef int(aws_ecc_key_pair_sign_message_fn)(
+typedef void aws_ecc_key_pair_destroy_fn(struct aws_ecc_key_pair *key_pair);
+typedef int aws_ecc_key_pair_sign_message_fn(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
     struct aws_byte_buf *signature_output);
-typedef int(aws_ecc_key_pair_derive_public_key_fn)(struct aws_ecc_key_pair *key_pair);
-typedef int(aws_ecc_key_pair_verify_signature_fn)(
+typedef int aws_ecc_key_pair_derive_public_key_fn(struct aws_ecc_key_pair *key_pair);
+typedef int aws_ecc_key_pair_verify_signature_fn(
     const struct aws_ecc_key_pair *signer,
     const struct aws_byte_cursor *message,
     const struct aws_byte_cursor *signature);
-typedef size_t(aws_ecc_key_pair_signature_length_fn)(const struct aws_ecc_key_pair *signer);
+typedef size_t aws_ecc_key_pair_signature_length_fn(const struct aws_ecc_key_pair *signer);
 
 struct aws_ecc_key_pair_vtable {
     aws_ecc_key_pair_destroy_fn *destroy;

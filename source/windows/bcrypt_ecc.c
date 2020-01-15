@@ -275,7 +275,7 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
     key_impl->key_pair.impl = key_impl;
     key_impl->key_pair.vtable = &s_vtable;
 
-    size_t s_key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+    size_t s_key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
 
     if (!s_key_coordinate_size) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -387,7 +387,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     key_impl->key_pair.impl = key_impl;
     key_impl->key_pair.vtable = &s_vtable;
 
-    size_t key_coordinate_size = s_key_coordinate_byte_size_from_curve_name(curve_name);
+    size_t key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
 
     if (!key_coordinate_size) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);

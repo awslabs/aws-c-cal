@@ -224,7 +224,7 @@ AWS_TEST_CASE(ecdsa_p384_test_known_signing_value, s_ecdsa_p384_test_known_signi
 
 static int s_ecdsa_test_invalid_signature_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
-    
+
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, AWS_CAL_ECDSA_P256);
     ASSERT_NOT_NULL(key_pair);
 

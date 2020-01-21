@@ -15,6 +15,8 @@
  * permissions and limitations under the License.
  */
 
+#include <aws/common/common.h>
+
 #include <aws/cal/exports.h>
 
 struct aws_allocator;
@@ -29,7 +31,7 @@ enum aws_cal_errors {
     AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED,
     AWS_ERROR_CAL_MISMATCHED_DER_TYPE,
     AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM,
-  
+
     AWS_ERROR_CAL_END_RANGE = AWS_ERROR_ENUM_END_RANGE(AWS_C_CAL_PACKAGE_ID)
 };
 

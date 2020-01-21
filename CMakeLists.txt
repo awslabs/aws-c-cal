@@ -58,7 +58,7 @@ if (WIN32)
 
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/bcrypt/*.c"
+            "source/windows/*.c"
         )
         set(PLATFORM_LIBS BCrypt)
     endif()
@@ -66,14 +66,15 @@ if (WIN32)
     if (MSVC)
         source_group("Header Files\\aws\\cal" FILES ${AWS_CAL_HEADERS})
         source_group("Source Files" FILES ${AWS_CAL_SRC})
-        source_group("Source Files\\bcrypt" FILES ${AWS_CAL_OS_SRC})
+        source_group("Source Files\\windows" FILES ${AWS_CAL_OS_SRC})
     endif ()
 
 elseif (APPLE)
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-        "source/commoncrypto/*.c"
+        "source/darwin/*.c"
         )
+
         find_library(SECURITY_LIB Security)
         if (NOT SECURITY_LIB)
            message(FATAL_ERROR "Security Framework not found")
@@ -84,7 +85,7 @@ elseif (APPLE)
 else ()
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/opensslcrypto/*.c"
+            "source/unix/*.c"
         )
         find_package(LibCryptoCAL REQUIRED)
         set(PLATFORM_LIBS LibCrypto::Crypto dl)

@@ -160,6 +160,8 @@ AWS_CAL_API void aws_ecc_key_pair_get_private_key(
     const struct aws_ecc_key_pair *key_pair,
     struct aws_byte_cursor *private_d);
 
+AWS_CAL_API size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name curve_name);
+
 AWS_EXTERN_C_END
 
 #endif /* AWS_CAL_ECC_H */

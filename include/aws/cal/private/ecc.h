@@ -28,8 +28,6 @@ AWS_CAL_API int aws_der_decoder_load_ecc_key_pair(
     struct aws_byte_cursor *out_private_d,
     enum aws_ecc_curve_name *out_curve_name);
 
-AWS_CAL_API size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name curve_name);
-
 AWS_EXTERN_C_END
 
 #endif /* AWS_C_CAL_PRIVATE_ECC_H */

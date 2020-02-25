@@ -663,6 +663,16 @@ enum aws_ecc_key_check_flags {
     AWS_ECC_KCF_PRIVATE = 2,
 };
 
+static int s_check_cursor_data(struct aws_byte_cursor *cursor) {
+    ASSERT_TRUE(cursor->ptr != NULL && cursor->len > 0 && (*cursor->ptr == 0 || *cursor->ptr != 0));
+
+    return AWS_OP_SUCCESS;
+}
+
+/*
+ * The assumption here is that if a key has been released then we zeroed key-related memory and so we should either
+ * crash (referencing freed memory) or get back empty data.
+ */
 static int s_test_key_ref_counting(struct aws_ecc_key_pair *key_pair, enum aws_ecc_key_check_flags flags) {
 
     aws_ecc_key_pair_acquire(key_pair);
@@ -677,7 +687,7 @@ static int s_test_key_ref_counting(struct aws_ecc_key_pair *key_pair, enum aws_e
         AWS_ZERO_STRUCT(private_key_cursor);
 
         aws_ecc_key_pair_get_private_key(key_pair, &private_key_cursor);
-        ASSERT_TRUE(aws_byte_cursor_is_valid(&private_key_cursor));
+        ASSERT_SUCCESS(s_check_cursor_data(&private_key_cursor));
     }
 
     if (flags & AWS_ECC_KCF_PUBLIC) {
@@ -687,8 +697,8 @@ static int s_test_key_ref_counting(struct aws_ecc_key_pair *key_pair, enum aws_e
         AWS_ZERO_STRUCT(pub_y);
 
         aws_ecc_key_pair_get_public_key(key_pair, &pub_x, &pub_y);
-        ASSERT_TRUE(aws_byte_cursor_is_valid(&pub_x));
-        ASSERT_TRUE(aws_byte_cursor_is_valid(&pub_y));
+        ASSERT_SUCCESS(s_check_cursor_data(&pub_x));
+        ASSERT_SUCCESS(s_check_cursor_data(&pub_y));
     }
 
     aws_ecc_key_pair_release(key_pair);
@@ -769,7 +779,7 @@ static int s_ecc_key_pair_private_ref_count_test(struct aws_allocator *allocator
         aws_ecc_key_pair_new_from_private_key(allocator, AWS_CAL_ECDSA_P256, &private_key_cursor);
     ASSERT_NOT_NULL(key_pair);
 
-    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC | AWS_ECC_KCF_PRIVATE);
+    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PRIVATE);
 }
 
 AWS_TEST_CASE(ecc_key_pair_private_ref_count_test, s_ecc_key_pair_private_ref_count_test)

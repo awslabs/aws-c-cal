@@ -47,7 +47,7 @@ static int s_test_key_derivation(
     ASSERT_BIN_ARRAYS_EQUALS(expected_pub_y.ptr, expected_pub_y.len, pub_y.ptr, pub_y.len);
 
 complete:
-    aws_ecc_key_pair_destroy(private_key_pair);
+    aws_ecc_key_pair_release(private_key_pair);
 
     return AWS_OP_SUCCESS;
 }
@@ -156,8 +156,8 @@ static int s_test_known_signing_value(
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(verifying_key);
-    aws_ecc_key_pair_destroy(signing_key);
+    aws_ecc_key_pair_release(verifying_key);
+    aws_ecc_key_pair_release(signing_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -262,7 +262,7 @@ static int s_ecdsa_test_invalid_signature_fn(struct aws_allocator *allocator, vo
         aws_ecc_key_pair_verify_signature(key_pair, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(key_pair);
+    aws_ecc_key_pair_release(key_pair);
 
     return AWS_OP_SUCCESS;
 }
@@ -313,7 +313,7 @@ static int s_test_key_gen(struct aws_allocator *allocator, enum aws_ecc_curve_na
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(key_pair, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(key_pair);
+    aws_ecc_key_pair_release(key_pair);
 
     return AWS_OP_SUCCESS;
 }
@@ -386,9 +386,9 @@ static int s_test_key_gen_export(struct aws_allocator *allocator, enum aws_ecc_c
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(key_pair);
-    aws_ecc_key_pair_destroy(signing_key);
-    aws_ecc_key_pair_destroy(verifying_key);
+    aws_ecc_key_pair_release(key_pair);
+    aws_ecc_key_pair_release(signing_key);
+    aws_ecc_key_pair_release(verifying_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -448,7 +448,7 @@ static int s_ecdsa_test_import_asn1_key_pair(
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(imported_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(imported_key);
+    aws_ecc_key_pair_release(imported_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -561,8 +561,8 @@ static int s_ecdsa_test_import_asn1_key_pair_public_only_fn(struct aws_allocator
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(verifying_key);
-    aws_ecc_key_pair_destroy(signing_key);
+    aws_ecc_key_pair_release(verifying_key);
+    aws_ecc_key_pair_release(signing_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -651,7 +651,7 @@ static int s_ecdsa_test_signature_format_fn(struct aws_allocator *allocator, voi
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
-    aws_ecc_key_pair_destroy(verifying_key);
+    aws_ecc_key_pair_release(verifying_key);
 
     return AWS_OP_SUCCESS;
 }

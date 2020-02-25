@@ -151,6 +151,7 @@ static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
         return NULL;
     }
 
+    aws_atomic_init_int(&cc_key_pair->key_pair.ref_count, 1);
     cc_key_pair->key_pair.impl = cc_key_pair;
     cc_key_pair->key_pair.allocator = allocator;
     cc_key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
@@ -356,6 +357,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     CFMutableDictionaryRef key_attributes = NULL;
     struct aws_der_decoder *decoder = NULL;
 
+    aws_atomic_init_int(&cc_key_pair->key_pair.ref_count, 1);
     cc_key_pair->key_pair.impl = cc_key_pair;
     cc_key_pair->key_pair.allocator = allocator;
     cc_key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);

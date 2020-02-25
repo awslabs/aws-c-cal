@@ -16,6 +16,7 @@
  */
 #include <aws/cal/exports.h>
 
+#include <aws/common/atomics.h>
 #include <aws/common/byte_buf.h>
 #include <aws/common/common.h>
 
@@ -48,6 +49,7 @@ struct aws_ecc_key_pair_vtable {
 
 struct aws_ecc_key_pair {
     struct aws_allocator *allocator;
+    struct aws_atomic_var ref_count;
     enum aws_ecc_curve_name curve_name;
     struct aws_byte_buf key_buf;
     struct aws_byte_buf pub_x;
@@ -58,6 +60,10 @@ struct aws_ecc_key_pair {
 };
 
 AWS_EXTERN_C_BEGIN
+
+AWS_CAL_API void aws_ecc_key_pair_acquire(struct aws_ecc_key_pair *key_pair);
+
+AWS_CAL_API void aws_ecc_key_pair_release(struct aws_ecc_key_pair *key_pair);
 
 /**
  * Creates a Eliptic Curve private key that can be used for signing.
@@ -100,11 +106,6 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys);
-
-/**
- * Destroys any allocated resources on key_pair and deallocates key_pair.
- */
-AWS_CAL_API void aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair);
 
 /**
  * Derives a public key from the private key if supported by this operating system (not supported on OSX).

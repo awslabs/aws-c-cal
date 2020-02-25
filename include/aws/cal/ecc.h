@@ -61,8 +61,14 @@ struct aws_ecc_key_pair {
 
 AWS_EXTERN_C_BEGIN
 
+/**
+ * Adds one to an ecc key pair's ref count.
+ */
 AWS_CAL_API void aws_ecc_key_pair_acquire(struct aws_ecc_key_pair *key_pair);
 
+/**
+ * Subtracts one from an ecc key pair's ref count.  If ref count reaches zero, the key pair is destroyed.
+ */
 AWS_CAL_API void aws_ecc_key_pair_release(struct aws_ecc_key_pair *key_pair);
 
 /**

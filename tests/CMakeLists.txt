@@ -73,4 +73,9 @@ add_test_case(der_decode_sequence)
 add_test_case(der_decode_set)
 add_test_case(der_decode_key_pair)
 
+add_test_case(ecc_key_pair_random_ref_count_test)
+add_test_case(ecc_key_pair_public_ref_count_test)
+add_test_case(ecc_key_pair_asn1_ref_count_test)
+add_test_case(ecc_key_pair_private_ref_count_test)
+
 generate_test_driver(${PROJECT_NAME}-tests)

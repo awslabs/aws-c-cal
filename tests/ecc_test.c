@@ -47,7 +47,7 @@ static int s_test_key_derivation(
     ASSERT_BIN_ARRAYS_EQUALS(expected_pub_y.ptr, expected_pub_y.len, pub_y.ptr, pub_y.len);
 
 complete:
-    aws_ecc_key_pair_destroy(private_key_pair);
+    aws_ecc_key_pair_release(private_key_pair);
 
     return AWS_OP_SUCCESS;
 }
@@ -156,8 +156,8 @@ static int s_test_known_signing_value(
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(verifying_key);
-    aws_ecc_key_pair_destroy(signing_key);
+    aws_ecc_key_pair_release(verifying_key);
+    aws_ecc_key_pair_release(signing_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -262,7 +262,7 @@ static int s_ecdsa_test_invalid_signature_fn(struct aws_allocator *allocator, vo
         aws_ecc_key_pair_verify_signature(key_pair, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(key_pair);
+    aws_ecc_key_pair_release(key_pair);
 
     return AWS_OP_SUCCESS;
 }
@@ -313,7 +313,7 @@ static int s_test_key_gen(struct aws_allocator *allocator, enum aws_ecc_curve_na
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(key_pair, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(key_pair);
+    aws_ecc_key_pair_release(key_pair);
 
     return AWS_OP_SUCCESS;
 }
@@ -386,9 +386,9 @@ static int s_test_key_gen_export(struct aws_allocator *allocator, enum aws_ecc_c
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(key_pair);
-    aws_ecc_key_pair_destroy(signing_key);
-    aws_ecc_key_pair_destroy(verifying_key);
+    aws_ecc_key_pair_release(key_pair);
+    aws_ecc_key_pair_release(signing_key);
+    aws_ecc_key_pair_release(verifying_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -448,7 +448,7 @@ static int s_ecdsa_test_import_asn1_key_pair(
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(imported_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(imported_key);
+    aws_ecc_key_pair_release(imported_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -561,8 +561,8 @@ static int s_ecdsa_test_import_asn1_key_pair_public_only_fn(struct aws_allocator
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
-    aws_ecc_key_pair_destroy(verifying_key);
-    aws_ecc_key_pair_destroy(signing_key);
+    aws_ecc_key_pair_release(verifying_key);
+    aws_ecc_key_pair_release(signing_key);
 
     return AWS_OP_SUCCESS;
 }
@@ -651,9 +651,135 @@ static int s_ecdsa_test_signature_format_fn(struct aws_allocator *allocator, voi
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
-    aws_ecc_key_pair_destroy(verifying_key);
+    aws_ecc_key_pair_release(verifying_key);
 
     return AWS_OP_SUCCESS;
 }
 
 AWS_TEST_CASE(ecdsa_test_signature_format, s_ecdsa_test_signature_format_fn)
+
+enum aws_ecc_key_check_flags {
+    AWS_ECC_KCF_PUBLIC = 1,
+    AWS_ECC_KCF_PRIVATE = 2,
+};
+
+static int s_check_cursor_data(struct aws_byte_cursor *cursor) {
+    ASSERT_TRUE(cursor->ptr != NULL && cursor->len > 0 && (*cursor->ptr == 0 || *cursor->ptr != 0));
+
+    return AWS_OP_SUCCESS;
+}
+
+/*
+ * The assumption here is that if a key has been released then we zeroed key-related memory and so we should either
+ * crash (referencing freed memory) or get back empty data.
+ */
+static int s_test_key_ref_counting(struct aws_ecc_key_pair *key_pair, enum aws_ecc_key_check_flags flags) {
+
+    aws_ecc_key_pair_acquire(key_pair);
+    aws_ecc_key_pair_release(key_pair);
+    aws_ecc_key_pair_acquire(key_pair);
+    aws_ecc_key_pair_acquire(key_pair);
+    aws_ecc_key_pair_release(key_pair);
+    aws_ecc_key_pair_release(key_pair);
+
+    if (flags & AWS_ECC_KCF_PRIVATE) {
+        struct aws_byte_cursor private_key_cursor;
+        AWS_ZERO_STRUCT(private_key_cursor);
+
+        aws_ecc_key_pair_get_private_key(key_pair, &private_key_cursor);
+        ASSERT_SUCCESS(s_check_cursor_data(&private_key_cursor));
+    }
+
+    if (flags & AWS_ECC_KCF_PUBLIC) {
+        struct aws_byte_cursor pub_x;
+        AWS_ZERO_STRUCT(pub_x);
+        struct aws_byte_cursor pub_y;
+        AWS_ZERO_STRUCT(pub_y);
+
+        aws_ecc_key_pair_get_public_key(key_pair, &pub_x, &pub_y);
+        ASSERT_SUCCESS(s_check_cursor_data(&pub_x));
+        ASSERT_SUCCESS(s_check_cursor_data(&pub_y));
+    }
+
+    aws_ecc_key_pair_release(key_pair);
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_ecc_key_pair_random_ref_count_test(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, AWS_CAL_ECDSA_P256);
+    ASSERT_NOT_NULL(key_pair);
+
+    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC | AWS_ECC_KCF_PRIVATE);
+}
+
+AWS_TEST_CASE(ecc_key_pair_random_ref_count_test, s_ecc_key_pair_random_ref_count_test)
+
+static int s_ecc_key_pair_public_ref_count_test(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t x[] = {
+        0x1c, 0xcb, 0xe9, 0x1c, 0x07, 0x5f, 0xc7, 0xf4, 0xf0, 0x33, 0xbf, 0xa2, 0x48, 0xdb, 0x8f, 0xcc,
+        0xd3, 0x56, 0x5d, 0xe9, 0x4b, 0xbf, 0xb1, 0x2f, 0x3c, 0x59, 0xff, 0x46, 0xc2, 0x71, 0xbf, 0x83,
+    };
+
+    uint8_t y[] = {
+        0xce, 0x40, 0x14, 0xc6, 0x88, 0x11, 0xf9, 0xa2, 0x1a, 0x1f, 0xdb, 0x2c, 0x0e, 0x61, 0x13, 0xe0,
+        0x6d, 0xb7, 0xca, 0x93, 0xb7, 0x40, 0x4e, 0x78, 0xdc, 0x7c, 0xcd, 0x5c, 0xa8, 0x9a, 0x4c, 0xa9,
+    };
+
+    struct aws_byte_cursor pub_x = aws_byte_cursor_from_array(x, sizeof(x));
+    struct aws_byte_cursor pub_y = aws_byte_cursor_from_array(y, sizeof(y));
+    struct aws_ecc_key_pair *key_pair =
+        aws_ecc_key_pair_new_from_public_key(allocator, AWS_CAL_ECDSA_P256, &pub_x, &pub_y);
+    ASSERT_NOT_NULL(key_pair);
+
+    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC);
+}
+
+AWS_TEST_CASE(ecc_key_pair_public_ref_count_test, s_ecc_key_pair_public_ref_count_test)
+
+static int s_ecc_key_pair_asn1_ref_count_test(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t asn1_encoded_full_key_raw[] = {
+        0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0x99, 0x16, 0x2a, 0x5b, 0x4e, 0x63, 0x86, 0x4c, 0x5f, 0x8e, 0x37,
+        0xf7, 0x2b, 0xbd, 0x97, 0x1d, 0x5c, 0x68, 0x80, 0x18, 0xc3, 0x91, 0x0f, 0xb3, 0xc3, 0xf9, 0x3a, 0xc9, 0x7a,
+        0x4b, 0xa3, 0xf6, 0xa0, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0xa1, 0x44, 0x03,
+        0x42, 0x00, 0x04, 0xec, 0x6c, 0xd7, 0x4b, 0xdc, 0x33, 0xc2, 0x56, 0x32, 0xad, 0x52, 0x56, 0xac, 0xf5, 0xf0,
+        0xe6, 0x28, 0x99, 0x84, 0x83, 0xaf, 0x73, 0x6f, 0xfe, 0xd7, 0x83, 0x3b, 0x42, 0x81, 0x5d, 0x2e, 0xe0, 0xdb,
+        0xf6, 0xac, 0xa4, 0xc6, 0x16, 0x7e, 0x3e, 0xe0, 0xff, 0x7b, 0x43, 0xe8, 0xa1, 0x36, 0x50, 0x92, 0x83, 0x06,
+        0x94, 0xb3, 0xd4, 0x93, 0x06, 0xde, 0x63, 0x8a, 0xa1, 0x1c, 0x3f, 0xb2, 0x57, 0x0a,
+    };
+
+    struct aws_byte_cursor full_key_asn1 =
+        aws_byte_cursor_from_array(asn1_encoded_full_key_raw, sizeof(asn1_encoded_full_key_raw));
+
+    struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_from_asn1(allocator, &full_key_asn1);
+    ASSERT_NOT_NULL(key_pair);
+
+    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC | AWS_ECC_KCF_PRIVATE);
+}
+
+AWS_TEST_CASE(ecc_key_pair_asn1_ref_count_test, s_ecc_key_pair_asn1_ref_count_test)
+
+static int s_ecc_key_pair_private_ref_count_test(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t d[] = {
+        0xc9, 0x80, 0x68, 0x98, 0xa0, 0x33, 0x49, 0x16, 0xc8, 0x60, 0x74, 0x88, 0x80, 0xa5, 0x41, 0xf0,
+        0x93, 0xb5, 0x79, 0xa9, 0xb1, 0xf3, 0x29, 0x34, 0xd8, 0x6c, 0x36, 0x3c, 0x39, 0x80, 0x03, 0x57,
+    };
+
+    struct aws_byte_cursor private_key_cursor = aws_byte_cursor_from_array(d, sizeof(d));
+
+    struct aws_ecc_key_pair *key_pair =
+        aws_ecc_key_pair_new_from_private_key(allocator, AWS_CAL_ECDSA_P256, &private_key_cursor);
+    ASSERT_NOT_NULL(key_pair);
+
+    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PRIVATE);
+}
+
+AWS_TEST_CASE(ecc_key_pair_private_ref_count_test, s_ecc_key_pair_private_ref_count_test)

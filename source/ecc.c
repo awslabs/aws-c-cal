@@ -225,6 +225,10 @@ void aws_ecc_key_pair_acquire(struct aws_ecc_key_pair *key_pair) {
 }
 
 void aws_ecc_key_pair_release(struct aws_ecc_key_pair *key_pair) {
+    if (key_pair == NULL) {
+        return;
+    }
+
     size_t old_value = aws_atomic_fetch_sub(&key_pair->ref_count, 1);
 
     if (old_value == 1) {

@@ -599,3 +599,10 @@ error:
     }
     return NULL;
 }
+
+int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *buffer) {
+    (void)key_pair;
+    (void)buffer;
+
+    return AWS_OP_ERR;
+}

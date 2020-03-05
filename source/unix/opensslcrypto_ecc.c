@@ -383,3 +383,35 @@ error:
 
     return NULL;
 }
+
+int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *buffer) {
+
+    if (key_pair == NULL) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    struct libcrypto_ecc_key *libcrypto_key_pair = key_pair->impl;
+    if (libcrypto_key_pair->ec_key == NULL) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    int encoded_length = i2d_ECPrivateKey(libcrypto_key_pair->ec_key, NULL);
+    if (encoded_length < 0) {
+        return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+    }
+
+    if (aws_byte_buf_reserve_relative(buffer, (size_t)encoded_length)) {
+        return AWS_OP_ERR;
+    }
+
+    unsigned char *output_ptr = buffer->buffer + buffer->len;
+    encoded_length = i2d_ECPrivateKey(libcrypto_key_pair->ec_key, &output_ptr);
+    if (encoded_length < 0) {
+        return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+    }
+
+    AWS_FATAL_ASSERT(encoded_length == output_ptr - (buffer->buffer + buffer->len));
+    buffer->len += (size_t)encoded_length;
+
+    return AWS_OP_SUCCESS;
+}

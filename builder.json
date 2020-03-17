@@ -1,5 +1,17 @@
 {
     "name": "aws-c-cal",
+    "targets": {
+        "linux": {
+            "imports": [
+                "libcrypto"
+            ]
+        },
+        "android": {
+            "imports": [
+                "libcrypto"
+            ]
+        }
+    },
     "upstream": [
         { "name": "aws-c-common" }
     ],

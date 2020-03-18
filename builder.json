@@ -5,5 +5,11 @@
     ],
     "downstream": [
     ],
-    "imports": ["libcrypto"]
+    "targets": {
+        "linux": {
+            "imports": [
+                "libcrypto"
+            ]
+        }
+    }   
 }

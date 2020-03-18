@@ -10,6 +10,11 @@
             "imports": [
                 "libcrypto"
             ]
+        },
+        "android": {
+            "imports": [
+                "libcrypto"
+            ]
         }
     }   
 }

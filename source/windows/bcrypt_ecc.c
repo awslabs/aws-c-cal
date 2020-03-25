@@ -471,74 +471,16 @@ error:
     return NULL;
 }
 
-static const char *s_asn1_encoding_blob_type = "BCRYPT_ECCPRIVATE_BLOB";
-
-static int s_bcrypt_status_to_aws_error(NTSTATUS status) {
-    switch (status) {
-        case STATUS_INVALID_HANDLE:
-        case STATUS_INVALID_PARAMETER:
-            return AWS_ERROR_INVALID_ARGUMENT;
-
-        case STATUS_BUFFER_TOO_SMALL:
-            return AWS_ERROR_SHORT_BUFFER;
-
-        default:
-            return AWS_ERROR_SYS_CALL_FAILURE;
-    }
-}
-
 int aws_ecc_key_pair_get_asn1_encoding_length(struct aws_ecc_key_pair *key_pair, size_t *encoding_length_out) {
-    if (key_pair == NULL || encoding_length_out == NULL) {
-        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-    }
+    (void)key_pair;
+    (void)encoding_length_out;
 
-    struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
-
-    ULONG encoded_length = 0;
-    NTSTATUS status =
-        BCryptExportKey(key_impl->key_handle, NULL, s_asn1_encoding_blob_type, NULL, 0, &encoded_length, 0);
-    if (status != STATUS_SUCCESS) {
-        return aws_raise_error(s_bcrypt_status_to_aws_error(status));
-    }
-
-    *encoding_length_out = (size_t)encoded_length;
-
-    return AWS_OP_SUCCESS;
+    return aws_raise_error(AWS_ERROR_UNIMPLEMENTED);
 }
 
 int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *buffer) {
-    AWS_FATAL_PRECONDITION(aws_byte_buf_is_valid(buffer));
+    (void)key_pair;
+    (void)buffer;
 
-    int result = AWS_OP_ERR;
-
-    if (key_pair == NULL) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-        goto done;
-    }
-
-    struct bcrypt_ecc_key_pair *key_impl = key_pair->impl;
-
-    ULONG encoded_length = 0;
-    NTSTATUS status = BCryptExportKey(
-        key_impl->key_handle,
-        NULL,
-        s_asn1_encoding_blob_type,
-        buffer->buffer + buffer->len,
-        buffer->capacity - buffer->len,
-        &encoded_length,
-        0);
-    if (status != STATUS_SUCCESS) {
-        aws_raise_error(s_bcrypt_status_to_aws_error(status));
-        goto done;
-    }
-
-    buffer->len += encoded_length;
-
-    result = AWS_OP_SUCCESS;
-
-done:
-
-    AWS_FATAL_PRECONDITION(aws_byte_buf_is_valid(buffer));
-
-    return result;
+    return aws_raise_error(AWS_ERROR_UNIMPLEMENTED);
 }

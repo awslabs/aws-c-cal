@@ -55,7 +55,7 @@ add_test_case(ecdsa_p384_test_import_asn1_key_pair)
 add_test_case(ecdsa_test_import_asn1_key_pair_public_only)
 add_test_case(ecdsa_test_import_asn1_key_pair_invalid_fails)
 add_test_case(ecdsa_test_signature_format)
-if (NOT APPLE)
+if (NOT APPLE AND NOT WIN32)
     add_test_case(ecdsa_p256_test_export_asn1_key_pair)
 endif()
 

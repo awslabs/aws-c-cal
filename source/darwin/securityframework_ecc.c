@@ -612,5 +612,4 @@ int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, str
     (void)buffer;
 
     return aws_raise_error(AWS_ERROR_UNIMPLEMENTED);
-    ;
 }

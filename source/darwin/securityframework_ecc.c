@@ -600,9 +600,17 @@ error:
     return NULL;
 }
 
+int aws_ecc_key_pair_get_asn1_encoding_length(struct aws_ecc_key_pair *key_pair, size_t *encoding_length_out) {
+    (void)key_pair;
+    (void)encoding_length_out;
+
+    return aws_raise_error(AWS_ERROR_UNIMPLEMENTED);
+}
+
 int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *buffer) {
     (void)key_pair;
     (void)buffer;
 
-    return AWS_OP_ERR;
+    return aws_raise_error(AWS_ERROR_UNIMPLEMENTED);
+    ;
 }

@@ -384,9 +384,8 @@ error:
     return NULL;
 }
 
-int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *buffer) {
-
-    if (key_pair == NULL) {
+int aws_ecc_key_pair_get_asn1_encoding_length(struct aws_ecc_key_pair *key_pair, size_t *encoding_length_out) {
+    if (key_pair == NULL || encoding_length_out == NULL) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -400,18 +399,54 @@ int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, str
         return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
     }
 
-    if (aws_byte_buf_reserve_relative(buffer, (size_t)encoded_length)) {
-        return AWS_OP_ERR;
+    *encoding_length_out = encoded_length;
+
+    return AWS_OP_SUCCESS;
+}
+
+int aws_ecc_key_pair_append_asn1_encoding(struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *buffer) {
+    AWS_FATAL_PRECONDITION(aws_byte_buf_is_valid(buffer));
+
+    int result = AWS_OP_ERR;
+
+    if (key_pair == NULL) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto done;
+    }
+
+    struct libcrypto_ecc_key *libcrypto_key_pair = key_pair->impl;
+    if (libcrypto_key_pair->ec_key == NULL) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto done;
+    }
+
+    int encoded_length = i2d_ECPrivateKey(libcrypto_key_pair->ec_key, NULL);
+    if (encoded_length < 0) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto done;
+    }
+
+    /* pre-condition guarantees capacity >= len */
+    if (buffer->capacity - buffer->len > encoded_length) {
+        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        goto done;
     }
 
     unsigned char *output_ptr = buffer->buffer + buffer->len;
     encoded_length = i2d_ECPrivateKey(libcrypto_key_pair->ec_key, &output_ptr);
     if (encoded_length < 0) {
-        return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto done;
     }
 
     AWS_FATAL_ASSERT(encoded_length == output_ptr - (buffer->buffer + buffer->len));
     buffer->len += (size_t)encoded_length;
 
-    return AWS_OP_SUCCESS;
+    result = AWS_OP_SUCCESS;
+
+done:
+
+    AWS_FATAL_PRECONDITION(aws_byte_buf_is_valid(buffer));
+
+    return result;
 }

@@ -5,6 +5,16 @@
     ],
     "downstream": [
     ],
-    "cmake_args": [
-    ]
+    "targets": {
+        "linux": {
+            "imports": [
+                "libcrypto"
+            ]
+        },
+        "android": {
+            "imports": [
+                "libcrypto"
+            ]
+        }
+    }   
 }

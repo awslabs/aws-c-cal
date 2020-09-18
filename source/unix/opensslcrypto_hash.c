@@ -3,9 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 #include <aws/cal/hash.h>
+#include <aws/cal/private/opensslcrypto_common.h>
 
 #include <openssl/evp.h>
 #include <openssl/sha.h>
+
+/* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
+#if OPENSSL_VERSION_LESS_1_1
+#   define EVP_MD_CTX_new() EVP_MD_CTX_create()
+#   define EVP_MD_CTX_free(ctx) EVP_MD_CTX_destroy(ctx)
+#endif
 
 static void s_destroy(struct aws_hash *hash);
 static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);
@@ -37,7 +44,7 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     hash->allocator = allocator;
     hash->vtable = &s_md5_vtable;
     hash->digest_size = AWS_MD5_LEN;
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     hash->impl = ctx;
     hash->good = true;
 
@@ -48,7 +55,7 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     }
 
     if (!EVP_DigestInit_ex(ctx, EVP_md5(), NULL)) {
-        EVP_MD_CTX_destroy(ctx);
+        EVP_MD_CTX_free(ctx);
         aws_mem_release(allocator, hash);
         aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
@@ -67,7 +74,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     hash->allocator = allocator;
     hash->vtable = &s_sha256_vtable;
     hash->digest_size = AWS_SHA256_LEN;
-    EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     hash->impl = ctx;
     hash->good = true;
 
@@ -78,7 +85,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     }
 
     if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
-        EVP_MD_CTX_destroy(ctx);
+        EVP_MD_CTX_free(ctx);
         aws_mem_release(allocator, hash);
         aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
@@ -89,7 +96,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
 
 static void s_destroy(struct aws_hash *hash) {
     EVP_MD_CTX *ctx = hash->impl;
-    EVP_MD_CTX_destroy(ctx);
+    EVP_MD_CTX_free(ctx);
     aws_mem_release(hash->allocator, hash);
 }
 

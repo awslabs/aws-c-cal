@@ -10,8 +10,8 @@
 
 /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
 #if OPENSSL_VERSION_LESS_1_1
-#   define EVP_MD_CTX_new() EVP_MD_CTX_create()
-#   define EVP_MD_CTX_free(ctx) EVP_MD_CTX_destroy(ctx)
+#    define EVP_MD_CTX_new() EVP_MD_CTX_create()
+#    define EVP_MD_CTX_free(ctx) EVP_MD_CTX_destroy(ctx)
 #endif
 
 static void s_destroy(struct aws_hash *hash);

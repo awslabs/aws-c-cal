@@ -32,6 +32,7 @@ list(APPEND CMAKE_MODULE_PATH ${AWS_MODULE_PATH})
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 
 include(AwsCFlags)
+include(AwsCheckHeaders)
 include(AwsSharedLibSetup)
 include(AwsSanitizers)
 include(AwsFindPackage)
@@ -122,6 +123,7 @@ configure_file("cmake/${PROJECT_NAME}-config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
   @ONLY)
 
+aws_check_headers(${PROJECT_NAME} ${AWS_CAL_HEADERS})
 install(FILES ${AWS_CAL_HEADERS} DESTINATION "include/aws/cal" COMPONENT Development)
 
 if (BUILD_SHARED_LIBS)

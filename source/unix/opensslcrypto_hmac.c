@@ -3,21 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 #include <aws/cal/hmac.h>
+#include <aws/cal/private/opensslcrypto_common.h>
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
-
-/**
- * openssl with OPENSSL_VERSION_NUMBER < 0x10100003L made data type details
- * unavailable libressl use openssl with data type details available, but
- * mandatorily set OPENSSL_VERSION_NUMBER = 0x20000000L, insane!
- * https://github.com/aws/aws-sdk-cpp/pull/507/commits/2c99f1fe0c4b4683280caeb161538d4724d6a179
- */
-#if defined(LIBRESSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER == 0x20000000L)
-#    undef OPENSSL_VERSION_NUMBER
-#    define OPENSSL_VERSION_NUMBER 0x1000107fL
-#endif
-#define OPENSSL_VERSION_LESS_1_1 (OPENSSL_VERSION_NUMBER < 0x10100003L)
 
 static void s_destroy(struct aws_hmac *hmac);
 static int s_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac);

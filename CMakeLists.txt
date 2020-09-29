@@ -78,7 +78,7 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        find_package(LibCryptoCAL REQUIRED)
+        find_package(LibCrypto REQUIRED)
         set(PLATFORM_LIBS LibCrypto::Crypto dl)
     endif()
 endif()
@@ -143,7 +143,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     COMPONENT Development)
 
 list(APPEND EXPORT_MODULES
-    "cmake/modules/FindLibCryptoCAL.cmake"
+    "cmake/modules/FindLibCrypto.cmake"
     )
 
 install(FILES ${EXPORT_MODULES}

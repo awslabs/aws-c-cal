@@ -18,7 +18,7 @@
 find_path(LibCrypto_INCLUDE_DIR
     NAMES openssl/crypto.h
     HINTS
-        ${CMAKE_PREFIX_PATH}/include 
+        ${CMAKE_PREFIX_PATH}/include
         ${CMAKE_INSTALL_PREFIX}/include
     )
 find_library(LibCrypto_SHARED_LIBRARY
@@ -28,7 +28,7 @@ find_library(LibCrypto_SHARED_LIBRARY
     ${CMAKE_PREFIX_PATH}/build
     ${CMAKE_PREFIX_PATH}
     ${CMAKE_PREFIX_PATH}/lib64
-    ${CMAKE_PREFIX_PATH}/lib 
+    ${CMAKE_PREFIX_PATH}/lib
     ${CMAKE_INSTALL_PREFIX}/build/crypto
     ${CMAKE_INSTALL_PREFIX}/build
     ${CMAKE_INSTALL_PREFIX}
@@ -37,12 +37,12 @@ find_library(LibCrypto_SHARED_LIBRARY
     )
 find_library(LibCrypto_STATIC_LIBRARY
     NAMES libcrypto.a
-    HINTS 
+    HINTS
     ${CMAKE_PREFIX_PATH}/build/crypto
     ${CMAKE_PREFIX_PATH}/build
     ${CMAKE_PREFIX_PATH}
     ${CMAKE_PREFIX_PATH}/lib64
-    ${CMAKE_PREFIX_PATH}/lib   
+    ${CMAKE_PREFIX_PATH}/lib
     ${CMAKE_INSTALL_PREFIX}/build/crypto
     ${CMAKE_INSTALL_PREFIX}/build
     ${CMAKE_INSTALL_PREFIX}
@@ -77,8 +77,6 @@ mark_as_advanced(
 if(LibCrypto_FOUND OR LIBCRYPTO_FOUND)
     set(LibCrypto_FOUND true)
     set(LIBCRYPTO_FOUND true)
-    set(LibCryptoCAL_FOUND true)
-    set(LIBCRYPTOCAL_FOUND true)
 
     message(STATUS "LibCrypto Include Dir: ${LibCrypto_INCLUDE_DIR}")
     message(STATUS "LibCrypto Shared Lib:  ${LibCrypto_SHARED_LIBRARY}")

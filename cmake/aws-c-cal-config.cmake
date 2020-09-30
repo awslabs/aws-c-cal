@@ -1,7 +1,10 @@
 include(CMakeFindDependencyMacro)
 
+find_dependency(aws-c-common)
+
 if (NOT BYO_CRYPTO AND NOT WIN32 AND NOT APPLE)
-    find_dependency(LibCryptoCAL)
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules")
+    find_dependency(LibCrypto)
 endif()
 
 if (BUILD_SHARED_LIBS)

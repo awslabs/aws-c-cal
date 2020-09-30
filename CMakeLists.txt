@@ -78,7 +78,7 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        find_package(LibCryptoCAL REQUIRED)
+        find_package(LibCrypto REQUIRED)
         set(PLATFORM_LIBS LibCrypto::Crypto dl)
     endif()
 endif()
@@ -98,7 +98,8 @@ aws_prepare_symbol_visibility_args(${PROJECT_NAME} "AWS_CAL")
 aws_add_sanitizers(${PROJECT_NAME} BLACKLIST "sanitizer-blacklist.txt")
 
 aws_use_package(aws-c-common)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${PLATFORM_LIBS})
 
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DAWS_BYO_CRYPTO)
@@ -142,11 +143,11 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     COMPONENT Development)
 
 list(APPEND EXPORT_MODULES
-    "cmake/modules/FindLibCryptoCAL.cmake"
+    "cmake/modules/FindLibCrypto.cmake"
     )
 
 install(FILES ${EXPORT_MODULES}
-        DESTINATION "${LIBRARY_DIRECTORY}/cmake"
+        DESTINATION "${LIBRARY_DIRECTORY}/${PROJECT_NAME}/cmake/modules"
         COMPONENT Development)
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT BYO_CRYPTO)

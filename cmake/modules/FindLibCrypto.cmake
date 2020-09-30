@@ -18,17 +18,17 @@
 find_path(LibCrypto_INCLUDE_DIR
     NAMES openssl/crypto.h
     HINTS
-        ${CMAKE_PREFIX_PATH}/include 
+        ${CMAKE_PREFIX_PATH}/include
         ${CMAKE_INSTALL_PREFIX}/include
     )
 find_library(LibCrypto_SHARED_LIBRARY
-    NAMES libcrypto.so
+    NAMES libcrypto.so libcrypto.dylib
     HINTS
     ${CMAKE_PREFIX_PATH}/build/crypto
     ${CMAKE_PREFIX_PATH}/build
     ${CMAKE_PREFIX_PATH}
     ${CMAKE_PREFIX_PATH}/lib64
-    ${CMAKE_PREFIX_PATH}/lib 
+    ${CMAKE_PREFIX_PATH}/lib
     ${CMAKE_INSTALL_PREFIX}/build/crypto
     ${CMAKE_INSTALL_PREFIX}/build
     ${CMAKE_INSTALL_PREFIX}
@@ -37,12 +37,12 @@ find_library(LibCrypto_SHARED_LIBRARY
     )
 find_library(LibCrypto_STATIC_LIBRARY
     NAMES libcrypto.a
-    HINTS 
+    HINTS
     ${CMAKE_PREFIX_PATH}/build/crypto
     ${CMAKE_PREFIX_PATH}/build
     ${CMAKE_PREFIX_PATH}
     ${CMAKE_PREFIX_PATH}/lib64
-    ${CMAKE_PREFIX_PATH}/lib   
+    ${CMAKE_PREFIX_PATH}/lib
     ${CMAKE_INSTALL_PREFIX}/build/crypto
     ${CMAKE_INSTALL_PREFIX}/build
     ${CMAKE_INSTALL_PREFIX}
@@ -71,11 +71,12 @@ mark_as_advanced(
     LibCrypto_STATIC_LIBRARY
     )
 
+# some versions of cmake have a super esoteric bug around capitalization differences between
+# find dependency and find package, just avoid that here by checking and
+# setting both.
 if(LibCrypto_FOUND OR LIBCRYPTO_FOUND)
     set(LibCrypto_FOUND true)
     set(LIBCRYPTO_FOUND true)
-    set(LibCryptoCAL_FOUND true)
-    set(LIBCRYPTOCAL_FOUND true)
 
     message(STATUS "LibCrypto Include Dir: ${LibCrypto_INCLUDE_DIR}")
     message(STATUS "LibCrypto Shared Lib:  ${LibCrypto_SHARED_LIBRARY}")
@@ -83,11 +84,14 @@ if(LibCrypto_FOUND OR LIBCRYPTO_FOUND)
     if (NOT TARGET LibCrypto::Crypto AND
         (EXISTS "${LibCrypto_LIBRARY}")
         )
+        set(THREADS_PREFER_PTHREAD_FLAG ON)
+        find_package(Threads REQUIRED)
         add_library(LibCrypto::Crypto UNKNOWN IMPORTED)
         set_target_properties(LibCrypto::Crypto PROPERTIES
             INTERFACE_INCLUDE_DIRECTORIES "${LibCrypto_INCLUDE_DIR}")
         set_target_properties(LibCrypto::Crypto PROPERTIES
             IMPORTED_LINK_INTERFACE_LANGUAGES "C"
             IMPORTED_LOCATION "${LibCrypto_LIBRARY}")
+        add_dependencies(LibCrypto::Crypto Threads::Threads)
     endif()
 endif()

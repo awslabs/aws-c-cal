@@ -3,7 +3,7 @@ include(CMakeFindDependencyMacro)
 find_dependency(aws-c-common)
 
 if (NOT BYO_CRYPTO AND NOT WIN32 AND NOT APPLE)
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/modules")
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/modules")
     find_dependency(LibCrypto)
 endif()
 

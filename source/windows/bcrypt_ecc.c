@@ -179,7 +179,6 @@ static int s_append_coordinate(
     return aws_byte_buf_append(buffer, coordinate);
 }
 
-
 static int s_verify_signature(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,

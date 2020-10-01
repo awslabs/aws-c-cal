@@ -776,7 +776,6 @@ static int s_ecc_key_pair_private_ref_count_test(struct aws_allocator *allocator
 
 AWS_TEST_CASE(ecc_key_pair_private_ref_count_test, s_ecc_key_pair_private_ref_count_test)
 
-
 /*
  Message, signature, and key values for a correct signature that contains a coordinate that is < 32 bytes long in the
  der encoding.  This was an issue on windows where we have to unpack the coordinates and pass them to BCrypt and

@@ -6,6 +6,8 @@
 #include <aws/cal/ecc.h>
 #include <aws/cal/hash.h>
 #include <aws/common/byte_buf.h>
+#include <aws/common/encoding.h>
+#include <aws/common/string.h>
 #include <aws/testing/aws_test_harness.h>
 
 static int s_test_key_derivation(
@@ -773,3 +775,123 @@ static int s_ecc_key_pair_private_ref_count_test(struct aws_allocator *allocator
 }
 
 AWS_TEST_CASE(ecc_key_pair_private_ref_count_test, s_ecc_key_pair_private_ref_count_test)
+
+
+/*
+ Message, signature, and key values for a correct signature that contains a coordinate that is < 32 bytes long in the
+ der encoding.  This was an issue on windows where we have to unpack the coordinates and pass them to BCrypt and
+ weren't padding them with leading zeros.
+ */
+AWS_STATIC_STRING_FROM_LITERAL(s_hex_message, "a8ddb188e516d365ba275c2b6d55ead851e89ab66f162adf29614f37cd3403c9");
+
+AWS_STATIC_STRING_FROM_LITERAL(
+    s_signature_value,
+    "3044021f7cfd51af2b722f8d1fa1afb65b4d5486ed59a67bcf9f3acc62aad6ddd37db10221009d4c9f9a37104fc01a8daffc9a6bd1056b7b43"
+    "c1196edde0b52878b759628f8c");
+
+AWS_STATIC_STRING_FROM_LITERAL(s_pub_x, "b6618f6a65740a99e650b33b6b4b5bd0d43b176d721a3edfea7e7d2d56d936b1");
+
+AWS_STATIC_STRING_FROM_LITERAL(s_pub_y, "865ed22a7eadc9c5cb9d2cbaca1b3699139fedc5043dc6661864218330c8e518");
+
+static struct aws_ecc_key_pair *s_build_small_coord_ecc_key(struct aws_allocator *allocator) {
+    struct aws_byte_buf pub_x_buffer;
+    AWS_ZERO_STRUCT(pub_x_buffer);
+    struct aws_byte_buf pub_y_buffer;
+    AWS_ZERO_STRUCT(pub_y_buffer);
+
+    struct aws_ecc_key_pair *key = NULL;
+
+    struct aws_byte_cursor pub_x_hex_cursor = aws_byte_cursor_from_string(s_pub_x);
+    struct aws_byte_cursor pub_y_hex_cursor = aws_byte_cursor_from_string(s_pub_y);
+
+    size_t pub_x_length = 0;
+    size_t pub_y_length = 0;
+    if (aws_hex_compute_decoded_len(pub_x_hex_cursor.len, &pub_x_length) ||
+        aws_hex_compute_decoded_len(pub_y_hex_cursor.len, &pub_y_length)) {
+        goto done;
+    }
+
+    if (aws_byte_buf_init(&pub_x_buffer, allocator, pub_x_length) ||
+        aws_byte_buf_init(&pub_y_buffer, allocator, pub_y_length)) {
+        goto done;
+    }
+
+    if (aws_hex_decode(&pub_x_hex_cursor, &pub_x_buffer) || aws_hex_decode(&pub_y_hex_cursor, &pub_y_buffer)) {
+        goto done;
+    }
+
+    struct aws_byte_cursor pub_x_cursor = aws_byte_cursor_from_buf(&pub_x_buffer);
+    struct aws_byte_cursor pub_y_cursor = aws_byte_cursor_from_buf(&pub_y_buffer);
+
+    key = aws_ecc_key_pair_new_from_public_key(allocator, AWS_CAL_ECDSA_P256, &pub_x_cursor, &pub_y_cursor);
+
+done:
+
+    aws_byte_buf_clean_up(&pub_x_buffer);
+    aws_byte_buf_clean_up(&pub_y_buffer);
+
+    return key;
+}
+
+static int s_validate_message_signature(
+    struct aws_allocator *allocator,
+    struct aws_ecc_key_pair *ecc_key,
+    struct aws_byte_cursor hex_message_cursor,
+    struct aws_byte_cursor signature_value_cursor) {
+
+    size_t binary_length = 0;
+    if (aws_hex_compute_decoded_len(signature_value_cursor.len, &binary_length)) {
+        return AWS_OP_ERR;
+    }
+
+    int result = AWS_OP_ERR;
+
+    struct aws_byte_buf binary_signature;
+    AWS_ZERO_STRUCT(binary_signature);
+
+    struct aws_byte_buf message_buffer;
+    AWS_ZERO_STRUCT(message_buffer);
+
+    if (aws_byte_buf_init(&binary_signature, allocator, binary_length) ||
+        aws_byte_buf_init(&message_buffer, allocator, AWS_SHA256_LEN)) {
+        goto done;
+    }
+
+    if (aws_hex_decode(&signature_value_cursor, &binary_signature)) {
+        goto done;
+    }
+
+    if (aws_hex_decode(&hex_message_cursor, &message_buffer)) {
+        goto done;
+    }
+
+    struct aws_byte_cursor binary_signature_cursor =
+        aws_byte_cursor_from_array(binary_signature.buffer, binary_signature.len);
+    struct aws_byte_cursor digest_cursor = aws_byte_cursor_from_buf(&message_buffer);
+    if (aws_ecc_key_pair_verify_signature(ecc_key, &digest_cursor, &binary_signature_cursor)) {
+        goto done;
+    }
+
+    result = AWS_OP_SUCCESS;
+
+done:
+
+    aws_byte_buf_clean_up(&binary_signature);
+    aws_byte_buf_clean_up(&message_buffer);
+
+    return result;
+}
+
+static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_ecc_key_pair *key = s_build_small_coord_ecc_key(allocator);
+
+    ASSERT_SUCCESS(s_validate_message_signature(
+        allocator, key, aws_byte_cursor_from_string(s_hex_message), aws_byte_cursor_from_string(s_signature_value)));
+
+    aws_ecc_key_pair_release(key);
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(ecdsa_p256_test_small_coordinate_verification, s_ecdsa_p256_test_small_coordinate_verification);

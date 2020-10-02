@@ -162,6 +162,24 @@ static int s_derive_public_key(struct aws_ecc_key_pair *key_pair) {
     return AWS_OP_SUCCESS;
 }
 
+static int s_append_coordinate(
+    struct aws_byte_buf *buffer,
+    struct aws_byte_cursor *coordinate,
+    enum aws_ecc_curve_name curve_name) {
+
+    size_t coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
+    if (coordinate->len < coordinate_size) {
+        size_t leading_zero_count = coordinate_size - coordinate->len;
+        AWS_FATAL_ASSERT(leading_zero_count + buffer->len <= buffer->capacity);
+
+        memset(buffer->buffer + buffer->len, 0, leading_zero_count);
+        buffer->len += leading_zero_count;
+    }
+
+    return aws_byte_buf_append(buffer, coordinate);
+}
+
+
 static int s_verify_signature(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
@@ -198,7 +216,7 @@ static int s_verify_signature(
         goto error;
     }
 
-    if (aws_byte_buf_append(&temp_signature_buf, &coordinate)) {
+    if (s_append_coordinate(&temp_signature_buf, &coordinate, key_pair->curve_name)) {
         goto error;
     }
 
@@ -212,7 +230,7 @@ static int s_verify_signature(
         goto error;
     }
 
-    if (aws_byte_buf_append(&temp_signature_buf, &coordinate)) {
+    if (s_append_coordinate(&temp_signature_buf, &coordinate, key_pair->curve_name)) {
         goto error;
     }
 

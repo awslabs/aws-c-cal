@@ -6,6 +6,7 @@
 
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
+#include <aws/common/encoding.h>
 
 #define STATIC_INIT_BYTE_CURSOR(a, name)                                                                               \
     static struct aws_byte_cursor s_##name = {                                                                         \
@@ -224,4 +225,45 @@ void aws_ecc_key_pair_release(struct aws_ecc_key_pair *key_pair) {
     if (old_value == 1) {
         s_aws_ecc_key_pair_destroy(key_pair);
     }
+}
+
+struct aws_ecc_key_pair *aws_ecc_key_new_from_hex_coordinates(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name,
+    struct aws_byte_cursor pub_x_hex_cursor,
+    struct aws_byte_cursor pub_y_hex_cursor) {
+    struct aws_byte_buf pub_x_buffer;
+    AWS_ZERO_STRUCT(pub_x_buffer);
+    struct aws_byte_buf pub_y_buffer;
+    AWS_ZERO_STRUCT(pub_y_buffer);
+
+    struct aws_ecc_key_pair *key = NULL;
+
+    size_t pub_x_length = 0;
+    size_t pub_y_length = 0;
+    if (aws_hex_compute_decoded_len(pub_x_hex_cursor.len, &pub_x_length) ||
+        aws_hex_compute_decoded_len(pub_y_hex_cursor.len, &pub_y_length)) {
+        goto done;
+    }
+
+    if (aws_byte_buf_init(&pub_x_buffer, allocator, pub_x_length) ||
+        aws_byte_buf_init(&pub_y_buffer, allocator, pub_y_length)) {
+        goto done;
+    }
+
+    if (aws_hex_decode(&pub_x_hex_cursor, &pub_x_buffer) || aws_hex_decode(&pub_y_hex_cursor, &pub_y_buffer)) {
+        goto done;
+    }
+
+    struct aws_byte_cursor pub_x_cursor = aws_byte_cursor_from_buf(&pub_x_buffer);
+    struct aws_byte_cursor pub_y_cursor = aws_byte_cursor_from_buf(&pub_y_buffer);
+
+    key = aws_ecc_key_pair_new_from_public_key(allocator, curve_name, &pub_x_cursor, &pub_y_cursor);
+
+done:
+
+    aws_byte_buf_clean_up(&pub_x_buffer);
+    aws_byte_buf_clean_up(&pub_y_buffer);
+
+    return key;
 }

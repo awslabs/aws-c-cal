@@ -792,46 +792,6 @@ AWS_STATIC_STRING_FROM_LITERAL(s_pub_x, "b6618f6a65740a99e650b33b6b4b5bd0d43b176
 
 AWS_STATIC_STRING_FROM_LITERAL(s_pub_y, "865ed22a7eadc9c5cb9d2cbaca1b3699139fedc5043dc6661864218330c8e518");
 
-static struct aws_ecc_key_pair *s_build_small_coord_ecc_key(struct aws_allocator *allocator) {
-    struct aws_byte_buf pub_x_buffer;
-    AWS_ZERO_STRUCT(pub_x_buffer);
-    struct aws_byte_buf pub_y_buffer;
-    AWS_ZERO_STRUCT(pub_y_buffer);
-
-    struct aws_ecc_key_pair *key = NULL;
-
-    struct aws_byte_cursor pub_x_hex_cursor = aws_byte_cursor_from_string(s_pub_x);
-    struct aws_byte_cursor pub_y_hex_cursor = aws_byte_cursor_from_string(s_pub_y);
-
-    size_t pub_x_length = 0;
-    size_t pub_y_length = 0;
-    if (aws_hex_compute_decoded_len(pub_x_hex_cursor.len, &pub_x_length) ||
-        aws_hex_compute_decoded_len(pub_y_hex_cursor.len, &pub_y_length)) {
-        goto done;
-    }
-
-    if (aws_byte_buf_init(&pub_x_buffer, allocator, pub_x_length) ||
-        aws_byte_buf_init(&pub_y_buffer, allocator, pub_y_length)) {
-        goto done;
-    }
-
-    if (aws_hex_decode(&pub_x_hex_cursor, &pub_x_buffer) || aws_hex_decode(&pub_y_hex_cursor, &pub_y_buffer)) {
-        goto done;
-    }
-
-    struct aws_byte_cursor pub_x_cursor = aws_byte_cursor_from_buf(&pub_x_buffer);
-    struct aws_byte_cursor pub_y_cursor = aws_byte_cursor_from_buf(&pub_y_buffer);
-
-    key = aws_ecc_key_pair_new_from_public_key(allocator, AWS_CAL_ECDSA_P256, &pub_x_cursor, &pub_y_cursor);
-
-done:
-
-    aws_byte_buf_clean_up(&pub_x_buffer);
-    aws_byte_buf_clean_up(&pub_y_buffer);
-
-    return key;
-}
-
 static int s_validate_message_signature(
     struct aws_allocator *allocator,
     struct aws_ecc_key_pair *ecc_key,
@@ -884,7 +844,8 @@ done:
 static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    struct aws_ecc_key_pair *key = s_build_small_coord_ecc_key(allocator);
+    struct aws_ecc_key_pair *key = aws_ecc_key_new_from_hex_coordinates(
+        allocator, AWS_CAL_ECDSA_P256, aws_byte_cursor_from_string(s_pub_x), aws_byte_cursor_from_string(s_pub_y));
 
     ASSERT_SUCCESS(s_validate_message_signature(
         allocator, key, aws_byte_cursor_from_string(s_hex_message), aws_byte_cursor_from_string(s_signature_value)));

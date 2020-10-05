@@ -106,6 +106,17 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     const struct aws_byte_cursor *encoded_keys);
 
 /**
+ * Creates an Elliptic curve public key from x and y coordinates encoded as hex strings
+ * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
+ * Otherwise returns NULL.
+ */
+AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_new_from_hex_coordinates(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name,
+    struct aws_byte_cursor pub_x_hex_cursor,
+    struct aws_byte_cursor pub_y_hex_cursor);
+
+/**
  * Derives a public key from the private key if supported by this operating system (not supported on OSX).
  * key_pair::pub_x and key_pair::pub_y will be set with the raw key buffers.
  */

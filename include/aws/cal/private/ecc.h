@@ -6,7 +6,6 @@
  */
 
 #include <aws/cal/ecc.h>
-#include <aws/cal/exports.h>
 
 #include <aws/common/byte_buf.h>
 

@@ -5,6 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#include <aws/cal/ecc.h>
+#include <aws/cal/exports.h>
+
 #include <aws/common/byte_buf.h>
 
 struct aws_der_decoder;

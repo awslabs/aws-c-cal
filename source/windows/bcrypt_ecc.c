@@ -2,12 +2,10 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
-
-#include <aws/cal/ecc.h>
+#include <aws/cal/private/ecc.h>
 
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
-#include <aws/cal/private/ecc.h>
 
 #include <aws/common/thread.h>
 

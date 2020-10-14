@@ -2,12 +2,13 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
+#include <aws/cal/private/ecc.h>
+
+#include <aws/cal/cal.h>
+#include <aws/cal/private/der.h>
+
 #include <Security/SecKey.h>
 #include <Security/Security.h>
-#include <aws/cal/cal.h>
-#include <aws/cal/ecc.h>
-#include <aws/cal/private/der.h>
-#include <aws/cal/private/ecc.h>
 
 #if !defined(AWS_OS_IOS)
 #    include <Security/SecSignVerifyTransform.h>

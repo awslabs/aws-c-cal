@@ -40,12 +40,15 @@ static struct aws_error_info_list s_list = {
     .count = AWS_ARRAY_SIZE(s_errors),
 };
 
+extern void aws_cal_platform_init(struct aws_allocator *allocator);
+
 static bool s_cal_library_initialized = false;
 
 void aws_cal_library_init(struct aws_allocator *allocator) {
     if (!s_cal_library_initialized) {
         aws_common_library_init(allocator);
         aws_register_error_info(&s_list);
+        aws_cal_platform_init(allocator);
         s_cal_library_initialized = true;
     }
 }

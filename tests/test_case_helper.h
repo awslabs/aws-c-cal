@@ -2,6 +2,7 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
+#include <aws/cal/cal.h>
 #include <aws/cal/hash.h>
 #include <aws/cal/hmac.h>
 
@@ -11,6 +12,8 @@ static inline int s_verify_hmac_test_case(
     struct aws_byte_cursor *secret,
     struct aws_byte_cursor *expected,
     aws_hmac_new_fn *new_fn) {
+
+    aws_cal_library_init(allocator);
 
     /* test all possible segmentation lengths from 1 byte at a time to the entire
      * input. */
@@ -39,6 +42,8 @@ static inline int s_verify_hmac_test_case(
         aws_hmac_destroy(hmac);
     }
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -47,6 +52,8 @@ static inline int s_verify_hash_test_case(
     struct aws_byte_cursor *input,
     struct aws_byte_cursor *expected,
     aws_hash_new_fn *new_fn) {
+
+    aws_cal_library_init(allocator);
 
     /* test all possible segmentation lengths from 1 byte at a time to the entire
      * input. */
@@ -74,6 +81,8 @@ static inline int s_verify_hash_test_case(
 
         aws_hash_destroy(hash);
     }
+
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }

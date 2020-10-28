@@ -1,18 +1,38 @@
 #ifndef AWS_C_CAL_OPENSSLCRYPTO_COMMON_H
 #define AWS_C_CAL_OPENSSLCRYPTO_COMMON_H
 
-#include "openssl/opensslv.h"
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 
-/**
- * openssl with OPENSSL_VERSION_NUMBER < 0x10100003L made data type details
- * unavailable libressl use openssl with data type details available, but
- * mandatorily set OPENSSL_VERSION_NUMBER = 0x20000000L, insane!
- * https://github.com/aws/aws-sdk-cpp/pull/507/commits/2c99f1fe0c4b4683280caeb161538d4724d6a179
- */
-#if defined(LIBRESSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER == 0x20000000L)
-#    undef OPENSSL_VERSION_NUMBER
-#    define OPENSSL_VERSION_NUMBER 0x1000107fL
-#endif
-#define OPENSSL_VERSION_LESS_1_1 (OPENSSL_VERSION_NUMBER < 0x10100003L)
+typedef void (*hmac_ctx_init)(HMAC_CTX *);
+typedef void (*hmac_ctx_clean_up)(HMAC_CTX *);
+
+struct openssl_hmac_ctx_1_0_table {
+    hmac_ctx_init init_fn;
+    hmac_ctx_clean_up clean_up_fn;
+};
+
+typedef HMAC_CTX *(*hmac_ctx_new)(void);
+typedef void (*hmac_ctx_reset)(HMAC_CTX *);
+typedef void (*hmac_ctx_free)(HMAC_CTX *);
+
+struct openssl_hmac_ctx_1_1_table {
+    hmac_ctx_new new_fn;
+    hmac_ctx_reset reset_fn;
+    hmac_ctx_free free_fn;
+};
+
+typedef EVP_MD_CTX *(*evp_md_ctx_new)(void);
+typedef void (*evp_md_ctx_free)(EVP_MD_CTX *);
+
+struct openssl_evp_md_ctx_table {
+    evp_md_ctx_new new_fn;
+    evp_md_ctx_free free_fn;
+};
+
+extern struct openssl_hmac_ctx_1_0_table *g_aws_openssl_hmac_ctx_1_0_table;
+extern struct openssl_hmac_ctx_1_1_table *g_aws_openssl_hmac_ctx_1_1_table;
+
+extern struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table;
 
 #endif /* AWS_C_CAL_OPENSSLCRYPTO_COMMON_H */

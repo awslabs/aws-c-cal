@@ -20,6 +20,27 @@ static struct aws_hmac_vtable s_sha256_hmac_vtable = {
     .provider = "OpenSSL Compatible libcrypto",
 };
 
+static void s_destroy(struct aws_hmac *hmac) {
+    if (hmac == NULL) {
+        return;
+    }
+
+    HMAC_CTX *ctx = hmac->impl;
+    if (ctx != NULL) {
+        if (g_aws_openssl_hmac_ctx_1_0_table != NULL) {
+            g_aws_openssl_hmac_ctx_1_0_table->clean_up_fn(ctx);
+            aws_mem_release(hmac->allocator, ctx);
+        } else {
+            g_aws_openssl_hmac_ctx_1_1_table->reset_fn(ctx);
+            g_aws_openssl_hmac_ctx_1_1_table->free_fn(ctx);
+        }
+    }
+
+    aws_mem_release(hmac->allocator, hmac);
+}
+
+#define SIZEOF_OPENSSL_HMAC_CTX (4 * sizeof(void *))
+
 struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
     AWS_ASSERT(secret->ptr);
 
@@ -33,11 +54,12 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     hmac->vtable = &s_sha256_hmac_vtable;
     hmac->digest_size = AWS_SHA256_HMAC_LEN;
     HMAC_CTX *ctx = NULL;
-#if OPENSSL_VERSION_LESS_1_1
-    ctx = aws_mem_acquire(allocator, sizeof(HMAC_CTX));
-#else
-    ctx = HMAC_CTX_new();
-#endif
+    if (g_aws_openssl_hmac_ctx_1_0_table != NULL) {
+        ctx = aws_mem_acquire(allocator, SIZEOF_OPENSSL_HMAC_CTX);
+    } else {
+        ctx = g_aws_openssl_hmac_ctx_1_1_table->new_fn();
+    }
+
     hmac->impl = ctx;
     hmac->good = true;
 
@@ -47,36 +69,17 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
         return NULL;
     }
 
-#if OPENSSL_VERSION_LESS_1_1
-    HMAC_CTX_init(ctx);
-#endif
+    if (g_aws_openssl_hmac_ctx_1_0_table != NULL) {
+        g_aws_openssl_hmac_ctx_1_0_table->init_fn(ctx);
+    }
 
     if (!HMAC_Init_ex(ctx, secret->ptr, (int)secret->len, EVP_sha256(), NULL)) {
-#if OPENSSL_VERSION_LESS_1_1
-        HMAC_CTX_cleanup(ctx);
-        aws_mem_release(allocator, ctx);
-#else
-        HMAC_CTX_reset(ctx);
-        HMAC_CTX_free(ctx);
-#endif
-        aws_mem_release(allocator, hmac);
+        s_destroy(hmac);
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         return NULL;
     }
 
     return hmac;
-}
-
-static void s_destroy(struct aws_hmac *hmac) {
-    HMAC_CTX *ctx = hmac->impl;
-#if OPENSSL_VERSION_LESS_1_1
-    HMAC_CTX_cleanup(ctx);
-    aws_mem_release(hmac->allocator, ctx);
-#else
-    HMAC_CTX_reset(ctx);
-    HMAC_CTX_free(ctx);
-#endif
-    aws_mem_release(hmac->allocator, hmac);
 }
 
 static int s_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac) {

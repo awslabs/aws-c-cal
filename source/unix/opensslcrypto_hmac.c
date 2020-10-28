@@ -39,7 +39,19 @@ static void s_destroy(struct aws_hmac *hmac) {
     aws_mem_release(hmac->allocator, hmac);
 }
 
-#define SIZEOF_OPENSSL_HMAC_CTX (4 * sizeof(void *))
+/*
+typedef struct hmac_ctx_st {
+    const EVP_MD *md;
+    EVP_MD_CTX md_ctx;
+    EVP_MD_CTX i_ctx;
+    EVP_MD_CTX o_ctx;
+    unsigned int key_length;
+    unsigned char key[HMAC_MAX_MD_CBLOCK];
+} HMAC_CTX;
+
+*/
+
+#define SIZEOF_OPENSSL_HMAC_CTX 300 /* <= 288 on 64 bit systems with openssl 1.0.* */
 
 struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
     AWS_ASSERT(secret->ptr);

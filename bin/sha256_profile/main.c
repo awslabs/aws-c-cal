@@ -68,14 +68,14 @@ static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size,
 
     struct aws_byte_buf to_hash;
     AWS_FATAL_ASSERT(!aws_byte_buf_init(&to_hash, allocator, to_hash_size) && "failed to allocate buffer for hashing");
-    AWS_FATAL_ASSERT(!aws_device_random_buffer(&to_hash) && "reading 1kb of random data failed");
+    AWS_FATAL_ASSERT(!aws_device_random_buffer(&to_hash) && "reading random data failed");
     struct aws_byte_cursor to_hash_cur = aws_byte_cursor_from_buf(&to_hash);
 
     fprintf(stdout, "********************* Chunked/Alignment Runs *********************************\n\n");
     fprintf(stdout, "****** 128 byte chunks ******\n\n");
     fprintf(stdout, "8-byte alignment:\n");
     s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 128, 8);
-    fprintf(stdout, "6-byte alignment:\n");
+    fprintf(stdout, "16-byte alignment:\n");
     s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 128, 16);
     fprintf(stdout, "64-byte alignment:\n");
     s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 128, 64);

@@ -241,6 +241,8 @@ AWS_TEST_CASE(md5_rfc1321_test_case_7_truncated, s_md5_rfc1321_test_case_7_trunc
 static int s_md5_verify_known_collision_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
+    aws_cal_library_init(allocator);
+
     uint8_t message_1[] = {
         0xd1, 0x31, 0xdd, 0x02, 0xc5, 0xe6, 0xee, 0xc4, 0x69, 0x3d, 0x9a, 0x06, 0x98, 0xaf, 0xf9, 0x5c,
         0x2f, 0xca, 0xb5, 0x87, 0x12, 0x46, 0x7e, 0xab, 0x40, 0x04, 0x58, 0x3e, 0xb8, 0xfb, 0x7f, 0x89,
@@ -300,6 +302,8 @@ static int s_md5_verify_known_collision_fn(struct aws_allocator *allocator, void
     ASSERT_SUCCESS(aws_md5_compute(allocator, &message_2_buf, &output2_buf, 0));
     ASSERT_BIN_ARRAYS_EQUALS(collision_result, sizeof(collision_result), output2, sizeof(output2));
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -307,6 +311,8 @@ AWS_TEST_CASE(md5_verify_known_collision, s_md5_verify_known_collision_fn)
 
 static int s_md5_invalid_buffer_size_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
                                                               "67890123456789012345678901234567890");
@@ -316,6 +322,9 @@ static int s_md5_invalid_buffer_size_fn(struct aws_allocator *allocator, void *c
     output_buf.len = 1;
 
     ASSERT_ERROR(AWS_ERROR_SHORT_BUFFER, aws_md5_compute(allocator, &input, &output_buf, 0));
+
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -323,6 +332,8 @@ AWS_TEST_CASE(md5_invalid_buffer_size, s_md5_invalid_buffer_size_fn)
 
 static int s_md5_test_invalid_state_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
                                                               "67890123456789012345678901234567890");
@@ -340,6 +351,8 @@ static int s_md5_test_invalid_state_fn(struct aws_allocator *allocator, void *ct
     ASSERT_ERROR(AWS_ERROR_INVALID_STATE, aws_hash_finalize(hash, &output_buf, 0));
 
     aws_hash_destroy(hash);
+
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }

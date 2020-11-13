@@ -212,6 +212,8 @@ AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_7, s_sha256_hmac_rfc4231_test_case_7
 static int s_sha256_hmac_test_oneshot_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
+    aws_cal_library_init(allocator);
+
     uint8_t secret[] = {
         0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
         0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -241,6 +243,8 @@ static int s_sha256_hmac_test_oneshot_fn(struct aws_allocator *allocator, void *
     ASSERT_SUCCESS(aws_sha256_hmac_compute(allocator, &secret_buf, &input_buf, &output_buf, 0));
     ASSERT_BIN_ARRAYS_EQUALS(expected, sizeof(expected), output_buf.buffer, output_buf.len);
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -248,6 +252,8 @@ AWS_TEST_CASE(sha256_hmac_test_oneshot, s_sha256_hmac_test_oneshot_fn)
 
 static int s_sha256_hmac_test_invalid_buffer_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     uint8_t secret[] = {
         0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -272,6 +278,8 @@ static int s_sha256_hmac_test_invalid_buffer_fn(struct aws_allocator *allocator,
 
     ASSERT_ERROR(AWS_ERROR_SHORT_BUFFER, aws_sha256_hmac_compute(allocator, &secret_buf, &input_buf, &output_buf, 0));
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -279,6 +287,8 @@ AWS_TEST_CASE(sha256_hmac_test_invalid_buffer, s_sha256_hmac_test_invalid_buffer
 
 static int s_sha256_hmac_test_invalid_state_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     uint8_t secret[] = {
         0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -309,6 +319,8 @@ static int s_sha256_hmac_test_invalid_state_fn(struct aws_allocator *allocator, 
     ASSERT_ERROR(AWS_ERROR_INVALID_STATE, aws_hmac_finalize(hmac, &output_buf, 0));
 
     aws_hmac_destroy(hmac);
+
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }

@@ -8,12 +8,6 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
-/* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
-#if OPENSSL_VERSION_LESS_1_1
-#    define EVP_MD_CTX_new() EVP_MD_CTX_create()
-#    define EVP_MD_CTX_free(ctx) EVP_MD_CTX_destroy(ctx)
-#endif
-
 static void s_destroy(struct aws_hash *hash);
 static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output);
@@ -34,6 +28,19 @@ static struct aws_hash_vtable s_sha256_vtable = {
     .provider = "OpenSSL Compatible libcrypto",
 };
 
+static void s_destroy(struct aws_hash *hash) {
+    if (hash == NULL) {
+        return;
+    }
+
+    EVP_MD_CTX *ctx = hash->impl;
+    if (ctx != NULL) {
+        g_aws_openssl_evp_md_ctx_table->free_fn(ctx);
+    }
+
+    aws_mem_release(hash->allocator, hash);
+}
+
 struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
 
@@ -44,19 +51,18 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     hash->allocator = allocator;
     hash->vtable = &s_md5_vtable;
     hash->digest_size = AWS_MD5_LEN;
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX *ctx = g_aws_openssl_evp_md_ctx_table->new_fn();
     hash->impl = ctx;
     hash->good = true;
 
     if (!hash->impl) {
+        s_destroy(hash);
         aws_raise_error(AWS_ERROR_OOM);
-        aws_mem_release(allocator, hash);
         return NULL;
     }
 
     if (!EVP_DigestInit_ex(ctx, EVP_md5(), NULL)) {
-        EVP_MD_CTX_free(ctx);
-        aws_mem_release(allocator, hash);
+        s_destroy(hash);
         aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
     }
@@ -74,30 +80,23 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     hash->allocator = allocator;
     hash->vtable = &s_sha256_vtable;
     hash->digest_size = AWS_SHA256_LEN;
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX *ctx = g_aws_openssl_evp_md_ctx_table->new_fn();
     hash->impl = ctx;
     hash->good = true;
 
     if (!hash->impl) {
+        s_destroy(hash);
         aws_raise_error(AWS_ERROR_OOM);
-        aws_mem_release(allocator, hash);
         return NULL;
     }
 
     if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
-        EVP_MD_CTX_free(ctx);
-        aws_mem_release(allocator, hash);
+        s_destroy(hash);
         aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
     }
 
     return hash;
-}
-
-static void s_destroy(struct aws_hash *hash) {
-    EVP_MD_CTX *ctx = hash->impl;
-    EVP_MD_CTX_free(ctx);
-    aws_mem_release(hash->allocator, hash);
 }
 
 static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash) {

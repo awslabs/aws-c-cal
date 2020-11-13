@@ -112,6 +112,8 @@ static int s_test_known_signing_value(
     struct aws_byte_cursor pub_x,
     struct aws_byte_cursor pub_y) {
 
+    aws_cal_library_init(allocator);
+
     struct aws_ecc_key_pair *signing_key = aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &private_key);
     ASSERT_NOT_NULL(signing_key);
 
@@ -150,6 +152,8 @@ static int s_test_known_signing_value(
     aws_byte_buf_clean_up(&signature_buf);
     aws_ecc_key_pair_release(verifying_key);
     aws_ecc_key_pair_release(signing_key);
+
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -217,6 +221,8 @@ AWS_TEST_CASE(ecdsa_p384_test_known_signing_value, s_ecdsa_p384_test_known_signi
 static int s_ecdsa_test_invalid_signature_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
+    aws_cal_library_init(allocator);
+
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, AWS_CAL_ECDSA_P256);
     ASSERT_NOT_NULL(key_pair);
 
@@ -256,12 +262,16 @@ static int s_ecdsa_test_invalid_signature_fn(struct aws_allocator *allocator, vo
     aws_byte_buf_clean_up(&signature_buf);
     aws_ecc_key_pair_release(key_pair);
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
 AWS_TEST_CASE(ecdsa_test_invalid_signature, s_ecdsa_test_invalid_signature_fn)
 
 static int s_test_key_gen(struct aws_allocator *allocator, enum aws_ecc_curve_name curve_name) {
+    aws_cal_library_init(allocator);
+
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, curve_name);
 
     struct aws_byte_cursor pub_x;
@@ -307,6 +317,8 @@ static int s_test_key_gen(struct aws_allocator *allocator, enum aws_ecc_curve_na
     aws_byte_buf_clean_up(&signature_buf);
     aws_ecc_key_pair_release(key_pair);
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -327,6 +339,8 @@ static int s_ecdsa_p384_test_key_gen_fn(struct aws_allocator *allocator, void *c
 AWS_TEST_CASE(ecdsa_p384_test_key_gen, s_ecdsa_p384_test_key_gen_fn)
 
 static int s_test_key_gen_export(struct aws_allocator *allocator, enum aws_ecc_curve_name curve_name) {
+
+    aws_cal_library_init(allocator);
 
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, curve_name);
 
@@ -382,6 +396,8 @@ static int s_test_key_gen_export(struct aws_allocator *allocator, enum aws_ecc_c
     aws_ecc_key_pair_release(signing_key);
     aws_ecc_key_pair_release(verifying_key);
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -405,6 +421,8 @@ static int s_ecdsa_test_import_asn1_key_pair(
     struct aws_allocator *allocator,
     struct aws_byte_cursor asn1_cur,
     enum aws_ecc_curve_name expected_curve_name) {
+
+    aws_cal_library_init(allocator);
 
     struct aws_ecc_key_pair *imported_key = aws_ecc_key_pair_new_from_asn1(allocator, &asn1_cur);
     ASSERT_NOT_NULL(imported_key);
@@ -441,6 +459,8 @@ static int s_ecdsa_test_import_asn1_key_pair(
 
     aws_byte_buf_clean_up(&signature_buf);
     aws_ecc_key_pair_release(imported_key);
+
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -492,6 +512,8 @@ AWS_TEST_CASE(ecdsa_p384_test_import_asn1_key_pair, s_ecdsa_p384_test_import_asn
 
 static int s_ecdsa_test_import_asn1_key_pair_public_only_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     uint8_t asn1_encoded_full_key_raw[] = {
         0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0x99, 0x16, 0x2a, 0x5b, 0x4e, 0x63, 0x86, 0x4c, 0x5f, 0x8e, 0x37,
@@ -556,6 +578,8 @@ static int s_ecdsa_test_import_asn1_key_pair_public_only_fn(struct aws_allocator
     aws_ecc_key_pair_release(verifying_key);
     aws_ecc_key_pair_release(signing_key);
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -563,6 +587,8 @@ AWS_TEST_CASE(ecdsa_test_import_asn1_key_pair_public_only, s_ecdsa_test_import_a
 
 static int s_ecdsa_test_import_asn1_key_pair_invalid_fails_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     /* I changed the OID to nonsense */
     uint8_t bad_asn1_encoded_full_key_raw[] = {
@@ -582,6 +608,8 @@ static int s_ecdsa_test_import_asn1_key_pair_invalid_fails_fn(struct aws_allocat
     ASSERT_NULL(signing_key);
     ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 
@@ -596,6 +624,8 @@ AWS_TEST_CASE(ecdsa_test_import_asn1_key_pair_invalid_fails, s_ecdsa_test_import
    prove our encoding/decoding code is correct to the spec. */
 static int s_ecdsa_test_signature_format_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     uint8_t asn1_encoded_signature_raw[] = {
         0x30, 0x45, 0x02, 0x21, 0x00, 0xd7, 0xc5, 0xb9, 0x9e, 0x0b, 0xb1, 0x1a, 0x1f, 0x32, 0xda, 0x66, 0xe0, 0xff,
@@ -644,6 +674,8 @@ static int s_ecdsa_test_signature_format_fn(struct aws_allocator *allocator, voi
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_ecc_key_pair_release(verifying_key);
+
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -701,16 +733,24 @@ static int s_test_key_ref_counting(struct aws_ecc_key_pair *key_pair, enum aws_e
 static int s_ecc_key_pair_random_ref_count_test(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
+    aws_cal_library_init(allocator);
+
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, AWS_CAL_ECDSA_P256);
     ASSERT_NOT_NULL(key_pair);
 
-    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC | AWS_ECC_KCF_PRIVATE);
+    int result = s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC | AWS_ECC_KCF_PRIVATE);
+
+    aws_cal_library_clean_up();
+
+    return result;
 }
 
 AWS_TEST_CASE(ecc_key_pair_random_ref_count_test, s_ecc_key_pair_random_ref_count_test)
 
 static int s_ecc_key_pair_public_ref_count_test(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     uint8_t x[] = {
         0x1c, 0xcb, 0xe9, 0x1c, 0x07, 0x5f, 0xc7, 0xf4, 0xf0, 0x33, 0xbf, 0xa2, 0x48, 0xdb, 0x8f, 0xcc,
@@ -728,13 +768,19 @@ static int s_ecc_key_pair_public_ref_count_test(struct aws_allocator *allocator,
         aws_ecc_key_pair_new_from_public_key(allocator, AWS_CAL_ECDSA_P256, &pub_x, &pub_y);
     ASSERT_NOT_NULL(key_pair);
 
-    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC);
+    int result = s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC);
+
+    aws_cal_library_clean_up();
+
+    return result;
 }
 
 AWS_TEST_CASE(ecc_key_pair_public_ref_count_test, s_ecc_key_pair_public_ref_count_test)
 
 static int s_ecc_key_pair_asn1_ref_count_test(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     uint8_t asn1_encoded_full_key_raw[] = {
         0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0x99, 0x16, 0x2a, 0x5b, 0x4e, 0x63, 0x86, 0x4c, 0x5f, 0x8e, 0x37,
@@ -752,13 +798,19 @@ static int s_ecc_key_pair_asn1_ref_count_test(struct aws_allocator *allocator, v
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_from_asn1(allocator, &full_key_asn1);
     ASSERT_NOT_NULL(key_pair);
 
-    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC | AWS_ECC_KCF_PRIVATE);
+    int result = s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PUBLIC | AWS_ECC_KCF_PRIVATE);
+
+    aws_cal_library_clean_up();
+
+    return result;
 }
 
 AWS_TEST_CASE(ecc_key_pair_asn1_ref_count_test, s_ecc_key_pair_asn1_ref_count_test)
 
 static int s_ecc_key_pair_private_ref_count_test(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+    aws_cal_library_init(allocator);
 
     uint8_t d[] = {
         0xc9, 0x80, 0x68, 0x98, 0xa0, 0x33, 0x49, 0x16, 0xc8, 0x60, 0x74, 0x88, 0x80, 0xa5, 0x41, 0xf0,
@@ -771,7 +823,11 @@ static int s_ecc_key_pair_private_ref_count_test(struct aws_allocator *allocator
         aws_ecc_key_pair_new_from_private_key(allocator, AWS_CAL_ECDSA_P256, &private_key_cursor);
     ASSERT_NOT_NULL(key_pair);
 
-    return s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PRIVATE);
+    int result = s_test_key_ref_counting(key_pair, AWS_ECC_KCF_PRIVATE);
+
+    aws_cal_library_clean_up();
+
+    return result;
 }
 
 AWS_TEST_CASE(ecc_key_pair_private_ref_count_test, s_ecc_key_pair_private_ref_count_test)

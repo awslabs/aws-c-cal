@@ -2,8 +2,8 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
+#include "opensslcrypto_common.h"
 #include <aws/cal/hash.h>
-#include <aws/cal/private/opensslcrypto_common.h>
 
 #include <openssl/evp.h>
 #include <openssl/sha.h>

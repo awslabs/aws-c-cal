@@ -58,6 +58,7 @@ static void s_hmac_ctx_reset(HMAC_CTX *ctx) {
 }
 
 void *s_find_libcrypto_module(void) {
+#if defined(AWS_CAL_EXPORTS)
     const char *libcrypto_110 = "libcrypto.so.1.1";
     const char *libcrypto_102 = "libcrypto.so.1.0.0";
     void *module = dlopen(libcrypto_110, RTLD_NOW);
@@ -70,6 +71,7 @@ void *s_find_libcrypto_module(void) {
         fprintf(stderr, "Found libcrypto.so.1.0.0\n");
         return module;
     }
+#endif
     fprintf(stderr, "Searching process space for libcrypto symbols\n");
     return dlopen(NULL, RTLD_NOW);
 }

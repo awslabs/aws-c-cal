@@ -62,7 +62,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     HMAC_CTX *ctx = NULL;
     ctx = g_aws_openssl_hmac_ctx_table->new_fn();
 
-    if (!hmac->impl) {
+    if (!ctx) {
         aws_raise_error(AWS_ERROR_OOM);
         aws_mem_release(allocator, hmac);
         return NULL;

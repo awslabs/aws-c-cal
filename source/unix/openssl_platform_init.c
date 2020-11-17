@@ -28,8 +28,8 @@ static void s_hmac_ctx_clean_up_noop(HMAC_CTX *ctx) {
 /* libcrypto 1.0 shim for new */
 static HMAC_CTX *s_hmac_ctx_new(void) {
     AWS_PRECONDITION(
-            g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
-            "libcrypto 1.0 init called on libcrypto 1.1 vtable");
+        g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
+        "libcrypto 1.0 init called on libcrypto 1.1 vtable");
     HMAC_CTX *ctx = aws_mem_calloc(aws_default_allocator(), 1, 300);
     AWS_FATAL_ASSERT(ctx && "Unable to allocate to HMAC_CTX");
     g_aws_openssl_hmac_ctx_table->init_fn(ctx);
@@ -40,8 +40,8 @@ static HMAC_CTX *s_hmac_ctx_new(void) {
 static void s_hmac_ctx_free(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
     AWS_PRECONDITION(
-            g_aws_openssl_hmac_ctx_table->clean_up_fn != s_hmac_ctx_clean_up_noop &&
-            "libcrypto 1.0 clean_up called on libcrypto 1.1 vtable");
+        g_aws_openssl_hmac_ctx_table->clean_up_fn != s_hmac_ctx_clean_up_noop &&
+        "libcrypto 1.0 clean_up called on libcrypto 1.1 vtable");
     g_aws_openssl_hmac_ctx_table->clean_up_fn(ctx);
     aws_mem_release(aws_default_allocator(), ctx);
 }
@@ -50,9 +50,9 @@ static void s_hmac_ctx_free(HMAC_CTX *ctx) {
 static void s_hmac_ctx_reset(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
     AWS_PRECONDITION(
-            g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
-            g_aws_openssl_hmac_ctx_table->clean_up_fn != s_hmac_ctx_clean_up_noop &&
-            "libcrypto 1.0 reset called on libcrypto 1.1 vtable");
+        g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
+        g_aws_openssl_hmac_ctx_table->clean_up_fn != s_hmac_ctx_clean_up_noop &&
+        "libcrypto 1.0 reset called on libcrypto 1.1 vtable");
     g_aws_openssl_hmac_ctx_table->clean_up_fn(ctx);
     g_aws_openssl_hmac_ctx_table->init_fn(ctx);
 }
@@ -63,12 +63,10 @@ void *s_find_libcrypto_module(void) {
     void *module = dlopen(libcrypto_110, RTLD_NOW);
     if (module) {
         return module;
-
     }
     module = dlopen(libcrypto_102, RTLD_NOW);
     if (module) {
         return module;
-
     }
     return dlopen(NULL, RTLD_NOW);
 }

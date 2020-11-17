@@ -35,17 +35,17 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     *(void **)(&reset_fn) = dlsym(this_handle, "HMAC_CTX_reset");
     *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
 
-    if (init_fn != NULL && clean_up_fn != NULL) {
-        hmac_ctx_1_0_table.init_fn = init_fn;
-        hmac_ctx_1_0_table.clean_up_fn = clean_up_fn;
-        g_aws_openssl_hmac_ctx_1_0_table = &hmac_ctx_1_0_table;
-    }
-
     if (new_fn != NULL && reset_fn != NULL && free_fn != NULL) {
+        fprintf(stderr, "FOUND OpenSSL-1.1, using new/reset/free API");
         hmac_ctx_1_1_table.new_fn = new_fn;
         hmac_ctx_1_1_table.reset_fn = reset_fn;
         hmac_ctx_1_1_table.free_fn = free_fn;
         g_aws_openssl_hmac_ctx_1_1_table = &hmac_ctx_1_1_table;
+
+    } else if (init_fn != NULL && clean_up_fn != NULL) {
+        hmac_ctx_1_0_table.init_fn = init_fn;
+        hmac_ctx_1_0_table.clean_up_fn = clean_up_fn;
+        g_aws_openssl_hmac_ctx_1_0_table = &hmac_ctx_1_0_table;
     }
 
     /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */

@@ -70,7 +70,6 @@ void *s_find_libcrypto_module(void) {
         return module;
     }
 #endif
-    fprintf(stderr, "Searching process space for libcrypto symbols\n");
     return dlopen(NULL, RTLD_NOW);
 }
 

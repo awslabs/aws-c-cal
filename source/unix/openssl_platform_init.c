@@ -63,12 +63,10 @@ void *s_find_libcrypto_module(void) {
     const char *libcrypto_102 = "libcrypto.so.1.0.0";
     void *module = dlopen(libcrypto_110, RTLD_NOW);
     if (module) {
-        fprintf(stderr, "Found libcrypto.so.1.1\n");
         return module;
     }
     module = dlopen(libcrypto_102, RTLD_NOW);
     if (module) {
-        fprintf(stderr, "Found libcrypto.so.1.0.0\n");
         return module;
     }
 #endif
@@ -110,7 +108,6 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 
     if (new_fn != NULL && reset_fn != NULL && free_fn != NULL) {
         /* libcrypto 1.1 */
-        fprintf(stderr, "Found libcrypto 1.1 symbols\n");
         hmac_ctx_table.new_fn = new_fn;
         hmac_ctx_table.reset_fn = reset_fn;
         hmac_ctx_table.free_fn = free_fn;
@@ -120,7 +117,6 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 
     } else if (init_fn != NULL && clean_up_fn != NULL) {
         /* libcrypto 1.0 */
-        fprintf(stderr, "Found libcrypto 1.0.2 symbols\n");
         hmac_ctx_table.new_fn = s_hmac_ctx_new;
         hmac_ctx_table.reset_fn = s_hmac_ctx_reset;
         hmac_ctx_table.free_fn = s_hmac_ctx_free;

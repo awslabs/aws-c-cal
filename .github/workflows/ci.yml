@@ -74,7 +74,7 @@ jobs:
   shared-lib:
     runs-on: ubuntu-latest
     steps:
-    - name: Build ${{ env.PACKAGE_NAME }}
+    - name: Build ${{ env.PACKAGE_NAME }} shared lib
       run: |
         echo "${{ secrets.GITHUB_TOKEN  }}" | docker login docker.pkg.github.com -u awslabs --password-stdin
         export DOCKER_IMAGE=docker.pkg.github.com/awslabs/aws-crt-builder/aws-crt-${{ env.LINUX_BASE_IMAGE  }}:${{ env.BUILDER_VERSION  }}

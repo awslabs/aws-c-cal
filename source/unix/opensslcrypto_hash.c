@@ -127,7 +127,8 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    if (AWS_LIKELY(g_aws_openssl_evp_md_ctx_table->final_ex_fn(ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
+    if (AWS_LIKELY(g_aws_openssl_evp_md_ctx_table->final_ex_fn(
+            ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
         output->len += buffer_len;
         hash->good = false;
         return AWS_OP_SUCCESS;

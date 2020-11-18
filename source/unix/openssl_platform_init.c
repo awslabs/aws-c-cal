@@ -28,12 +28,10 @@ extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak)) __attribute__((used)
 extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
 
 /* common */
-extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak))
+extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak)) __attribute__((used));
+extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak)) __attribute__((used));
+extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak))
 __attribute__((used));
-extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int*) __attribute__((weak))
-__attribute__((used));
-extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
-    __attribute__((weak)) __attribute__((used));
 
 /* EVP_MD_CTX API */
 /* 1.0.2 */
@@ -41,16 +39,14 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
 /*extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));*/
 
 /* 1.1 */
-extern EVP_MD_CTX* EVP_MD_CTX_new(void) __attribute__((weak)) __attribute__((used));
+extern EVP_MD_CTX *EVP_MD_CTX_new(void) __attribute__((weak)) __attribute__((used));
 extern void EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));
 
 /* common */
-extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weak))
+extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weak)) __attribute__((used));
+extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak)) __attribute__((used));
+extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *) __attribute__((weak))
 __attribute__((used));
-extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak))
-__attribute__((used));
-extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *)
-    __attribute__((weak)) __attribute__((used));
 
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {

@@ -152,8 +152,8 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
             *(void **)(&init_ex_fn) = dlsym(this_handle, "HMAC_Init_ex");
         }
 
-        AWS_FATAL_ASSERT(init_fn || new_fn && "libcrypto HMAC init/new could not be resolved");
-        AWS_FATAL_ASSERT(clean_up_fn || free_fn && "libcrypto HMAC cleanup/free could not be resolved");
+        AWS_FATAL_ASSERT((init_fn || new_fn) && "libcrypto HMAC init/new could not be resolved");
+        AWS_FATAL_ASSERT((clean_up_fn || free_fn) && "libcrypto HMAC cleanup/free could not be resolved");
         AWS_FATAL_ASSERT(update_fn != NULL && "libcrypto HMAC_Update could not be resolved");
         AWS_FATAL_ASSERT(final_fn != NULL && "libcrypto HMAC_Final could not be resolved");
         AWS_FATAL_ASSERT(init_ex_fn != NULL && "libcrypto HMAC_Init_ex could not be resolved");

@@ -26,9 +26,9 @@ struct openssl_hmac_ctx_table {
 
 typedef EVP_MD_CTX *(*evp_md_ctx_new)(void);
 typedef void (*evp_md_ctx_free)(EVP_MD_CTX *);
-typedef int (*evp_md_ctx_digest_init_ex)(EVP_MD_CTX *);
+typedef int (*evp_md_ctx_digest_init_ex)(EVP_MD_CTX *, const EVP_MD*, ENGINE*);
 typedef int (*evp_md_ctx_digest_update)(EVP_MD_CTX *, const void *, size_t);
-typedef int (*evp_md_ctx_digest_final_ex)(EVP_MD_CTX *unsigned char *, unsigned int *);
+typedef int (*evp_md_ctx_digest_final_ex)(EVP_MD_CTX *, unsigned char *, unsigned int *);
 
 struct openssl_evp_md_ctx_table {
     evp_md_ctx_new new_fn;

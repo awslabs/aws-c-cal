@@ -37,14 +37,12 @@ static int s_HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE 
 
 /* EVP_MD_CTX API */
 /* 1.0.2 */
-static void s_EVP_MD_CTX_init(EVP_MD_CTX *) __attribute__((weakref("EVP_MD_CTX_init"))) __attribute__((used));
 static EVP_MD_CTX *s_EVP_MD_CTX_create(void) __attribute__((weakref("EVP_MD_CTX_create"))) __attribute__((used));
-static int s_EVP_MD_CTX_cleanup(EVP_MD_CTX *) __attribute__((weakref("EVP_MD_CTX_cleanup"))) __attribute__((used));
 static void s_EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weakref("EVP_MD_CTX_destroy"))) __attribute__((used));
 
 /* 1.1 */
 static void s_EVP_MD_CTX_new(void) __attribute__((weakref("EVP_MD_CTX_new"))) __attribute__((used));
-static void s_EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weakref("HMAC_CTX_init"))) __attribute__((used));
+static void s_EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weakref("HMAC_CTX_free"))) __attribute__((used));
 
 /* common */
 static void s_EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weakref("EVP_DigestInit_ex")))

@@ -118,31 +118,30 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     AWS_FATAL_ASSERT(this_handle != NULL);
 
     {
-        hmac_ctx_init init_fn = NULL;
-        hmac_ctx_clean_up clean_up_fn = NULL;
-        hmac_ctx_new new_fn = NULL;
-        hmac_ctx_reset reset_fn = NULL;
-        hmac_ctx_free free_fn = NULL;
-        hmac_ctx_update update_fn = NULL;
-        hmac_ctx_final final_fn = NULL;
-        hmac_ctx_init_ex init_ex_fn = NULL;
+        hmac_ctx_init init_fn = HMAC_CTX_init;
+        hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
+        hmac_ctx_new new_fn = HMAC_CTX_new;
+        hmac_ctx_free free_fn = HMAC_CTX_free;
+        hmac_ctx_reset reset_fn = HMAC_CTX_reset;
+        hmac_ctx_update update_fn = HMAC_Update;
+        hmac_ctx_final final_fn = HMAC_Final;
+        hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
 
-#if !defined(AWS_CAL_EXPORTS)
-        init_fn = HMAC_CTX_init;
-        clean_up_fn = HMAC_CTX_cleanup;
-        new_fn = HMAC_CTX_new;
-        free_fn = HMAC_CTX_free;
-        reset_fn = HMAC_CTX_reset;
-        update_fn = HMAC_Update;
-        final_fn = HMAC_Final;
-        init_ex_fn = HMAC_Init_ex;
-#endif
-
-        *(void **)(&init_fn) = dlsym(this_handle, "HMAC_CTX_init");
-        *(void **)(&clean_up_fn) = dlsym(this_handle, "HMAC_CTX_cleanup");
-        *(void **)(&new_fn) = dlsym(this_handle, "HMAC_CTX_new");
-        *(void **)(&reset_fn) = dlsym(this_handle, "HMAC_CTX_reset");
-        *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
+        if (!init_fn) {
+            *(void **)(&init_fn) = dlsym(this_handle, "HMAC_CTX_init");
+        }
+        if (!clean_up_fn) {
+            *(void **)(&clean_up_fn) = dlsym(this_handle, "HMAC_CTX_cleanup");
+        }
+        if (!new_fn) {
+            *(void **)(&new_fn) = dlsym(this_handle, "HMAC_CTX_new");
+        }
+        if (!reset_fn) {
+            *(void **)(&reset_fn) = dlsym(this_handle, "HMAC_CTX_reset");
+        }
+        if (!free_fn) {
+            *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
+        }
         if (!update_fn) {
             *(void **)(&update_fn) = dlsym(this_handle, "HMAC_Update");
         }
@@ -153,6 +152,8 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
             *(void **)(&init_ex_fn) = dlsym(this_handle, "HMAC_Init_ex");
         }
 
+        AWS_FATAL_ASSERT(init_fn || new_fn && "libcrypto HMAC init/new could not be resolved");
+        AWS_FATAL_ASSERT(clean_up_fn || free_fn && "libcrypto HMAC cleanup/free could not be resolved");
         AWS_FATAL_ASSERT(update_fn != NULL && "libcrypto HMAC_Update could not be resolved");
         AWS_FATAL_ASSERT(final_fn != NULL && "libcrypto HMAC_Final could not be resolved");
         AWS_FATAL_ASSERT(init_ex_fn != NULL && "libcrypto HMAC_Init_ex could not be resolved");
@@ -179,46 +180,56 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
             hmac_ctx_table.clean_up_fn = clean_up_fn;
             g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         }
+
+        AWS_FATAL_ASSERT(g_aws_openssl_hmac_ctx_table != NULL);
     }
 
     /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
     {
-        evp_md_ctx_new md_new_fn = NULL;
-        *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_new");
-        if (md_new_fn == NULL) {
-            *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_create");
+        evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
+        if (!md_new_fn) {
+            *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_new");
+            if (md_new_fn == NULL) {
+                *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_create");
+            }
         }
         AWS_FATAL_ASSERT(md_new_fn != NULL);
         evp_md_ctx_table.new_fn = md_new_fn;
 
-        evp_md_ctx_free md_free_fn = NULL;
-        *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_free");
-        if (md_free_fn == NULL) {
-            *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_destroy");
+        evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
+        if (!md_free_fn) {
+            *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_free");
+            if (md_free_fn == NULL) {
+                *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_destroy");
+            }
         }
         AWS_FATAL_ASSERT(md_free_fn != NULL);
         evp_md_ctx_table.free_fn = md_free_fn;
 
-        evp_md_ctx_digest_init_ex md_init_ex_fn = NULL;
-        *(void **)(&md_init_ex_fn) = dlsym(this_handle, "EVP_DigestInit_ex");
+        evp_md_ctx_digest_init_ex md_init_ex_fn = EVP_DigestInit_ex;
+        if (!md_init_ex_fn) {
+            *(void **)(&md_init_ex_fn) = dlsym(this_handle, "EVP_DigestInit_ex");
+        }
         AWS_FATAL_ASSERT(md_init_ex_fn != NULL);
         evp_md_ctx_table.init_ex_fn = md_init_ex_fn;
 
-        evp_md_ctx_digest_update md_update_fn = NULL;
-        *(void **)(&md_update_fn) = dlsym(this_handle, "EVP_DigestUpdate");
+        evp_md_ctx_digest_update md_update_fn = EVP_DigestUpdate;
+        if (!md_update_fn) {
+            *(void **)(&md_update_fn) = dlsym(this_handle, "EVP_DigestUpdate");
+        }
         AWS_FATAL_ASSERT(md_update_fn);
         evp_md_ctx_table.update_fn = md_update_fn;
 
-        evp_md_ctx_digest_final_ex md_final_ex_fn = NULL;
-        *(void **)(&md_final_ex_fn) = dlsym(this_handle, "EVP_DigestFinal_ex");
+        evp_md_ctx_digest_final_ex md_final_ex_fn = EVP_DigestFinal_ex;
+        if (!md_final_ex_fn) {
+            *(void **)(&md_final_ex_fn) = dlsym(this_handle, "EVP_DigestFinal_ex");
+        }
         AWS_FATAL_ASSERT(md_final_ex_fn);
         evp_md_ctx_table.final_ex_fn = md_final_ex_fn;
 
         g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
+        AWS_FATAL_ASSERT(g_aws_openssl_evp_md_ctx_table != NULL);
     }
 
     dlclose(this_handle);
-
-    AWS_FATAL_ASSERT(g_aws_openssl_hmac_ctx_table != NULL);
-    AWS_FATAL_ASSERT(g_aws_openssl_evp_md_ctx_table != NULL);
 }

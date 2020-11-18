@@ -61,7 +61,7 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
         return NULL;
     }
 
-    if (!EVP_DigestInit_ex(ctx, EVP_md5(), NULL)) {
+    if (!g_aws_openssl_evp_md_ctx_table->init_ex_fn(ctx, EVP_md5(), NULL)) {
         s_destroy(hash);
         aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
@@ -90,7 +90,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
         return NULL;
     }
 
-    if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
+    if (!g_aws_openssl_evp_md_ctx_table->init_ex_fn(ctx, EVP_sha256(), NULL)) {
         s_destroy(hash);
         aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
@@ -106,7 +106,7 @@ static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash
 
     EVP_MD_CTX *ctx = hash->impl;
 
-    if (AWS_LIKELY(EVP_DigestUpdate(ctx, to_hash->ptr, to_hash->len))) {
+    if (AWS_LIKELY(g_aws_openssl_evp_md_ctx_table->update_fn(ctx, to_hash->ptr, to_hash->len))) {
         return AWS_OP_SUCCESS;
     }
 
@@ -127,7 +127,8 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    if (AWS_LIKELY(EVP_DigestFinal_ex(ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
+    if (AWS_LIKELY(g_aws_openssl_evp_md_ctx_table->final_ex_fn(
+            ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
         output->len += buffer_len;
         hash->good = false;
         return AWS_OP_SUCCESS;

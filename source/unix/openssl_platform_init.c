@@ -19,18 +19,18 @@ struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
  * and avoid dead-stripping
  */
 /* 1.1 */
-static HMAC_CTX* s_HMAC_CTX_new(void) __attribute__((weakref("HMAC_CTX_new")));
-static void s_HMAC_CTX_free(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_free")));
-static int s_HMAC_CTX_reset(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_reset")));
+static HMAC_CTX* s_HMAC_CTX_new(void) __attribute__((weakref("HMAC_CTX_new"))) __attribute__((used));
+static void s_HMAC_CTX_free(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_free"))) __attribute__((used));
+static int s_HMAC_CTX_reset(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_reset"))) __attribute__((used));
 
 /* 1.0.2 */
-static void s_HMAC_CTX_init(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_init")));
-static void s_HMAC_CTX_cleanup(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_cleanup")));
+static void s_HMAC_CTX_init(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_init"))) __attribute__((used));
+static void s_HMAC_CTX_cleanup(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_cleanup"))) __attribute__((used));
 
 /* common */
-static int s_HMAC_Update(HMAC_CTX*, const unsigned char *, size_t) __attribute__((weakref("HMAC_Update")));
-static int s_HMAC_Final(HMAC_CTX*, unsigned char *, unsigned int) __attribute__((weakref("HMAC_Final")));
-static int s_HMAC_Init_ex(HMAC_CTX*, const void*, int, const EVP_MD*, ENGINE*) __attribute__((weakref("HMAC_Init_ex")));
+static int s_HMAC_Update(HMAC_CTX*, const unsigned char *, size_t) __attribute__((weakref("HMAC_Update"))) __attribute__((used));
+static int s_HMAC_Final(HMAC_CTX*, unsigned char *, unsigned int) __attribute__((weakref("HMAC_Final"))) __attribute__((used));
+static int s_HMAC_Init_ex(HMAC_CTX*, const void*, int, const EVP_MD*, ENGINE*) __attribute__((weakref("HMAC_Init_ex"))) __attribute__((used));
 
 
 /* libcrypto 1.1 stub for init */

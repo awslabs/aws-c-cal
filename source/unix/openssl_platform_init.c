@@ -15,6 +15,24 @@ static struct openssl_evp_md_ctx_table evp_md_ctx_table;
 struct openssl_hmac_ctx_table *g_aws_openssl_hmac_ctx_table = NULL;
 struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
 
+/* weak refs to libcrypto functions to force them to at least try to link
+ * and avoid dead-stripping
+ */
+/* 1.1 */
+static HMAC_CTX* s_HMAC_CTX_new(void) __attribute__((weakref("HMAC_CTX_new")));
+static void s_HMAC_CTX_free(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_free")));
+static int s_HMAC_CTX_reset(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_reset")));
+
+/* 1.0.2 */
+static void s_HMAC_CTX_init(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_init")));
+static void s_HMAC_CTX_cleanup(HMAC_CTX*) __attribute__((weakref("HMAC_CTX_cleanup")));
+
+/* common */
+static int s_HMAC_Update(HMAC_CTX*, const unsigned char *, size_t) __attribute__((weakref("HMAC_Update")));
+static int s_HMAC_Final(HMAC_CTX*, unsigned char *, unsigned int) __attribute__((weakref("HMAC_Final")));
+static int s_HMAC_Init_ex(HMAC_CTX*, const void*, int, const EVP_MD*, ENGINE*) __attribute__((weakref("HMAC_Init_ex")));
+
+
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
     (void)ctx;

@@ -27,13 +27,7 @@ static void s_destroy(struct aws_hmac *hmac) {
 
     HMAC_CTX *ctx = hmac->impl;
     if (ctx != NULL) {
-        if (g_aws_openssl_hmac_ctx_1_0_table != NULL) {
-            g_aws_openssl_hmac_ctx_1_0_table->clean_up_fn(ctx);
-            aws_mem_release(hmac->allocator, ctx);
-        } else {
-            g_aws_openssl_hmac_ctx_1_1_table->reset_fn(ctx);
-            g_aws_openssl_hmac_ctx_1_1_table->free_fn(ctx);
-        }
+        g_aws_openssl_hmac_ctx_table->free_fn(ctx);
     }
 
     aws_mem_release(hmac->allocator, hmac);
@@ -66,26 +60,20 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     hmac->vtable = &s_sha256_hmac_vtable;
     hmac->digest_size = AWS_SHA256_HMAC_LEN;
     HMAC_CTX *ctx = NULL;
-    if (g_aws_openssl_hmac_ctx_1_0_table != NULL) {
-        ctx = aws_mem_acquire(allocator, SIZEOF_OPENSSL_HMAC_CTX);
-    } else {
-        ctx = g_aws_openssl_hmac_ctx_1_1_table->new_fn();
-    }
+    ctx = g_aws_openssl_hmac_ctx_table->new_fn();
 
-    hmac->impl = ctx;
-    hmac->good = true;
-
-    if (!hmac->impl) {
+    if (!ctx) {
         aws_raise_error(AWS_ERROR_OOM);
         aws_mem_release(allocator, hmac);
         return NULL;
     }
 
-    if (g_aws_openssl_hmac_ctx_1_0_table != NULL) {
-        g_aws_openssl_hmac_ctx_1_0_table->init_fn(ctx);
-    }
+    g_aws_openssl_hmac_ctx_table->init_fn(ctx);
 
-    if (!HMAC_Init_ex(ctx, secret->ptr, (int)secret->len, EVP_sha256(), NULL)) {
+    hmac->impl = ctx;
+    hmac->good = true;
+
+    if (!g_aws_openssl_hmac_ctx_table->init_ex_fn(ctx, secret->ptr, (int)secret->len, EVP_sha256(), NULL)) {
         s_destroy(hmac);
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         return NULL;
@@ -101,7 +89,7 @@ static int s_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac
 
     HMAC_CTX *ctx = hmac->impl;
 
-    if (AWS_LIKELY(HMAC_Update(ctx, to_hmac->ptr, to_hmac->len))) {
+    if (AWS_LIKELY(g_aws_openssl_hmac_ctx_table->update_fn(ctx, to_hmac->ptr, to_hmac->len))) {
         return AWS_OP_SUCCESS;
     }
 
@@ -122,7 +110,8 @@ static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    if (AWS_LIKELY(HMAC_Final(ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
+    if (AWS_LIKELY(
+            g_aws_openssl_hmac_ctx_table->final_fn(ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
         hmac->good = false;
         output->len += buffer_len;
         return AWS_OP_SUCCESS;

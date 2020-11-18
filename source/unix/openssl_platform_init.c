@@ -34,7 +34,8 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
 __attribute__((used));
 
 /* EVP_MD_CTX API */
-/* 1.0.2 */
+/* 1.0.2 NOTE: these are macros in 1.1.x, so we only use them as functions when
+ * runtime resolving against libcrypto 1.0.2 .so, we only link against 1.1.1 */
 /*extern EVP_MD_CTX *EVP_MD_CTX_create(void) __attribute__((weak)) __attribute__((used));*/
 /*extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));*/
 
@@ -79,7 +80,7 @@ static void s_hmac_ctx_free(HMAC_CTX *ctx) {
     aws_mem_release(aws_default_allocator(), ctx);
 }
 
-/* libcrypto 1.0 shim for reset */
+/* libcrypto 1.0 shim for reset, matches HMAC_CTX_reset semantics */
 static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
     AWS_PRECONDITION(
@@ -88,7 +89,7 @@ static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
         "libcrypto 1.0 reset called on libcrypto 1.1 vtable");
     g_aws_openssl_hmac_ctx_table->clean_up_fn(ctx);
     g_aws_openssl_hmac_ctx_table->init_fn(ctx);
-    return true;
+    return 1;
 }
 
 void *s_find_libcrypto_module(void) {

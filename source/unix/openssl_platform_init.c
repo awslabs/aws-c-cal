@@ -88,14 +88,26 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     hmac_ctx_final final_fn = NULL;
     hmac_ctx_init_ex init_ex_fn = NULL;
 
+#if !defined(AWS_CAL_EXPORTS)
+    update_fn = HMAC_Update;
+    final_fn = HMAC_Final;
+    init_ex_fn = HMAC_Init_ex;
+#endif
+
     *(void **)(&init_fn) = dlsym(this_handle, "HMAC_CTX_init");
     *(void **)(&clean_up_fn) = dlsym(this_handle, "HMAC_CTX_cleanup");
     *(void **)(&new_fn) = dlsym(this_handle, "HMAC_CTX_new");
     *(void **)(&reset_fn) = dlsym(this_handle, "HMAC_CTX_reset");
     *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
-    *(void **)(&update_fn) = dlsym(this_handle, "HMAC_Update");
-    *(void **)(&final_fn) = dlsym(this_handle, "HMAC_Final");
-    *(void **)(&init_ex_fn) = dlsym(this_handle, "HMAC_Init_ex");
+    if (!update_fn) {
+        *(void **)(&update_fn) = dlsym(this_handle, "HMAC_Update");
+    }
+    if (!final_fn) {
+        *(void **)(&final_fn) = dlsym(this_handle, "HMAC_Final");
+    }
+    if (!init_ex_fn) {
+        *(void **)(&init_ex_fn) = dlsym(this_handle, "HMAC_Init_ex");
+    }
 
     AWS_FATAL_ASSERT(update_fn != NULL && "libcrypto HMAC_Update could not be resolved");
     AWS_FATAL_ASSERT(final_fn != NULL && "libcrypto HMAC_Final could not be resolved");

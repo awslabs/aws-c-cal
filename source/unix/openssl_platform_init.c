@@ -19,38 +19,38 @@ struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
  * and avoid dead-stripping
  */
 /* 1.1 */
-static HMAC_CTX *s_HMAC_CTX_new(void) __attribute__((weakref("HMAC_CTX_new"))) __attribute__((used));
-static void s_HMAC_CTX_free(HMAC_CTX *) __attribute__((weakref("HMAC_CTX_free"))) __attribute__((used));
-static int s_HMAC_CTX_reset(HMAC_CTX *) __attribute__((weakref("HMAC_CTX_reset"))) __attribute__((used));
+extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak)) __attribute__((used));
+extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
+extern int HMAC_CTX_reset(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
 
 /* 1.0.2 */
-static void s_HMAC_CTX_init(HMAC_CTX *) __attribute__((weakref("HMAC_CTX_init"))) __attribute__((used));
-static void s_HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weakref("HMAC_CTX_cleanup"))) __attribute__((used));
+extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
+extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
 
 /* common */
-static int s_HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weakref("HMAC_Update")))
+extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak))
 __attribute__((used));
-static int s_HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int) __attribute__((weakref("HMAC_Final")))
+extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int*) __attribute__((weak))
 __attribute__((used));
-static int s_HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
-    __attribute__((weakref("HMAC_Init_ex"))) __attribute__((used));
+extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
+    __attribute__((weak)) __attribute__((used));
 
 /* EVP_MD_CTX API */
 /* 1.0.2 */
-static EVP_MD_CTX *s_EVP_MD_CTX_create(void) __attribute__((weakref("EVP_MD_CTX_create"))) __attribute__((used));
-static void s_EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weakref("EVP_MD_CTX_destroy"))) __attribute__((used));
+/*extern EVP_MD_CTX *EVP_MD_CTX_create(void) __attribute__((weak)) __attribute__((used));*/
+/*extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));*/
 
 /* 1.1 */
-static void s_EVP_MD_CTX_new(void) __attribute__((weakref("EVP_MD_CTX_new"))) __attribute__((used));
-static void s_EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weakref("HMAC_CTX_free"))) __attribute__((used));
+extern EVP_MD_CTX* EVP_MD_CTX_new(void) __attribute__((weak)) __attribute__((used));
+extern void EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));
 
 /* common */
-static void s_EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weakref("EVP_DigestInit_ex")))
+extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weak))
 __attribute__((used));
-static void s_EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weakref("EVP_DigestUpdate")))
+extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak))
 __attribute__((used));
-static void s_EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *)
-    __attribute__((weakref("EVP_DigestFinal_ex"))) __attribute__((used));
+extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *)
+    __attribute__((weak)) __attribute__((used));
 
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
@@ -84,7 +84,7 @@ static void s_hmac_ctx_free(HMAC_CTX *ctx) {
 }
 
 /* libcrypto 1.0 shim for reset */
-static void s_hmac_ctx_reset(HMAC_CTX *ctx) {
+static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
     AWS_PRECONDITION(
         g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
@@ -92,6 +92,7 @@ static void s_hmac_ctx_reset(HMAC_CTX *ctx) {
         "libcrypto 1.0 reset called on libcrypto 1.1 vtable");
     g_aws_openssl_hmac_ctx_table->clean_up_fn(ctx);
     g_aws_openssl_hmac_ctx_table->init_fn(ctx);
+    return true;
 }
 
 void *s_find_libcrypto_module(void) {
@@ -127,6 +128,11 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
         hmac_ctx_init_ex init_ex_fn = NULL;
 
 #if !defined(AWS_CAL_EXPORTS)
+        init_fn = HMAC_CTX_init;
+        clean_up_fn = HMAC_CTX_cleanup;
+        new_fn = HMAC_CTX_new;
+        free_fn = HMAC_CTX_free;
+        reset_fn = HMAC_CTX_reset;
         update_fn = HMAC_Update;
         final_fn = HMAC_Final;
         init_ex_fn = HMAC_Init_ex;

@@ -5,7 +5,7 @@
 #include <openssl/hmac.h>
 
 typedef HMAC_CTX *(*hmac_ctx_new)(void);
-typedef void (*hmac_ctx_reset)(HMAC_CTX *);
+typedef int (*hmac_ctx_reset)(HMAC_CTX *);
 typedef void (*hmac_ctx_free)(HMAC_CTX *);
 typedef void (*hmac_ctx_init)(HMAC_CTX *);
 typedef int (*hmac_ctx_init_ex)(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *);

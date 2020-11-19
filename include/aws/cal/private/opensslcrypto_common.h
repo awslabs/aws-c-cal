@@ -3,6 +3,7 @@
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/crypto.h>
 
 typedef HMAC_CTX *(*hmac_ctx_new)(void);
 typedef int (*hmac_ctx_reset)(HMAC_CTX *);
@@ -24,6 +25,8 @@ struct openssl_hmac_ctx_table {
     hmac_ctx_reset reset_fn;
 };
 
+extern struct openssl_hmac_ctx_table *g_aws_openssl_hmac_ctx_table;
+
 typedef EVP_MD_CTX *(*evp_md_ctx_new)(void);
 typedef void (*evp_md_ctx_free)(EVP_MD_CTX *);
 typedef int (*evp_md_ctx_digest_init_ex)(EVP_MD_CTX *, const EVP_MD *, ENGINE *);
@@ -38,7 +41,6 @@ struct openssl_evp_md_ctx_table {
     evp_md_ctx_digest_final_ex final_ex_fn;
 };
 
-extern struct openssl_hmac_ctx_table *g_aws_openssl_hmac_ctx_table;
 extern struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table;
 
 #endif /* AWS_C_CAL_OPENSSLCRYPTO_COMMON_H */

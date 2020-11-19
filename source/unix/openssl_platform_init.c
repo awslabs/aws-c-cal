@@ -137,6 +137,10 @@ void *s_find_libcrypto_module(void) {
     return dlopen(NULL, RTLD_NOW);
 }
 
+/* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
+
 void aws_cal_platform_init(struct aws_allocator *allocator) {
     s_libcrypto_allocator = allocator;
 
@@ -273,13 +277,16 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     /* Ensure that libcrypto 1.0.2 has working locking mechanisms. This code is macro'ed
      * by libcrypto to be a no-op on 1.1.1 */
     if (!CRYPTO_get_locking_callback()) {
-        s_libcrypto_locks = aws_mem_acquire(allocator, sizeof(struct aws_mutex) * CRYPTO_num_locks());
-        AWS_FATAL_ASSERT(s_libcrypto_locks);
-        size_t lock_count = (size_t)CRYPTO_num_locks();
-        for (size_t i = 0; i < lock_count; ++i) {
-            aws_mutex_init(&s_libcrypto_locks[i]);
-        }
+        /* on 1.1.1 this is a no-op */
         CRYPTO_set_locking_callback(s_locking_fn);
+        if (CRYPTO_get_locking_callback() == s_locking_fn) {
+            s_libcrypto_locks = aws_mem_acquire(allocator, sizeof(struct aws_mutex) * CRYPTO_num_locks());
+            AWS_FATAL_ASSERT(s_libcrypto_locks);
+            size_t lock_count = (size_t)CRYPTO_num_locks();
+            for (size_t i = 0; i < lock_count; ++i) {
+                aws_mutex_init(&s_libcrypto_locks[i]);
+            }
+        }
     }
 
     if (!CRYPTO_get_id_callback()) {
@@ -287,9 +294,6 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     }
 }
 
-/* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress"
 void aws_cal_platform_clean_up(void) {
     if (CRYPTO_get_locking_callback() == s_locking_fn) {
         CRYPTO_set_locking_callback(NULL);

@@ -287,7 +287,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     }
 }
 
-void aws_cal_platform_clean_up() {
+void aws_cal_platform_clean_up(void) {
     if (CRYPTO_get_locking_callback() == s_locking_fn) {
         CRYPTO_set_locking_callback(NULL);
         size_t lock_count = (size_t)CRYPTO_num_locks();

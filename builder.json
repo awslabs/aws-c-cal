@@ -4,13 +4,6 @@
         { "name": "aws-c-common" }
     ],
     "downstream": [
-        {
-            "name": "aws-c-io",
-            "targets": [
-                "linux",
-                "android"
-            ]
-        },
         { "name": "aws-c-auth" }
     ],
     "targets": {

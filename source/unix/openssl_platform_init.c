@@ -309,3 +309,18 @@ void aws_cal_platform_clean_up(void) {
     }
 }
 #pragma GCC diagnostic pop
+if (CRYPTO_get_locking_callback() == s_locking_fn) {
+    CRYPTO_set_locking_callback(NULL);
+    size_t lock_count = (size_t)CRYPTO_num_locks();
+    for (size_t i = 0; i < lock_count; ++i) {
+        aws_mutex_clean_up(&s_libcrypto_locks[i]);
+    }
+    aws_mem_release(s_libcrypto_allocator, s_libcrypto_locks);
+}
+
+if (CRYPTO_get_id_callback() == s_id_fn) {
+    CRYPTO_set_id_callback(NULL);
+}
+}
+for (size_t i = 0; i < lock_count; ++i) {
+    aws_mutex_init(&s_libcrypto_locks[i]);

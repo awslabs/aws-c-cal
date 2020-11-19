@@ -9,6 +9,4 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     (void)allocator;
 }
 
-void aws_cal_platform_clean_up(void) {
-
-}
+void aws_cal_platform_clean_up(void) {}

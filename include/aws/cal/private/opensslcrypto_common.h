@@ -1,9 +1,9 @@
 #ifndef AWS_C_CAL_OPENSSLCRYPTO_COMMON_H
 #define AWS_C_CAL_OPENSSLCRYPTO_COMMON_H
 
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
-#include <openssl/crypto.h>
 
 typedef HMAC_CTX *(*hmac_ctx_new)(void);
 typedef int (*hmac_ctx_reset)(HMAC_CTX *);

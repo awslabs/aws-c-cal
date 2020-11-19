@@ -96,11 +96,11 @@ void *s_find_libcrypto_module(void) {
 #if defined(AWS_CAL_EXPORTS)
     const char *libcrypto_110 = "libcrypto.so.1.1";
     const char *libcrypto_102 = "libcrypto.so.1.0.0";
-    void *module = dlopen(libcrypto_110, RTLD_NOW);
+    void *module = dlopen(libcrypto_102, RTLD_NOW);
     if (module) {
         return module;
     }
-    module = dlopen(libcrypto_102, RTLD_NOW);
+    module = dlopen(libcrypto_110, RTLD_NOW);
     if (module) {
         return module;
     }

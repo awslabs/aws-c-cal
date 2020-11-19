@@ -273,7 +273,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     /* Ensure that libcrypto 1.0.2 has working locking mechanisms. This code is macro'ed
      * by libcrypto to be a no-op on 1.1.1 */
     if (!CRYPTO_get_locking_callback()) {
-        s_libcrypto_locks = aws_mem_acquire(alloc, sizeof(struct aws_mutex) * CRYPTO_num_locks());
+        s_libcrypto_locks = aws_mem_acquire(allocator, sizeof(struct aws_mutex) * CRYPTO_num_locks());
         AWS_FATAL_ASSERT(s_libcrypto_locks);
         size_t lock_count = (size_t)CRYPTO_num_locks();
         for (size_t i = 0; i < lock_count; ++i) {

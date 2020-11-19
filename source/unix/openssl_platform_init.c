@@ -287,9 +287,11 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     }
 }
 
+/* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
 void aws_cal_platform_clean_up(void) {
-    if (CRYPTO_get_locking_callback() != NULL &&
-        CRYPTO_get_locking_callback() == s_locking_fn) {
+    if (CRYPTO_get_locking_callback() == s_locking_fn) {
         CRYPTO_set_locking_callback(NULL);
         size_t lock_count = (size_t)CRYPTO_num_locks();
         for (size_t i = 0; i < lock_count; ++i) {
@@ -298,8 +300,8 @@ void aws_cal_platform_clean_up(void) {
         aws_mem_release(s_libcrypto_allocator, s_libcrypto_locks);
     }
 
-    if (CRYPTO_get_id_callback() != NULL &&
-        CRYPTO_get_id_callback() == s_id_fn) {
+    if (CRYPTO_get_id_callback() == s_id_fn) {
         CRYPTO_set_id_callback(NULL);
     }
 }
+#pragma GCC diagnostic pop

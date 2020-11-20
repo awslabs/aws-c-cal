@@ -4,6 +4,8 @@
  */
 
 #include <aws/common/allocator.h>
+#include <aws/common/mutex.h>
+#include <aws/common/thread.h>
 
 #include <dlfcn.h>
 
@@ -92,24 +94,57 @@ static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
     return 1;
 }
 
+static struct aws_mutex *s_libcrypto_locks = NULL;
+static struct aws_allocator *s_libcrypto_allocator = NULL;
+
+static void s_locking_fn(int mode, int n, const char *unused0, int unused1) {
+    (void)unused0;
+    (void)unused1;
+
+    if (mode & CRYPTO_LOCK) {
+        aws_mutex_lock(&s_libcrypto_locks[n]);
+    } else {
+        aws_mutex_unlock(&s_libcrypto_locks[n]);
+    }
+}
+
+static unsigned long s_id_fn(void) {
+    return (unsigned long)aws_thread_current_thread_id();
+}
+
+enum aws_libcrypto_version {
+    AWS_LIBCRYPTO_NONE,
+    AWS_LIBCRYPTO_1_0_2,
+    AWS_LIBCRYPTO_1_1_1,
+    AWS_LIBCRYPTO_LC,
+} s_libcrypto_version = AWS_LIBCRYPTO_NONE;
+
 void *s_find_libcrypto_module(void) {
 #if defined(AWS_CAL_EXPORTS)
+    /* when built as a shared lib, and multiple versions of openssl are possibly
+     * available (e.g. brazil), select 1.0.2 by default for consistency */
     const char *libcrypto_110 = "libcrypto.so.1.1";
     const char *libcrypto_102 = "libcrypto.so.1.0.0";
     void *module = dlopen(libcrypto_102, RTLD_NOW);
     if (module) {
+        s_libcrypto_version = AWS_LIBCRYPTO_1_0_2;
         return module;
     }
     module = dlopen(libcrypto_110, RTLD_NOW);
     if (module) {
+        s_libcrypto_version = AWS_LIBCRYPTO_1_1_1;
         return module;
     }
 #endif
     return dlopen(NULL, RTLD_NOW);
 }
 
+/* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
+
 void aws_cal_platform_init(struct aws_allocator *allocator) {
-    (void)allocator;
+    s_libcrypto_allocator = allocator;
 
     void *this_handle = s_find_libcrypto_module();
     AWS_FATAL_ASSERT(this_handle != NULL);
@@ -125,20 +160,35 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
         hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
 
         if (!init_fn) {
+            AWS_FATAL_ASSERT(s_libcrypto_version == AWS_LIBCRYPTO_NONE || s_libcrypto_version == AWS_LIBCRYPTO_1_0_2);
             *(void **)(&init_fn) = dlsym(this_handle, "HMAC_CTX_init");
         }
         if (!clean_up_fn) {
+            AWS_FATAL_ASSERT(s_libcrypto_version == AWS_LIBCRYPTO_NONE || s_libcrypto_version == AWS_LIBCRYPTO_1_0_2);
             *(void **)(&clean_up_fn) = dlsym(this_handle, "HMAC_CTX_cleanup");
         }
-        if (!new_fn) {
-            *(void **)(&new_fn) = dlsym(this_handle, "HMAC_CTX_new");
+
+        if (init_fn && clean_up_fn) {
+            s_libcrypto_version = AWS_LIBCRYPTO_1_0_2;
         }
-        if (!reset_fn) {
-            *(void **)(&reset_fn) = dlsym(this_handle, "HMAC_CTX_reset");
+
+        if (s_libcrypto_version != AWS_LIBCRYPTO_1_0_2) {
+            if (!new_fn) {
+                *(void **)(&new_fn) = dlsym(this_handle, "HMAC_CTX_new");
+            }
+            if (!reset_fn) {
+                *(void **)(&reset_fn) = dlsym(this_handle, "HMAC_CTX_reset");
+            }
+            if (!free_fn) {
+                *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
+            }
+            if (new_fn && reset_fn && free_fn) {
+                s_libcrypto_version = AWS_LIBCRYPTO_1_1_1;
+            }
         }
-        if (!free_fn) {
-            *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
-        }
+
+        AWS_FATAL_ASSERT(s_libcrypto_version != AWS_LIBCRYPTO_NONE);
+
         if (!update_fn) {
             *(void **)(&update_fn) = dlsym(this_handle, "HMAC_Update");
         }
@@ -149,8 +199,6 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
             *(void **)(&init_ex_fn) = dlsym(this_handle, "HMAC_Init_ex");
         }
 
-        AWS_FATAL_ASSERT((init_fn || new_fn) && "libcrypto HMAC init/new could not be resolved");
-        AWS_FATAL_ASSERT((clean_up_fn || free_fn) && "libcrypto HMAC cleanup/free could not be resolved");
         AWS_FATAL_ASSERT(update_fn != NULL && "libcrypto HMAC_Update could not be resolved");
         AWS_FATAL_ASSERT(final_fn != NULL && "libcrypto HMAC_Final could not be resolved");
         AWS_FATAL_ASSERT(init_ex_fn != NULL && "libcrypto HMAC_Init_ex could not be resolved");
@@ -159,8 +207,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
         hmac_ctx_table.final_fn = final_fn;
         hmac_ctx_table.init_ex_fn = init_ex_fn;
 
-        if (new_fn != NULL && reset_fn != NULL && free_fn != NULL) {
-            /* libcrypto 1.1 */
+        if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
             hmac_ctx_table.new_fn = new_fn;
             hmac_ctx_table.reset_fn = reset_fn;
             hmac_ctx_table.free_fn = free_fn;
@@ -168,7 +215,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
             hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
             g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
 
-        } else if (init_fn != NULL && clean_up_fn != NULL) {
+        } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
             /* libcrypto 1.0 */
             hmac_ctx_table.new_fn = s_hmac_ctx_new;
             hmac_ctx_table.reset_fn = s_hmac_ctx_reset;
@@ -185,8 +232,9 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     {
         evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
         if (!md_new_fn) {
-            *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_new");
-            if (md_new_fn == NULL) {
+            if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
+                *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_new");
+            } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
                 *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_create");
             }
         }
@@ -195,8 +243,9 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 
         evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
         if (!md_free_fn) {
-            *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_free");
-            if (md_free_fn == NULL) {
+            if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
+                *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_free");
+            } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
                 *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_destroy");
             }
         }
@@ -229,4 +278,39 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     }
 
     dlclose(this_handle);
+
+    /* Ensure that libcrypto 1.0.2 has working locking mechanisms. This code is macro'ed
+     * by libcrypto to be a no-op on 1.1.1 */
+    if (!CRYPTO_get_locking_callback()) {
+        /* on 1.1.1 this is a no-op */
+        CRYPTO_set_locking_callback(s_locking_fn);
+        if (CRYPTO_get_locking_callback() == s_locking_fn) {
+            s_libcrypto_locks = aws_mem_acquire(allocator, sizeof(struct aws_mutex) * CRYPTO_num_locks());
+            AWS_FATAL_ASSERT(s_libcrypto_locks);
+            size_t lock_count = (size_t)CRYPTO_num_locks();
+            for (size_t i = 0; i < lock_count; ++i) {
+                aws_mutex_init(&s_libcrypto_locks[i]);
+            }
+        }
+    }
+
+    if (!CRYPTO_get_id_callback()) {
+        CRYPTO_set_id_callback(s_id_fn);
+    }
 }
+
+void aws_cal_platform_clean_up(void) {
+    if (CRYPTO_get_locking_callback() == s_locking_fn) {
+        CRYPTO_set_locking_callback(NULL);
+        size_t lock_count = (size_t)CRYPTO_num_locks();
+        for (size_t i = 0; i < lock_count; ++i) {
+            aws_mutex_clean_up(&s_libcrypto_locks[i]);
+        }
+        aws_mem_release(s_libcrypto_allocator, s_libcrypto_locks);
+    }
+
+    if (CRYPTO_get_id_callback() == s_id_fn) {
+        CRYPTO_set_id_callback(NULL);
+    }
+}
+#pragma GCC diagnostic pop

@@ -41,6 +41,7 @@ static struct aws_error_info_list s_list = {
 };
 
 extern void aws_cal_platform_init(struct aws_allocator *allocator);
+extern void aws_cal_platform_clean_up(void);
 
 static bool s_cal_library_initialized = false;
 
@@ -55,6 +56,7 @@ void aws_cal_library_init(struct aws_allocator *allocator) {
 void aws_cal_library_clean_up(void) {
     if (s_cal_library_initialized) {
         s_cal_library_initialized = false;
+        aws_cal_platform_clean_up();
         aws_unregister_error_info(&s_list);
         aws_common_library_clean_up();
     }

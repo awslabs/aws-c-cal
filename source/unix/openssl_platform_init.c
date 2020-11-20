@@ -11,6 +11,14 @@
 
 #include <aws/cal/private/opensslcrypto_common.h>
 
+#define AWS_LIBCRYPTO_LOG_RESOLVE
+#if defined(AWS_LIBCRYPTO_LOG_RESOLVE)
+#    define _FLOGF(fmt, ...) fprintf(stderr, "AWS libcrypto resolve: " fmt "\n", ##__VA_ARGS__)
+#    define FLOGF(...) _FLOGF(__VA_ARGS__)
+#else
+#    define FLOGF(...)
+#endif
+
 static struct openssl_hmac_ctx_table hmac_ctx_table;
 static struct openssl_evp_md_ctx_table evp_md_ctx_table;
 
@@ -117,11 +125,20 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
     bool has_102_symbols = init_fn && clean_up_fn && update_fn && final_fn && init_ex_fn;
     bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
 
+    if (has_102_symbols) {
+        FLOGF("found static libcrypto 1.0.2 HMAC");
+    }
+    if (has_111_symbols) {
+        FLOGF("found static libcrypto 1.1.1 HMAC");
+    }
+
     if (version == AWS_LIBCRYPTO_NONE) {
         if (has_102_symbols) {
             version = AWS_LIBCRYPTO_1_0_2;
+            FLOGF("auto-resolving libcrypto 1.0.2");
         } else if (has_111_symbols) {
             version = AWS_LIBCRYPTO_1_1_1;
+            FLOGF("auto-resolving libcrypto 1.1.1");
         } else {
             /* not pre-linked, need to ask for a specific version */
             return AWS_LIBCRYPTO_NONE;
@@ -150,12 +167,14 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
 
     /* Fill out the vtable for the requested version */
     if (version == AWS_LIBCRYPTO_1_0_2 && init_fn) {
+        FLOGF("found dynamic libcrypto 1.0.2 HMAC symbols");
         hmac_ctx_table.new_fn = s_hmac_ctx_new;
         hmac_ctx_table.reset_fn = s_hmac_ctx_reset;
         hmac_ctx_table.free_fn = s_hmac_ctx_free;
         hmac_ctx_table.init_fn = init_fn;
         hmac_ctx_table.clean_up_fn = clean_up_fn;
     } else if (version == AWS_LIBCRYPTO_1_1_1 && new_fn) {
+        FLOGF("found dynamic libcrypto 1.1.1 HMAC symbols");
         hmac_ctx_table.new_fn = new_fn;
         hmac_ctx_table.reset_fn = reset_fn;
         hmac_ctx_table.free_fn = free_fn;
@@ -187,25 +206,27 @@ __attribute__((used));
 
 static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
     /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
-    evp_md_ctx_new md_new_fn = s_EVP_MD_CTX_create ? s_EVP_MD_CTX_create : EVP_MD_CTX_new;
-    evp_md_ctx_free md_free_fn = s_EVP_MD_CTX_destroy ? s_EVP_MD_CTX_destroy : EVP_MD_CTX_free;
+    evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
+    evp_md_ctx_new md_create_fn = s_EVP_MD_CTX_create;
+    evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
+    evp_md_ctx_free md_destroy_fn = s_EVP_MD_CTX_destroy;
     evp_md_ctx_digest_init_ex md_init_ex_fn = EVP_DigestInit_ex;
     evp_md_ctx_digest_update md_update_fn = EVP_DigestUpdate;
     evp_md_ctx_digest_final_ex md_final_ex_fn = EVP_DigestFinal_ex;
 
-    /* only 1.1.1 can link ahead of time, because create and destroy are macros in 1.1.1, which
-     * prevents weak linking from working */
+    bool has_102_symbols = md_create_fn && md_destroy_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
     bool has_111_symbols = md_new_fn && md_free_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
 
-    if (version == AWS_LIBCRYPTO_NONE) {
-        if (has_111_symbols) {
-            version = AWS_LIBCRYPTO_1_1_1;
-        }
+    if (has_102_symbols) {
+        FLOGF("found static libcrypto 1.0.2 EVP_MD");
+    }
+    if (has_111_symbols) {
+        FLOGF("found static libcrypto 1.1.1 EVP_MD");
     }
 
-    if (version == AWS_LIBCRYPTO_1_0_2) {
-        *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_create");
-        *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_destroy");
+    if (!has_102_symbols && version == AWS_LIBCRYPTO_1_0_2) {
+        *(void **)(&md_create_fn) = dlsym(module, "EVP_MD_CTX_create");
+        *(void **)(&md_destroy_fn) = dlsym(module, "EVP_MD_CTX_destroy");
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
         *(void **)(&md_update_fn) = dlsym(module, "EVP_DigestUpdate");
         *(void **)(&md_final_ex_fn) = dlsym(module, "EVP_DigestFinal_ex");
@@ -220,7 +241,17 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
     }
 
     /* Add the found symbols to the vtable */
-    if (md_new_fn && md_free_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn) {
+    if (version == AWS_LIBCRYPTO_1_0_2 && md_create_fn) {
+        FLOGF("found dynamic libcrypto 1.0.2 EVP_MD symbols");
+        evp_md_ctx_table.new_fn = md_create_fn;
+        evp_md_ctx_table.free_fn = md_destroy_fn;
+        evp_md_ctx_table.init_ex_fn = md_init_ex_fn;
+        evp_md_ctx_table.update_fn = md_update_fn;
+        evp_md_ctx_table.final_ex_fn = md_final_ex_fn;
+        g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
+        return version;
+    } else if (version == AWS_LIBCRYPTO_1_1_1 && md_new_fn) {
+        FLOGF("found dynamic libcrypto 1.1.1 EVP_MD symbols");
         evp_md_ctx_table.new_fn = md_new_fn;
         evp_md_ctx_table.free_fn = md_free_fn;
         evp_md_ctx_table.init_ex_fn = md_init_ex_fn;
@@ -249,6 +280,7 @@ static int s_resolve_libcrypto_version(enum aws_libcrypto_version version) {
     const char *libcrypto_111 = "libcrypto.so.1.1";
     switch (version) {
         case AWS_LIBCRYPTO_NONE: {
+            FLOGF("searching process and loaded modules");
             void *process = dlopen(NULL, RTLD_NOW);
             AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
             int result = s_resolve_libcrypto_symbols(version, process);
@@ -256,21 +288,27 @@ static int s_resolve_libcrypto_version(enum aws_libcrypto_version version) {
             return result;
         }
         case AWS_LIBCRYPTO_1_0_2: {
+            FLOGF("loading libcrypto 1.0.2");
             void *module = dlopen(libcrypto_102, RTLD_NOW);
             if (module) {
+                FLOGF("resolving against libcrypto 1.0.2");
                 int result = s_resolve_libcrypto_symbols(version, module);
                 dlclose(module);
                 return result;
             }
+            FLOGF("libcrypto 1.0.2 not found");
             break;
         }
         case AWS_LIBCRYPTO_1_1_1: {
+            FLOGF("loading libcrypto 1.1.1");
             void *module = dlopen(libcrypto_111, RTLD_NOW);
             if (module) {
+                FLOGF("resolving against libcrypto 1.1.1");
                 int result = s_resolve_libcrypto_symbols(version, module);
                 dlclose(module);
                 return result;
             }
+            FLOGF("libcrypto 1.1.1 not found");
             break;
         }
         default:
@@ -285,13 +323,16 @@ static int s_resolve_libcrypto(void) {
     }
 
     /* Try to auto-resolve against what's linked in/process space */
+    FLOGF("Attempting auto-resolve against static linkage");
     s_libcrypto_version = s_resolve_libcrypto_version(AWS_LIBCRYPTO_NONE);
     /* try 1.0.2 */
     if (s_libcrypto_version == AWS_LIBCRYPTO_NONE) {
+        FLOGF("Attempting resolve against libcrypto 1.0.2");
         s_libcrypto_version = s_resolve_libcrypto_version(AWS_LIBCRYPTO_1_0_2);
     }
     /* try 1.1.1 */
     if (s_libcrypto_version == AWS_LIBCRYPTO_NONE) {
+        FLOGF("Attempting resolve against libcrypto 1.1.1");
         s_libcrypto_version = s_resolve_libcrypto_version(AWS_LIBCRYPTO_1_1_1);
     }
 

@@ -11,6 +11,7 @@
 
 #include <aws/cal/private/opensslcrypto_common.h>
 
+#define AWS_LIBCRYPTO_LOG_RESOLVE
 #if defined(AWS_LIBCRYPTO_LOG_RESOLVE)
 #    define FLOGF(...)                                                                                                 \
         do {                                                                                                           \

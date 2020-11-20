@@ -196,7 +196,7 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
 
     /* only 1.1.1 can link ahead of time, because create and destroy are macros in 1.1.1, which
      * prevents weak linking from working */
-    bool has_111_symbols = md_new_fn && md_free_fn && md_init_ex && md_update_fn && md_final_ex_fn;
+    bool has_111_symbols = md_new_fn && md_free_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
 
     if (version == AWS_LIBCRYPTO_NONE) {
         if (has_111_symbols) {
@@ -274,7 +274,7 @@ static int s_resolve_libcrypto_version(enum aws_libcrypto_version version) {
     return AWS_LIBCRYPTO_NONE;
 }
 
-static int s_resolve_libcrypto() {
+static int s_resolve_libcrypto(void) {
     AWS_FATAL_ASSERT(module != NULL);
     if (s_libcrypto_version != AWS_LIBCRYPTO_NONE) {
         return s_libcrypto_version;

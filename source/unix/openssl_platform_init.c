@@ -13,8 +13,12 @@
 
 #define AWS_LIBCRYPTO_LOG_RESOLVE
 #if defined(AWS_LIBCRYPTO_LOG_RESOLVE)
-#    define _FLOGF(fmt, ...) fprintf(stderr, "AWS libcrypto resolve: " fmt "\n", ##__VA_ARGS__)
-#    define FLOGF(...) _FLOGF(__VA_ARGS__)
+#    define FLOGF(...)                                                                                                 \
+        do {                                                                                                           \
+            fprintf(stderr, "AWS libcrypto resolve: ");                                                                \
+            fprintf(stderr, __VA_ARGS__);                                                                              \
+            fprintf(stderr, "\n");                                                                                     \
+        } while (0)
 #else
 #    define FLOGF(...)
 #endif

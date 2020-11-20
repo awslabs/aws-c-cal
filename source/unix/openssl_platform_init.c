@@ -238,8 +238,6 @@ static int s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void 
     if (!s_resolve_libcrypto_hmac(version, module)) {
         return AWS_LIBCRYPTO_NONE;
     }
-    AWS_FATAL_ASSERT(g_aws_openssl_hmac_ctx_table != NULL);
-    AWS_FATAL_ASSERT(s_libcrypto_version == version && "libcrypto HMAC symbols could not be resolved");
     if (!s_resolve_libcrypto_md(version, module)) {
         return AWS_LIBCRYPTO_NONE;
     }

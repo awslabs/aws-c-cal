@@ -275,7 +275,6 @@ static int s_resolve_libcrypto_version(enum aws_libcrypto_version version) {
 }
 
 static int s_resolve_libcrypto(void) {
-    AWS_FATAL_ASSERT(module != NULL);
     if (s_libcrypto_version != AWS_LIBCRYPTO_NONE) {
         return s_libcrypto_version;
     }

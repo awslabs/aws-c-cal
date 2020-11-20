@@ -221,7 +221,7 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
     }
 
     /* Add the found symbols to the vtable */
-    if (md_new_fn && md_free_fn && md_init_ex && md_update_fn && md_final_ex_fn) {
+    if (md_new_fn && md_free_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn) {
         evp_md_ctx_table.new_fn = md_new_fn;
         evp_md_ctx_table.free_fn = md_free_fn;
         evp_md_ctx_table.init_ex_fn = md_init_ex_fn;

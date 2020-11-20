@@ -129,13 +129,6 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
     bool has_102_symbols = init_fn && clean_up_fn && update_fn && final_fn && init_ex_fn;
     bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
 
-    if (has_102_symbols) {
-        FLOGF("found static libcrypto 1.0.2 HMAC");
-    }
-    if (has_111_symbols) {
-        FLOGF("found static libcrypto 1.1.1 HMAC");
-    }
-
     if (version == AWS_LIBCRYPTO_NONE) {
         if (has_102_symbols) {
             version = AWS_LIBCRYPTO_1_0_2;
@@ -147,6 +140,13 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
             /* not pre-linked, need to ask for a specific version */
             return AWS_LIBCRYPTO_NONE;
         }
+    }
+
+    if (has_102_symbols) {
+        FLOGF("found static libcrypto 1.0.2 HMAC");
+    }
+    if (has_111_symbols) {
+        FLOGF("found static libcrypto 1.1.1 HMAC");
     }
 
     /* If symbols aren't already found, try to find the requested version */

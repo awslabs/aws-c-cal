@@ -35,22 +35,6 @@ extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__
 extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak))
 __attribute__((used));
 
-/* EVP_MD_CTX API */
-/* 1.0.2 NOTE: these are macros in 1.1.x, so we only use them as functions when
- * runtime resolving against libcrypto 1.0.2 .so, we only link against 1.1.1 */
-/*extern EVP_MD_CTX *EVP_MD_CTX_create(void) __attribute__((weak)) __attribute__((used));*/
-/*extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));*/
-
-/* 1.1 */
-extern EVP_MD_CTX *EVP_MD_CTX_new(void) __attribute__((weak)) __attribute__((used));
-extern void EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));
-
-/* common */
-extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weak)) __attribute__((used));
-extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak)) __attribute__((used));
-extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *) __attribute__((weak))
-__attribute__((used));
-
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
     (void)ctx;
@@ -113,30 +97,201 @@ static unsigned long s_id_fn(void) {
 }
 
 enum aws_libcrypto_version {
-    AWS_LIBCRYPTO_NONE,
+    AWS_LIBCRYPTO_NONE = 0,
     AWS_LIBCRYPTO_1_0_2,
     AWS_LIBCRYPTO_1_1_1,
     AWS_LIBCRYPTO_LC,
 } s_libcrypto_version = AWS_LIBCRYPTO_NONE;
 
-void *s_find_libcrypto_module(void) {
-#if defined(AWS_CAL_EXPORTS)
+static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
+    hmac_ctx_init init_fn = HMAC_CTX_init;
+    hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
+    hmac_ctx_new new_fn = HMAC_CTX_new;
+    hmac_ctx_free free_fn = HMAC_CTX_free;
+    hmac_ctx_reset reset_fn = HMAC_CTX_reset;
+    hmac_ctx_update update_fn = HMAC_Update;
+    hmac_ctx_final final_fn = HMAC_Final;
+    hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
+
+    /* were symbols bound by static linking? */
+    bool has_102_symbols = init_fn && clean_up_fn && update_fn && final_fn && init_ex_fn;
+    bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
+
+    if (version == AWS_LIBCRYPTO_NONE) {
+        if (has_102_symbols) {
+            version = AWS_LIBCRYPTO_1_0_2;
+        } else if (has_111_symbols) {
+            version = AWS_LIBCRYPTO_1_1_1;
+        } else {
+            /* not pre-linked, need to ask for a specific version */
+            return AWS_LIBCRYPTO_NONE;
+        }
+    }
+
+    /* If symbols aren't already found, try to find the requested version */
     /* when built as a shared lib, and multiple versions of openssl are possibly
      * available (e.g. brazil), select 1.0.2 by default for consistency */
-    const char *libcrypto_110 = "libcrypto.so.1.1";
+    if (!has_102_symbols && version == AWS_LIBCRYPTO_1_0_2) {
+        *(void **)(&init_fn) = dlsym(module, "HMAC_CTX_init");
+        *(void **)(&clean_up_fn) = dlsym(module, "HMAC_CTX_cleanup");
+        *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
+        *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
+        *(void **)(&init_ex_fn) = dlsym(module, "HMAC_Init_ex");
+    }
+
+    if (!has_111_symbols && version == AWS_LIBCRYPTO_1_1_1) {
+        *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
+        *(void **)(&reset_fn) = dlsym(module, "HMAC_CTX_reset");
+        *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
+        *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
+        *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
+        *(void **)(&init_ex_fn) = dlsym(module, "HMAC_Init_ex");
+    }
+
+    /* Fill out the vtable for the requested version */
+    if (version == AWS_LIBCRYPTO_1_0_2 && init_fn) {
+        hmac_ctx_table.new_fn = s_hmac_ctx_new;
+        hmac_ctx_table.reset_fn = s_hmac_ctx_reset;
+        hmac_ctx_table.free_fn = s_hmac_ctx_free;
+        hmac_ctx_table.init_fn = init_fn;
+        hmac_ctx_table.clean_up_fn = clean_up_fn;
+    } else if (version == AWS_LIBCRYPTO_1_1_1 && new_fn) {
+        hmac_ctx_table.new_fn = new_fn;
+        hmac_ctx_table.reset_fn = reset_fn;
+        hmac_ctx_table.free_fn = free_fn;
+        hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;
+        hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
+    }
+    hmac_ctx_table.update_fn = update_fn;
+    hmac_ctx_table.final_fn = final_fn;
+    hmac_ctx_table.init_ex_fn = init_ex_fn;
+    g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
+
+    return version;
+}
+
+/* EVP_MD_CTX API */
+/* 1.0.2 NOTE: these are macros in 1.1.x, so we only use them as functions when
+ * runtime resolving against libcrypto 1.0.2 .so, we only link against 1.1.1 */
+/*extern EVP_MD_CTX *EVP_MD_CTX_create(void) __attribute__((weak)) __attribute__((used));*/
+/*extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));*/
+
+/* 1.1 */
+extern EVP_MD_CTX *EVP_MD_CTX_new(void) __attribute__((weak)) __attribute__((used));
+extern void EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));
+
+/* common */
+extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weak)) __attribute__((used));
+extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak)) __attribute__((used));
+extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *) __attribute__((weak))
+__attribute__((used));
+
+static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
+    /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
+    evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
+    evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
+    evp_md_ctx_digest_init_ex md_init_ex_fn = EVP_DigestInit_ex;
+    evp_md_ctx_digest_update md_update_fn = EVP_DigestUpdate;
+    evp_md_ctx_digest_final_ex md_final_ex_fn = EVP_DigestFinal_ex;
+
+    /* only 1.1.1 can link ahead of time, because create and destroy are macros in 1.1.1, which
+     * prevents weak linking from working */
+    bool has_111_symbols = md_new_fn && md_free_fn && md_init_ex && md_update_fn && md_final_ex_fn;
+
+    if (version == AWS_LIBCRYPTO_NONE) {
+        if (has_111_symbols) {
+            version = AWS_LIBCRYPTO_1_1_1;
+        }
+    }
+
+    if (version == AWS_LIBCRYPTO_1_0_2) {
+        *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_create");
+        *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_destroy");
+        *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
+        *(void **)(&md_update_fn) = dlsym(module, "EVP_DigestUpdate");
+        *(void **)(&md_final_ex_fn) = dlsym(module, "EVP_DigestFinal_ex");
+    }
+
+    if (!has_111_symbols && version == AWS_LIBCRYPTO_1_1_1) {
+        *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_new");
+        *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_free");
+        *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
+        *(void **)(&md_update_fn) = dlsym(module, "EVP_DigestUpdate");
+        *(void **)(&md_final_ex_fn) = dlsym(module, "EVP_DigestFinal_ex");
+    }
+
+    /* Add the found symbols to the vtable */
+    if (md_new_fn && md_free_fn && md_init_ex && md_update_fn && md_final_ex_fn) {
+        evp_md_ctx_table.new_fn = md_new_fn;
+        evp_md_ctx_table.free_fn = md_free_fn;
+        evp_md_ctx_table.init_ex_fn = md_init_ex_fn;
+        evp_md_ctx_table.update_fn = md_update_fn;
+        evp_md_ctx_table.final_ex_fn = md_final_ex_fn;
+        g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
+        return version;
+    }
+
+    return AWS_LIBCRYPTO_NONE;
+}
+
+static int s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void *module) {
+    if (!s_resolve_libcrypto_hmac(version, module)) {
+        return AWS_LIBCRYPTO_NONE;
+    }
+    AWS_FATAL_ASSERT(g_aws_openssl_hmac_ctx_table != NULL);
+    AWS_FATAL_ASSERT(s_libcrypto_version == version && "libcrypto HMAC symbols could not be resolved");
+    if (!s_resolve_libcrypto_md(version, module)) {
+        return AWS_LIBCRYPTO_NONE;
+    }
+    return version;
+}
+
+static int s_resolve_libcrypto_version(enum aws_libcrypto_version version) {
     const char *libcrypto_102 = "libcrypto.so.1.0.0";
-    void *module = dlopen(libcrypto_102, RTLD_NOW);
-    if (module) {
-        s_libcrypto_version = AWS_LIBCRYPTO_1_0_2;
-        return module;
+    const char *libcrypto_111 = "libcrypto.so.1.1";
+    switch (version) {
+        case AWS_LIBCRYPTO_NONE: {
+            void *process = dlopen(NULL, RTLD_NOW);
+            int result = s_resolve_libcrypto_symbols(version, process);
+            dlclose(process);
+            return result;
+        }
+        case AWS_LIBCRYPTO_1_0_2: {
+            void *module = dlopen(libcrypto_102, RTLD_NOW);
+            int result = s_resolve_libcrypto_symbols(version, module);
+            dlclose(module);
+            return result;
+        }
+        case AWS_LIBCRYPTO_1_1_1: {
+            void *module = dlopen(libcrypto_111, RTLD_NOW);
+            int result = s_resolve_libcrypto_symbols(version, module);
+            dlclose(module);
+            return result;
+        }
+        default:
+            AWS_FATAL_ASSERT("Attempted to use an unsupported version of libcrypto");
     }
-    module = dlopen(libcrypto_110, RTLD_NOW);
-    if (module) {
-        s_libcrypto_version = AWS_LIBCRYPTO_1_1_1;
-        return module;
+    return AWS_LIBCRYPTO_NONE;
+}
+
+static int s_resolve_libcrypto() {
+    AWS_FATAL_ASSERT(module != NULL);
+    if (s_libcrypto_version != AWS_LIBCRYPTO_NONE) {
+        return s_libcrypto_version;
     }
-#endif
-    return dlopen(NULL, RTLD_NOW);
+
+    /* Try to auto-resolve against what's linked in/process space */
+    s_libcrypto_version = s_resolve_libcrypto_version(AWS_LIBCRYPTO_NONE);
+    /* try 1.0.2 */
+    if (s_libcrypto_version == AWS_LIBCRYPTO_NONE) {
+        s_libcrypto_version = s_resolve_libcrypto_version(AWS_LIBCRYPTO_1_0_2);
+    }
+    /* try 1.1.1 */
+    if (s_libcrypto_version == AWS_LIBCRYPTO_NONE) {
+        s_libcrypto_version = s_resolve_libcrypto_version(AWS_LIBCRYPTO_1_1_1);
+    }
+
+    return s_libcrypto_version;
 }
 
 /* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
@@ -146,138 +301,8 @@ void *s_find_libcrypto_module(void) {
 void aws_cal_platform_init(struct aws_allocator *allocator) {
     s_libcrypto_allocator = allocator;
 
-    void *this_handle = s_find_libcrypto_module();
-    AWS_FATAL_ASSERT(this_handle != NULL);
-
-    {
-        hmac_ctx_init init_fn = HMAC_CTX_init;
-        hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
-        hmac_ctx_new new_fn = HMAC_CTX_new;
-        hmac_ctx_free free_fn = HMAC_CTX_free;
-        hmac_ctx_reset reset_fn = HMAC_CTX_reset;
-        hmac_ctx_update update_fn = HMAC_Update;
-        hmac_ctx_final final_fn = HMAC_Final;
-        hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
-
-        if (!init_fn) {
-            AWS_FATAL_ASSERT(s_libcrypto_version == AWS_LIBCRYPTO_NONE || s_libcrypto_version == AWS_LIBCRYPTO_1_0_2);
-            *(void **)(&init_fn) = dlsym(this_handle, "HMAC_CTX_init");
-        }
-        if (!clean_up_fn) {
-            AWS_FATAL_ASSERT(s_libcrypto_version == AWS_LIBCRYPTO_NONE || s_libcrypto_version == AWS_LIBCRYPTO_1_0_2);
-            *(void **)(&clean_up_fn) = dlsym(this_handle, "HMAC_CTX_cleanup");
-        }
-
-        if (init_fn && clean_up_fn) {
-            s_libcrypto_version = AWS_LIBCRYPTO_1_0_2;
-        }
-
-        if (s_libcrypto_version != AWS_LIBCRYPTO_1_0_2) {
-            if (!new_fn) {
-                *(void **)(&new_fn) = dlsym(this_handle, "HMAC_CTX_new");
-            }
-            if (!reset_fn) {
-                *(void **)(&reset_fn) = dlsym(this_handle, "HMAC_CTX_reset");
-            }
-            if (!free_fn) {
-                *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
-            }
-            if (new_fn && reset_fn && free_fn) {
-                s_libcrypto_version = AWS_LIBCRYPTO_1_1_1;
-            }
-        }
-
-        AWS_FATAL_ASSERT(s_libcrypto_version != AWS_LIBCRYPTO_NONE);
-
-        if (!update_fn) {
-            *(void **)(&update_fn) = dlsym(this_handle, "HMAC_Update");
-        }
-        if (!final_fn) {
-            *(void **)(&final_fn) = dlsym(this_handle, "HMAC_Final");
-        }
-        if (!init_ex_fn) {
-            *(void **)(&init_ex_fn) = dlsym(this_handle, "HMAC_Init_ex");
-        }
-
-        AWS_FATAL_ASSERT(update_fn != NULL && "libcrypto HMAC_Update could not be resolved");
-        AWS_FATAL_ASSERT(final_fn != NULL && "libcrypto HMAC_Final could not be resolved");
-        AWS_FATAL_ASSERT(init_ex_fn != NULL && "libcrypto HMAC_Init_ex could not be resolved");
-
-        hmac_ctx_table.update_fn = update_fn;
-        hmac_ctx_table.final_fn = final_fn;
-        hmac_ctx_table.init_ex_fn = init_ex_fn;
-
-        if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
-            hmac_ctx_table.new_fn = new_fn;
-            hmac_ctx_table.reset_fn = reset_fn;
-            hmac_ctx_table.free_fn = free_fn;
-            hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;
-            hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
-            g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
-
-        } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
-            /* libcrypto 1.0 */
-            hmac_ctx_table.new_fn = s_hmac_ctx_new;
-            hmac_ctx_table.reset_fn = s_hmac_ctx_reset;
-            hmac_ctx_table.free_fn = s_hmac_ctx_free;
-            hmac_ctx_table.init_fn = init_fn;
-            hmac_ctx_table.clean_up_fn = clean_up_fn;
-            g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
-        }
-
-        AWS_FATAL_ASSERT(g_aws_openssl_hmac_ctx_table != NULL);
-    }
-
-    /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
-    {
-        evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
-        if (!md_new_fn) {
-            if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
-                *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_new");
-            } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
-                *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_create");
-            }
-        }
-        AWS_FATAL_ASSERT(md_new_fn != NULL);
-        evp_md_ctx_table.new_fn = md_new_fn;
-
-        evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
-        if (!md_free_fn) {
-            if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
-                *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_free");
-            } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
-                *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_destroy");
-            }
-        }
-        AWS_FATAL_ASSERT(md_free_fn != NULL);
-        evp_md_ctx_table.free_fn = md_free_fn;
-
-        evp_md_ctx_digest_init_ex md_init_ex_fn = EVP_DigestInit_ex;
-        if (!md_init_ex_fn) {
-            *(void **)(&md_init_ex_fn) = dlsym(this_handle, "EVP_DigestInit_ex");
-        }
-        AWS_FATAL_ASSERT(md_init_ex_fn != NULL);
-        evp_md_ctx_table.init_ex_fn = md_init_ex_fn;
-
-        evp_md_ctx_digest_update md_update_fn = EVP_DigestUpdate;
-        if (!md_update_fn) {
-            *(void **)(&md_update_fn) = dlsym(this_handle, "EVP_DigestUpdate");
-        }
-        AWS_FATAL_ASSERT(md_update_fn);
-        evp_md_ctx_table.update_fn = md_update_fn;
-
-        evp_md_ctx_digest_final_ex md_final_ex_fn = EVP_DigestFinal_ex;
-        if (!md_final_ex_fn) {
-            *(void **)(&md_final_ex_fn) = dlsym(this_handle, "EVP_DigestFinal_ex");
-        }
-        AWS_FATAL_ASSERT(md_final_ex_fn);
-        evp_md_ctx_table.final_ex_fn = md_final_ex_fn;
-
-        g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
-        AWS_FATAL_ASSERT(g_aws_openssl_evp_md_ctx_table != NULL);
-    }
-
-    dlclose(this_handle);
+    int version = s_resolve_libcrypto();
+    AWS_FATAL_ASSERT(version != AWS_LIBCRYPTO_NONE && "libcrypto could not be resolved");
 
     /* Ensure that libcrypto 1.0.2 has working locking mechanisms. This code is macro'ed
      * by libcrypto to be a no-op on 1.1.1 */

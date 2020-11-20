@@ -114,23 +114,25 @@ static unsigned long s_id_fn(void) {
 
 enum aws_libcrypto_version {
     AWS_LIBCRYPTO_NONE,
-    AWS_LIBCRYPTO_102,
-    AWS_LIBCRYPTO_111,
+    AWS_LIBCRYPTO_1_0_2,
+    AWS_LIBCRYPTO_1_1_1,
     AWS_LIBCRYPTO_LC,
 } s_libcrypto_version = AWS_LIBCRYPTO_NONE;
 
 void *s_find_libcrypto_module(void) {
 #if defined(AWS_CAL_EXPORTS)
+    /* when built as a shared lib, and multiple versions of openssl are possibly
+     * available (e.g. brazil), select 1.0.2 by default for consistency */
     const char *libcrypto_110 = "libcrypto.so.1.1";
     const char *libcrypto_102 = "libcrypto.so.1.0.0";
     void *module = dlopen(libcrypto_102, RTLD_NOW);
     if (module) {
-        s_libcrypto_version = AWS_LIBCRYPTO_102;
+        s_libcrypto_version = AWS_LIBCRYPTO_1_0_2;
         return module;
     }
     module = dlopen(libcrypto_110, RTLD_NOW);
     if (module) {
-        s_libcrypto_version = AWS_LIBCRYPTO_111;
+        s_libcrypto_version = AWS_LIBCRYPTO_1_1_1;
         return module;
     }
 #endif
@@ -158,17 +160,19 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
         hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
 
         if (!init_fn) {
+            AWS_FATAL_ASSERT(s_libcrypto_version == AWS_LIBCRYPTO_NONE || s_libcrypto_version == AWS_LIBCRYPTO_1_0_2);
             *(void **)(&init_fn) = dlsym(this_handle, "HMAC_CTX_init");
         }
         if (!clean_up_fn) {
+            AWS_FATAL_ASSERT(s_libcrypto_version == AWS_LIBCRYPTO_NONE || s_libcrypto_version == AWS_LIBCRYPTO_1_0_2);
             *(void **)(&clean_up_fn) = dlsym(this_handle, "HMAC_CTX_cleanup");
         }
 
         if (init_fn && clean_up_fn) {
-            s_libcrypto_version = AWS_LIBCRYPTO_102;
+            s_libcrypto_version = AWS_LIBCRYPTO_1_0_2;
         }
 
-        if (s_libcrypto_version != AWS_LIBCRYPTO_102) {
+        if (s_libcrypto_version != AWS_LIBCRYPTO_1_0_2) {
             if (!new_fn) {
                 *(void **)(&new_fn) = dlsym(this_handle, "HMAC_CTX_new");
             }
@@ -203,8 +207,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
         hmac_ctx_table.final_fn = final_fn;
         hmac_ctx_table.init_ex_fn = init_ex_fn;
 
-        if (new_fn != NULL && reset_fn != NULL && free_fn != NULL) {
-            /* libcrypto 1.1 */
+        if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
             hmac_ctx_table.new_fn = new_fn;
             hmac_ctx_table.reset_fn = reset_fn;
             hmac_ctx_table.free_fn = free_fn;
@@ -212,7 +215,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
             hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
             g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
 
-        } else if (init_fn != NULL && clean_up_fn != NULL) {
+        } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
             /* libcrypto 1.0 */
             hmac_ctx_table.new_fn = s_hmac_ctx_new;
             hmac_ctx_table.reset_fn = s_hmac_ctx_reset;
@@ -229,8 +232,9 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
     {
         evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
         if (!md_new_fn) {
-            *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_new");
-            if (md_new_fn == NULL) {
+            if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
+                *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_new");
+            } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
                 *(void **)(&md_new_fn) = dlsym(this_handle, "EVP_MD_CTX_create");
             }
         }
@@ -239,8 +243,9 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 
         evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
         if (!md_free_fn) {
-            *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_free");
-            if (md_free_fn == NULL) {
+            if (s_libcrypto_version == AWS_LIBCRYPTO_1_1_1) {
+                *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_free");
+            } else if (s_libcrypto_version == AWS_LIBCRYPTO_1_0_2) {
                 *(void **)(&md_free_fn) = dlsym(this_handle, "EVP_MD_CTX_destroy");
             }
         }

@@ -158,6 +158,9 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
         *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
         *(void **)(&init_ex_fn) = dlsym(module, "HMAC_Init_ex");
+        if (init_fn) {
+            FLOGF("found dynamic libcrypto 1.0.2 HMAC symbols");
+        }
     }
 
     if (!has_111_symbols && version == AWS_LIBCRYPTO_1_1_1) {
@@ -167,18 +170,19 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
         *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
         *(void **)(&init_ex_fn) = dlsym(module, "HMAC_Init_ex");
+        if (new_fn) {
+            FLOGF("found dynamic libcrypto 1.1.1 HMAC symbols");
+        }
     }
 
     /* Fill out the vtable for the requested version */
     if (version == AWS_LIBCRYPTO_1_0_2 && init_fn) {
-        FLOGF("found dynamic libcrypto 1.0.2 HMAC symbols");
         hmac_ctx_table.new_fn = s_hmac_ctx_new;
         hmac_ctx_table.reset_fn = s_hmac_ctx_reset;
         hmac_ctx_table.free_fn = s_hmac_ctx_free;
         hmac_ctx_table.init_fn = init_fn;
         hmac_ctx_table.clean_up_fn = clean_up_fn;
     } else if (version == AWS_LIBCRYPTO_1_1_1 && new_fn) {
-        FLOGF("found dynamic libcrypto 1.1.1 HMAC symbols");
         hmac_ctx_table.new_fn = new_fn;
         hmac_ctx_table.reset_fn = reset_fn;
         hmac_ctx_table.free_fn = free_fn;
@@ -234,6 +238,9 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
         *(void **)(&md_update_fn) = dlsym(module, "EVP_DigestUpdate");
         *(void **)(&md_final_ex_fn) = dlsym(module, "EVP_DigestFinal_ex");
+        if (md_create_fn) {
+            FLOGF("found dynamic libcrypto 1.0.2 EVP_MD symbols");
+        }
     }
 
     if (!has_111_symbols && version == AWS_LIBCRYPTO_1_1_1) {
@@ -242,11 +249,13 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
         *(void **)(&md_update_fn) = dlsym(module, "EVP_DigestUpdate");
         *(void **)(&md_final_ex_fn) = dlsym(module, "EVP_DigestFinal_ex");
+        if (md_new_fn) {
+            FLOGF("found dynamic libcrypto 1.1.1 EVP_MD symbols");
+        }
     }
 
     /* Add the found symbols to the vtable */
     if (version == AWS_LIBCRYPTO_1_0_2 && md_create_fn) {
-        FLOGF("found dynamic libcrypto 1.0.2 EVP_MD symbols");
         evp_md_ctx_table.new_fn = md_create_fn;
         evp_md_ctx_table.free_fn = md_destroy_fn;
         evp_md_ctx_table.init_ex_fn = md_init_ex_fn;
@@ -255,7 +264,6 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
         g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
         return version;
     } else if (version == AWS_LIBCRYPTO_1_1_1 && md_new_fn) {
-        FLOGF("found dynamic libcrypto 1.1.1 EVP_MD symbols");
         evp_md_ctx_table.new_fn = md_new_fn;
         evp_md_ctx_table.free_fn = md_free_fn;
         evp_md_ctx_table.init_ex_fn = md_init_ex_fn;

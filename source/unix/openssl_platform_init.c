@@ -171,10 +171,9 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
 }
 
 /* EVP_MD_CTX API */
-/* 1.0.2 NOTE: these are macros in 1.1.x, so we only use them as functions when
- * runtime resolving against libcrypto 1.0.2 .so, we only link against 1.1.1 */
-/*extern EVP_MD_CTX *EVP_MD_CTX_create(void) __attribute__((weak)) __attribute__((used));*/
-/*extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));*/
+/* 1.0.2 NOTE: these are macros in 1.1.x, so we have to alias them instead of weak-linking directly */
+static EVP_MD_CTX *s_EVP_MD_CTX_create(void) __attribute__((weakref("EVP_MD_CTX_create"))) __attribute__((used));
+static void s_EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weakref("EVP_MD_CTX_destroy"))) __attribute__((used));
 
 /* 1.1 */
 extern EVP_MD_CTX *EVP_MD_CTX_new(void) __attribute__((weak)) __attribute__((used));
@@ -188,8 +187,8 @@ __attribute__((used));
 
 static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
     /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */
-    evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
-    evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
+    evp_md_ctx_new md_new_fn = s_EVP_MD_CTX_create ? s_EVP_MD_CTX_create : EVP_MD_CTX_new;
+    evp_md_ctx_free md_free_fn = s_EVP_MD_CTX_destroy ? s_EVP_MD_CTX_destroy : EVP_MD_CTX_free;
     evp_md_ctx_digest_init_ex md_init_ex_fn = EVP_DigestInit_ex;
     evp_md_ctx_digest_update md_update_fn = EVP_DigestUpdate;
     evp_md_ctx_digest_final_ex md_final_ex_fn = EVP_DigestFinal_ex;

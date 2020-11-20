@@ -183,7 +183,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
                 *(void **)(&free_fn) = dlsym(this_handle, "HMAC_CTX_free");
             }
             if (new_fn && reset_fn && free_fn) {
-                s_libcrypto_version = AWS_LIBCRYPTO_111;
+                s_libcrypto_version = AWS_LIBCRYPTO_1_1_1;
             }
         }
 

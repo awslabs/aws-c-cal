@@ -235,13 +235,15 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
 }
 
 static int s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void *module) {
-    if (!s_resolve_libcrypto_hmac(version, module)) {
+    int found_version = s_resolve_libcrypto_hmac(version, module);
+    if (!found_version) {
         return AWS_LIBCRYPTO_NONE;
     }
-    if (!s_resolve_libcrypto_md(version, module)) {
+    found_version = s_resolve_libcrypto_md(version, module);
+    if (!found_version) {
         return AWS_LIBCRYPTO_NONE;
     }
-    return version;
+    return found_version;
 }
 
 static int s_resolve_libcrypto_version(enum aws_libcrypto_version version) {
@@ -250,21 +252,28 @@ static int s_resolve_libcrypto_version(enum aws_libcrypto_version version) {
     switch (version) {
         case AWS_LIBCRYPTO_NONE: {
             void *process = dlopen(NULL, RTLD_NOW);
+            AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
             int result = s_resolve_libcrypto_symbols(version, process);
             dlclose(process);
             return result;
         }
         case AWS_LIBCRYPTO_1_0_2: {
             void *module = dlopen(libcrypto_102, RTLD_NOW);
-            int result = s_resolve_libcrypto_symbols(version, module);
-            dlclose(module);
-            return result;
+            if (module) {
+                int result = s_resolve_libcrypto_symbols(version, module);
+                dlclose(module);
+                return result;
+            }
+            break;
         }
         case AWS_LIBCRYPTO_1_1_1: {
             void *module = dlopen(libcrypto_111, RTLD_NOW);
-            int result = s_resolve_libcrypto_symbols(version, module);
-            dlclose(module);
-            return result;
+            if (module) {
+                int result = s_resolve_libcrypto_symbols(version, module);
+                dlclose(module);
+                return result;
+            }
+            break;
         }
         default:
             AWS_FATAL_ASSERT("Attempted to use an unsupported version of libcrypto");

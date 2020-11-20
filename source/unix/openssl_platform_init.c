@@ -239,8 +239,7 @@ static int s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void 
     if (!found_version) {
         return AWS_LIBCRYPTO_NONE;
     }
-    found_version = s_resolve_libcrypto_md(version, module);
-    if (!found_version) {
+    if (!s_resolve_libcrypto_md(found_version, module)) {
         return AWS_LIBCRYPTO_NONE;
     }
     return found_version;

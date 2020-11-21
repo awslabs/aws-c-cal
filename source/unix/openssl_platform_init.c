@@ -197,19 +197,35 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
 }
 
 /* EVP_MD_CTX API */
-/* 1.0.2 NOTE: these are macros in 1.1.x, so we have to alias them instead of weak-linking directly */
-static EVP_MD_CTX *s_EVP_MD_CTX_create(void) __attribute__((weakref("EVP_MD_CTX_create"))) __attribute__((used));
-static void s_EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weakref("EVP_MD_CTX_destroy"))) __attribute__((used));
+/* 1.0.2 NOTE: these are macros in 1.1.x, so we have to undef them to weak link */
+#if defined(EVP_MD_CTX_create)
+#    pragma push_macro("EVP_MD_CTX_create")
+#    undef EVP_MD_CTX_create
+#endif
+extern EVP_MD_CTX *EVP_MD_CTX_create(void) __attribute__((weak, used));
+static evp_md_ctx_new s_EVP_MD_CTX_create = EVP_MD_CTX_create;
+#if defined(EVP_MD_CTX_create)
+#    pragma pop_macro("EVP_MD_CTX_create")
+#endif
+
+#if defined(EVP_MD_CTX_destroy)
+#    pragma push_macro("EVP_MD_CTX_destroy")
+#    undef EVP_MD_CTX_destroy
+#endif
+extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak, used));
+static evp_md_ctx_free s_EVP_MD_CTX_destroy = EVP_MD_CTX_destroy;
+#if defined(EVP_MD_CTX_destroy)
+#    pragma pop_macro("EVP_MD_CTX_destroy")
+#endif
 
 /* 1.1 */
-extern EVP_MD_CTX *EVP_MD_CTX_new(void) __attribute__((weak)) __attribute__((used));
-extern void EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weak)) __attribute__((used));
+extern EVP_MD_CTX *EVP_MD_CTX_new(void) __attribute__((weak, used));
+extern void EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weak, used));
 
 /* common */
-extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weak)) __attribute__((used));
-extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak)) __attribute__((used));
-extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *) __attribute__((weak))
-__attribute__((used));
+extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute__((weak, used));
+extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak, used));
+extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 
 static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
     /* OpenSSL changed the EVP api in 1.1 to use new/free verbs */

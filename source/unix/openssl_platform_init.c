@@ -367,7 +367,7 @@ static int s_resolve_libcrypto(void) {
 }
 
 /* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
-#if !defined(__GNUC__) || (__GNUC__ >= 5)
+#if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
 #    pragma GCC diagnostic push
 #    pragma GCC diagnostic ignored "-Waddress"
 #endif
@@ -412,6 +412,6 @@ void aws_cal_platform_clean_up(void) {
         CRYPTO_set_id_callback(NULL);
     }
 }
-#if !defined(__GNUC__) || (__GNNUC__ >= 5)
+#if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
 #    pragma GCC diagnostic pop
 #endif

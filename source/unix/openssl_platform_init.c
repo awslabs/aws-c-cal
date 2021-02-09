@@ -68,7 +68,7 @@ static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *mo
         *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
         *(void **)(&init_ex_fn) = dlsym(module, "HMAC_Init_ex");
         if (new_fn) {
-            FLOGF("found dynamic libcrypto HMAC symbols");
+            FLOGF("found dynamic aws-lc HMAC symbols");
         }
     }
 
@@ -142,7 +142,6 @@ static int s_resolve_libcrypto(void) {
     }
 
     /* Try to auto-resolve against what's linked in/process space */
-    FLOGF("Attempting auto-resolve against static linkage");
     FLOGF("searching process and loaded modules");
     void *process = dlopen(NULL, RTLD_NOW);
     AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");

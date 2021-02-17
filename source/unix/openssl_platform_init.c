@@ -101,7 +101,7 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
     evp_md_ctx_digest_update md_update_fn = EVP_DigestUpdate;
     evp_md_ctx_digest_final_ex md_final_ex_fn = EVP_DigestFinal_ex;
 
-    bool has_awslc_symbols = 
+    bool has_awslc_symbols =
         md_new_fn && md_create_fn && md_free_fn && md_destroy_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
 
     if (!has_awslc_symbols && version == AWS_LIBCRYPTO_LC) {

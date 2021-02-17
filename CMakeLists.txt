@@ -78,7 +78,7 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        set(PLATFORM_LIBS dl)
+        set(PLATFORM_LIBS dl crypto)
     endif()
 endif()
 
@@ -101,8 +101,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DAWS_BYO_CRYPTO)
-elseif (NOT WIN32 AND NOT APPLE)
-    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:LibCrypto::Crypto,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
 # Our ABI is not yet stable

@@ -17,6 +17,7 @@ jobs:
   linux-compat:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         image:
           - manylinux1-x64
@@ -46,6 +47,7 @@ jobs:
   clang-compat:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         version: [3, 6, 8, 9]
     steps:

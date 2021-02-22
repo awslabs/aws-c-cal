@@ -80,7 +80,8 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        set(PLATFORM_LIBS dl crypto)
+        find_library(AWS_LC crypto REQUIRED)
+        set(PLATFORM_LIBS dl ${AWS_LC})
     endif()
 endif()
 

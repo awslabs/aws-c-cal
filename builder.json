@@ -9,7 +9,7 @@
     "targets": {
         "linux": {
             "upstream": [
-                { "name": "aws-lc" }
+                { "name": "aws-lc", "revision": "cal-fixes" }
             ]
         },
         "android": {

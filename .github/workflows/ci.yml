@@ -7,7 +7,7 @@ on:
       - '!main'
 
 env:
-  BUILDER_VERSION: v0.8.2
+  BUILDER_VERSION: v0.7.2
   BUILDER_SOURCE: releases
   BUILDER_HOST: https://d19elf31gohf1l.cloudfront.net
   PACKAGE_NAME: aws-c-cal
@@ -17,7 +17,6 @@ jobs:
   linux-compat:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         image:
           - manylinux1-x64
@@ -47,7 +46,6 @@ jobs:
   clang-compat:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         version: [3, 6, 8, 9]
     steps:
@@ -81,7 +79,7 @@ jobs:
         echo "${{ secrets.GITHUB_TOKEN  }}" | docker login docker.pkg.github.com -u awslabs --password-stdin
         export DOCKER_IMAGE=docker.pkg.github.com/awslabs/aws-crt-builder/aws-crt-${{ env.LINUX_BASE_IMAGE  }}:${{ env.BUILDER_VERSION  }}
         docker pull $DOCKER_IMAGE
-        docker run --env GITHUB_REF $DOCKER_IMAGE --version=${{ env.BUILDER_VERSION  }} build -p ${{ env.PACKAGE_NAME  }} --compiler=gcc-8 --spec=downstream 'cmake_args=-DBUILD_SHARED_LIBS=ON'
+        docker run --env GITHUB_REF $DOCKER_IMAGE --version=${{ env.BUILDER_VERSION  }} build -p ${{ env.PACKAGE_NAME  }} --compiler=gcc-8 --spec=downstream cmake_args='-DBUILD_SHARED=ON'
 
   windows:
     runs-on: windows-latest

@@ -64,4 +64,3 @@ cmake-build*
 *.out
 *.app
 
-.vscode/

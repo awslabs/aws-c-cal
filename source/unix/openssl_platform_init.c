@@ -32,6 +32,8 @@ enum aws_libcrypto_version {
 } s_libcrypto_version = AWS_LIBCRYPTO_NONE;
 
 static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
+    hmac_ctx_init init_fn = HMAC_CTX_init;
+    hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
     hmac_ctx_new new_fn = HMAC_CTX_new;
     hmac_ctx_free free_fn = HMAC_CTX_free;
     hmac_ctx_reset reset_fn = HMAC_CTX_reset;

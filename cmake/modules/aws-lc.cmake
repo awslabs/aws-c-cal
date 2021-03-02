@@ -21,7 +21,7 @@ if (NOT ${BUILD_AWSLC_EXIT_CODE} EQUAL 0)
     message(FATAL_ERROR "Failed to configure aws-lc")
 endif()
 execute_process(
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/aws-lc --config ${CMAKE_BUILD_TYPE} --target install --parallel
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/aws-lc --config ${CMAKE_BUILD_TYPE} --target install
     RESULT_VARIABLE BUILD_AWSLC_EXIT_CODE
 )
 if (NOT ${BUILD_AWSLC_EXIT_CODE} EQUAL 0)

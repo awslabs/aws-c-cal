@@ -4,17 +4,17 @@
         { "name": "aws-c-common" }
     ],
     "downstream": [
-        { "name": "aws-c-auth" }
+
     ],
     "targets": {
         "linux": {
-            "imports": [
-                "libcrypto"
+            "upstream": [
+                { "name": "aws-lc" }
             ]
         },
         "android": {
-            "imports": [
-                "libcrypto"
+            "upstream": [
+                { "name": "aws-lc" }
             ]
         }
     }

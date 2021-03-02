@@ -26,27 +26,12 @@ static struct openssl_evp_md_ctx_table evp_md_ctx_table;
 struct openssl_hmac_ctx_table *g_aws_openssl_hmac_ctx_table = NULL;
 struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
 
-/* weak refs to libcrypto functions to force them to at least try to link
- * and avoid dead-stripping
- */
-// extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak)) __attribute__((used));
-// extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
-// extern void HMAC_CTX_reset(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
-// extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
-// extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak)) __attribute__((used));
-// extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak)) __attribute__((used));
-// extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak)) __attribute__((used));
-// extern int HMAC_Init_ex(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *) __attribute__((weak))
-// __attribute__((used));
-
 enum aws_libcrypto_version {
     AWS_LIBCRYPTO_NONE = 0,
     AWS_LIBCRYPTO_LC,
 } s_libcrypto_version = AWS_LIBCRYPTO_NONE;
 
 static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
-    hmac_ctx_init init_fn = HMAC_CTX_init;
-    hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
     hmac_ctx_new new_fn = HMAC_CTX_new;
     hmac_ctx_free free_fn = HMAC_CTX_free;
     hmac_ctx_reset reset_fn = HMAC_CTX_reset;

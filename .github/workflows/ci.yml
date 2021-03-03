@@ -72,7 +72,7 @@ jobs:
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u awslabs --password-stdin
         export DOCKER_IMAGE=docker.pkg.github.com/awslabs/aws-crt-builder/aws-crt-${{ env.LINUX_BASE_IMAGE }}:${{ env.BUILDER_VERSION }}
         docker pull $DOCKER_IMAGE
-        docker run --env GITHUB_REF $DOCKER_IMAGE --version=${{ env.BUILDER_VERSION  }} build -p ${{ env.PACKAGE_NAME }} --compiler=gcc-${{ matrix.version }} --spec=downstream
+        docker run --env GITHUB_REF --env CMAKE_BUILD_PARALLEL_LEVEL $DOCKER_IMAGE --version=${{ env.BUILDER_VERSION  }} build -p ${{ env.PACKAGE_NAME }} --compiler=gcc-${{ matrix.version }} --spec=downstream
 
   linux-shared-libs:
     runs-on: ubuntu-latest

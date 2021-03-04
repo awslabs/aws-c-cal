@@ -85,19 +85,19 @@ AWS_CAL_API int aws_sha256_compute(
     size_t truncate_to);
 
 /**
- * Set the implementation of md5 to use. If you compiled without AWS_BYO_CRYPTO,
+ * Set the implementation of md5 to use. If you compiled without BYO_CRYPTO,
  * you do not need to call this. However, if use this, we will honor it,
  * regardless of compile options. This may be useful for testing purposes. If
- * you did set AWS_BYO_CRYPTO, and you do not call this function you will
+ * you did set BYO_CRYPTO, and you do not call this function you will
  * segfault.
  */
 AWS_CAL_API void aws_set_md5_new_fn(aws_hash_new_fn *fn);
 
 /**
  * Set the implementation of sha256 to use. If you compiled without
- * AWS_BYO_CRYPTO, you do not need to call this. However, if use this, we will
+ * BYO_CRYPTO, you do not need to call this. However, if use this, we will
  * honor it, regardless of compile options. This may be useful for testing
- * purposes. If you did set AWS_BYO_CRYPTO, and you do not call this function
+ * purposes. If you did set BYO_CRYPTO, and you do not call this function
  * you will segfault.
  */
 AWS_CAL_API void aws_set_sha256_new_fn(aws_hash_new_fn *fn);

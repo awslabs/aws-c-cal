@@ -17,8 +17,6 @@ CMake is required to build. Note that aws-c-cal has dependencies that need to be
 
 #### Building aws-lc (Linux Only)
 
-If you are building on Linux, you will need to build aws-lc first.
-
 ```
 git clone git@github.com:awslabs/aws-lc.git
 cmake -S aws-lc -B aws-lc/build -DCMAKE_INSTALL_PREFIX=<install-path>

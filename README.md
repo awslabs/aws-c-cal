@@ -15,7 +15,9 @@ This library is licensed under the Apache 2.0 License.
 
 CMake is required to build. Note that aws-c-cal has dependencies that need to be built first.
 
-#### Building aws-lc (Linux Only)
+#### Linux-Only Dependencies
+
+If you are building on Linux, you will need to build aws-lc first.
 
 ```
 git clone git@github.com:awslabs/aws-lc.git

@@ -40,8 +40,10 @@ static struct aws_error_info_list s_list = {
     .count = AWS_ARRAY_SIZE(s_errors),
 };
 
+#ifndef BYO_CRYPTO
 extern void aws_cal_platform_init(struct aws_allocator *allocator);
 extern void aws_cal_platform_clean_up(void);
+#endif /* BYO_CRYPTO */
 
 static bool s_cal_library_initialized = false;
 
@@ -49,14 +51,18 @@ void aws_cal_library_init(struct aws_allocator *allocator) {
     if (!s_cal_library_initialized) {
         aws_common_library_init(allocator);
         aws_register_error_info(&s_list);
+#ifndef BYO_CRYPTO
         aws_cal_platform_init(allocator);
+#endif /* BYO_CRYPTO */
         s_cal_library_initialized = true;
     }
 }
 void aws_cal_library_clean_up(void) {
     if (s_cal_library_initialized) {
         s_cal_library_initialized = false;
+#ifndef BYO_CRYPTO
         aws_cal_platform_clean_up();
+#endif /* BYO_CRYPTO */
         aws_unregister_error_info(&s_list);
         aws_common_library_clean_up();
     }

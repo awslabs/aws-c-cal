@@ -4,7 +4,7 @@
  */
 #include <aws/cal/hash.h>
 
-#ifndef AWS_BYO_CRYPTO
+#ifndef BYO_CRYPTO
 extern struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator);
 extern struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator);
 

@@ -71,7 +71,7 @@ elseif (APPLE)
            message(FATAL_ERROR "Security Framework not found")
         endif ()
 
-        set(PLATFORM_LIBS ${SECURITY_LIB})
+        list(APPEND PLATFORM_LIBS "-framework Security")
     endif()
 else ()
     if (NOT BYO_CRYPTO)

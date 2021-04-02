@@ -78,8 +78,12 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        find_package(LibCrypto REQUIRED)
-        set(PLATFORM_LIBS LibCrypto::Crypto dl)
+        if (IN_SOURCE_BUILD)
+            set(PLATFORM_LIBS crypto dl)
+        else()
+            find_package(LibCrypto REQUIRED)
+            set(PLATFORM_LIBS LibCrypto::Crypto dl)
+        endif()
     endif()
 endif()
 
@@ -103,7 +107,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
 elseif (NOT WIN32 AND NOT APPLE)
-    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:LibCrypto::Crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+    if (IN_SOURCE_BUILD)
+        target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+    else()
+        target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:LibCrypto::Crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+    endif()
 endif()
 
 # Our ABI is not yet stable
@@ -119,7 +127,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 aws_prepare_shared_lib_exports(${PROJECT_NAME})
 
-configure_file("cmake/${PROJECT_NAME}-config.cmake"
+if (IN_SOURCE_BUILD)
+    set(LIBCRYPTO_TARGET_NAME "crypto")
+else()
+    set(LIBCRYPTO_TARGET_NAME "LibCrypto")
+endif()
+
+configure_file("cmake/${PROJECT_NAME}-config.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
   @ONLY)
 

@@ -11,6 +11,8 @@
 
 #define AWS_SHA256_LEN 32
 #define AWS_MD5_LEN 16
+#define AWS_CRC32_LEN 4
+#define AWS_CRC32C_LEN 4
 
 struct aws_hash;
 

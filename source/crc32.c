@@ -1,5 +1,5 @@
-#include <aws/cal/hash.h>
 #include <aws/cal/crc32.h>
+#include <aws/cal/hash.h>
 // #include <aws/checksums/crc.h>
 
 static void s_destroy(struct aws_hash *hash);
@@ -26,14 +26,14 @@ struct aws_hash *aws_crc32_default_new(struct aws_allocator *allocator) {
     crc32_hash->hash.allocator = allocator;
     crc32_hash->hash.vtable = &s_vtable;
     crc32_hash->hash.impl = crc32_hash; // this cicular reference feels like a red flag to me
-    crc32_hash->hash.digest_size = 0; // what should the digest size be?
+    crc32_hash->hash.digest_size = 0;   // what should the digest size be?
     crc32_hash->hash.good = true;
     crc32_hash->crc32_hash = 0;
 
     return &crc32_hash->hash;
 }
 
-//reordered from destroy update finalize to update finalize destroy, this order makes more sense to me
+// reordered from destroy update finalize to update finalize destroy, this order makes more sense to me
 static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash) {
     if (!hash->good) {
         return aws_raise_error(AWS_ERROR_INVALID_STATE);

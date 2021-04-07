@@ -1,8 +1,8 @@
 #ifndef AWS_CAL_CRC32_H_
 #define AWS_CAL_CRC32_H_
 
-#include <stdint.h>
 #include <aws/cal/hash.h>
+#include <stdint.h>
 
 typedef uint32_t crc32_ctx;
 

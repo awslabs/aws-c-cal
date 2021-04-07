@@ -1,7 +1,8 @@
 {
     "name": "aws-c-cal",
     "upstream": [
-        { "name": "aws-c-common" }
+        { "name": "aws-c-common" },
+        { "name": "aws-checksums" }
     ],
     "downstream": [
 

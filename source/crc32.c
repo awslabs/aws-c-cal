@@ -1,6 +1,7 @@
 #include <aws/cal/crc32.h>
 #include <aws/cal/hash.h>
 #include <aws/checksums/crc.h>
+#include <stdint.h>
 
 /* hash is object, vtable is methods, hash properties (not vtable) are data?*/
 
@@ -41,7 +42,8 @@ static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
-    uint32_t crc = (uint32_t)hash->impl;
+    uintptr_t crc_value = hash->impl;
+    uint32_t crc = (uint32_t)crc_value;
 
     /* should checksums be refactored to use a byte cursor instead? */
     *((uintptr_t *)&(hash->impl)) = aws_checksums_crc32(to_hash->ptr, to_hash->len, crc);

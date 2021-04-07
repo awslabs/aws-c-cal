@@ -19,7 +19,6 @@ static struct aws_hash_vtable s_vtable = {
     .provider = "AWS", /* is this right? */
 };
 
-
 struct aws_hash *aws_crc32_default_new(struct aws_allocator *allocator) {
     struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
 
@@ -30,7 +29,7 @@ struct aws_hash *aws_crc32_default_new(struct aws_allocator *allocator) {
     hash->allocator = allocator;
     hash->vtable = &s_vtable; /*could make to vtables, and pass an argument to default new*/
     hash->impl = 0;
-    hash->digest_size = AWS_CRC32C_LEN; 
+    hash->digest_size = AWS_CRC32C_LEN;
     hash->good = true;
 
     return hash;
@@ -45,7 +44,7 @@ static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash
     uint32_t crc = (uint32_t)hash->impl;
 
     /* should checksums be refactored to use a byte cursor instead? */
-    *((uintptr_t*)&(hash->impl)) = aws_checksums_crc32(to_hash->ptr, to_hash->len, crc);
+    *((uintptr_t *)&(hash->impl)) = aws_checksums_crc32(to_hash->ptr, to_hash->len, crc);
     return AWS_OP_SUCCESS;
 }
 

@@ -333,7 +333,7 @@ AWS_TEST_CASE(ecdsa_p256_test_key_gen, s_ecdsa_p256_test_key_gen_fn)
 static int s_ecdsa_p384_test_key_gen_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    return s_test_key_gen(allocator, AWS_CAL_ECDSA_P256);
+    return s_test_key_gen(allocator, AWS_CAL_ECDSA_P384);
 }
 
 AWS_TEST_CASE(ecdsa_p384_test_key_gen, s_ecdsa_p384_test_key_gen_fn)

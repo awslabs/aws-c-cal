@@ -42,7 +42,7 @@ static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
-    uintptr_t crc_value = hash->impl;
+    uintptr_t crc_value = (uintptr_t)hash->impl;
     uint32_t crc = (uint32_t)crc_value;
 
     /* should checksums be refactored to use a byte cursor instead? */

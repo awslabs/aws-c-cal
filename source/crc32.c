@@ -46,7 +46,8 @@ static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash
     uint32_t crc = (uint32_t)crc_value;
 
     /* should checksums be refactored to use a byte cursor instead? */
-    *((uintptr_t *)&(hash->impl)) = aws_checksums_crc32(to_hash->ptr, to_hash->len, crc);
+    uintptr_t new_crc = aws_checksums_crc32(to_hash->ptr, to_hash->len, crc);
+    hash->impl = (void *)new_crc;
     return AWS_OP_SUCCESS;
 }
 

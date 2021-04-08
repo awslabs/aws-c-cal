@@ -13,7 +13,7 @@ static void s_destroy(struct aws_hash *hash) {
 /* can we reuse some of these as defaults defined in hash.c?*/
 
 /* is it possible to define this in a function somehow? I don't like that we define almost the same vtable twice */
-const static struct aws_hash_vtable crc32_vtable = {
+static struct aws_hash_vtable crc32_vtable = {
     .destroy = s_destroy,
     .update = crc32_update,
     .finalize = s_finalize,
@@ -21,7 +21,7 @@ const static struct aws_hash_vtable crc32_vtable = {
     .provider = "AWS", /* is this right? */
 };
 
-const static struct aws_hash_vtable crc32c_vtable = {
+static struct aws_hash_vtable crc32c_vtable = {
     .destroy = s_destroy,
     .update = crc32c_update,
     .finalize = s_finalize,

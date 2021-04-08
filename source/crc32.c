@@ -7,7 +7,9 @@
 static int crc32_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);
 static int crc32c_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output);
-static void s_destroy(struct aws_hash *hash) {}
+static void s_destroy(struct aws_hash *hash) {
+    (void)hash;
+}
 /* can we reuse some of these as defaults defined in hash.c?*/
 
 /* is it possible to define this in a function somehow? I don't like that we define almost the same vtable twice */

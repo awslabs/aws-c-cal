@@ -355,7 +355,24 @@ static int s_test_key_gen_export(struct aws_allocator *allocator, enum aws_ecc_c
     aws_ecc_key_pair_get_private_key(key_pair, &priv_d);
     ASSERT_TRUE(priv_d.len > 0);
 
-    struct aws_ecc_key_pair *signing_key = aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &priv_d);
+    /*
+     * The private key we get back from the randomly generated key may be shorter than we expect since it's
+     * minimally encoded.  In that case we have to pad it out to satisfy the key length invariant.
+     */
+    size_t curve_private_key_length = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
+    struct aws_byte_buf padded_priv_d;
+    aws_byte_buf_init(&padded_priv_d, allocator, curve_private_key_length);
+    aws_byte_buf_secure_zero(&padded_priv_d);
+
+    if (priv_d.len < curve_private_key_length) {
+        padded_priv_d.len = curve_private_key_length - priv_d.len;
+    }
+
+    ASSERT_SUCCESS(aws_byte_buf_append(&padded_priv_d, &priv_d));
+
+    struct aws_byte_cursor padded_priv_d_cursor = aws_byte_cursor_from_buf(&padded_priv_d);
+    struct aws_ecc_key_pair *signing_key =
+        aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &padded_priv_d_cursor);
     ASSERT_NOT_NULL(signing_key);
 
     uint8_t message[] = {
@@ -392,6 +409,7 @@ static int s_test_key_gen_export(struct aws_allocator *allocator, enum aws_ecc_c
     ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(verifying_key, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
+    aws_byte_buf_clean_up(&padded_priv_d);
     aws_ecc_key_pair_release(key_pair);
     aws_ecc_key_pair_release(signing_key);
     aws_ecc_key_pair_release(verifying_key);

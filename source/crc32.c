@@ -89,6 +89,6 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
 
     hash->good = false;
     uintptr_t crc_value = (uintptr_t)hash->impl;
-    uint32_t crc = (uint32_t)crc_value;
-    return aws_byte_buf_write(output, crc, sizeof(uint32_t));
+    const uint32_t crc = (uint32_t)crc_value;
+    return aws_byte_buf_write(output, (uint8_t *)&crc, sizeof(uint32_t));
 }

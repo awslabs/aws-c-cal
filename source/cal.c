@@ -45,10 +45,10 @@ static struct aws_log_subject_info s_cal_log_subject_infos[] = {
         AWS_LS_CAL_GENERAL,
         "aws-c-cal",
         "Subject for Cal logging that doesn't belong to any particular category"),
-    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_ECC, "Ecc", "Subject for elliptic curve cryptography specific logging."),
-    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_HASH, "Hash", "Subject for hashing specific logging."),
-    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_HMAC, "Hmac", "Subject for hmac specific logging."),
-    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_DER, "Der", "Subject for der specific logging."),
+    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_ECC, "ecc", "Subject for elliptic curve cryptography specific logging."),
+    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_HASH, "hash", "Subject for hashing specific logging."),
+    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_HMAC, "hmac", "Subject for hmac specific logging."),
+    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_DER, "der", "Subject for der specific logging."),
 };
 
 static struct aws_log_subject_info_list s_cal_log_subject_list = {

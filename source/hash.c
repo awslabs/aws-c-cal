@@ -29,10 +29,12 @@ struct aws_hash *aws_md5_new(struct aws_allocator *allocator) {
     return s_md5_new_fn(allocator);
 }
 
-/* should this be in this file since all I'm doing is calling the other function, or should the other functions
-   implementation be here? */
 struct aws_hash *aws_crc32_new(struct aws_allocator *allocator) {
     return aws_crc32_default_new(allocator);
+}
+
+struct aws_hash *aws_crc32c_new(struct aws_allocator *allocator) {
+    return aws_crc32c_default_new(allocator);
 }
 
 void aws_set_md5_new_fn(aws_hash_new_fn *fn) {

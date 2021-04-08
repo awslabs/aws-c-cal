@@ -48,6 +48,11 @@ AWS_CAL_API struct aws_hash *aws_md5_new(struct aws_allocator *allocator);
  */
 AWS_CAL_API struct aws_hash *aws_crc32_new(struct aws_allocator *allocator);
 /**
+ * Allocates and initializes a crc32c hash instance
+ */
+AWS_CAL_API struct aws_hash *aws_crc32c_new(struct aws_allocator *allocator);
+
+/**
  * Cleans up and deallocates hash.
  */
 AWS_CAL_API void aws_hash_destroy(struct aws_hash *hash);

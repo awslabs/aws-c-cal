@@ -26,7 +26,7 @@ enum aws_cal_errors {
     AWS_ERROR_CAL_END_RANGE = AWS_ERROR_ENUM_END_RANGE(AWS_C_CAL_PACKAGE_ID)
 };
 
-enum aws_io_log_subject {
+enum aws_cal_log_subject {
     AWS_LS_CAL_GENERAL = AWS_LOG_SUBJECT_BEGIN_RANGE(AWS_C_CAL_PACKAGE_ID),
     AWS_LS_CAL_ECC,
     AWS_LS_CAL_HASH,

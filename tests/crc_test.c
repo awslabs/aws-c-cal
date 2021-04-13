@@ -27,7 +27,7 @@ static int s_test_known_crc(
     uint32_t expected,
     struct aws_allocator *allocator) {
 
-    int len = input->len;
+    uint8_t len = (uint8_t)input->len;
     struct aws_hash *crc = func(allocator);
     aws_hash_update(crc, input);
     uintptr_t result = (uintptr_t)crc->impl;

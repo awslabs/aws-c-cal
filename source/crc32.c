@@ -8,7 +8,7 @@ static int s_crc32_update(struct aws_hash *hash, const struct aws_byte_cursor *t
 static int s_crc32c_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output);
 static void s_destroy(struct aws_hash *hash) {
-    (void)hash;
+    aws_mem_release(hash->allocator, hash);
 }
 
 static struct aws_hash_vtable crc32_vtable = {
@@ -63,6 +63,7 @@ static int s_crc32_common_update(
     uintptr_t crc_value = (uintptr_t)hash->impl;
     uint32_t crc = (uint32_t)crc_value;
 
+    /* hash->impl has type (void *) to match the rest of the API, but we are storing a uintptr, and useing it as such */
     uintptr_t new_crc = aws_checksums(to_hash->ptr, (int)to_hash->len, crc);
     hash->impl = (void *)new_crc;
     return AWS_OP_SUCCESS;

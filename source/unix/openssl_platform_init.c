@@ -100,7 +100,6 @@ static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
     return 1;
 }
 
-
 enum aws_libcrypto_version {
     AWS_LIBCRYPTO_NONE = 0,
     AWS_LIBCRYPTO_1_0_2,
@@ -242,7 +241,6 @@ bool s_resolve_hmac_lc(void *module) {
 
     return false;
 }
-
 
 static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
     switch (version) {

@@ -552,7 +552,9 @@ void aws_cal_platform_clean_up(void) {
     }
 #endif
 
-    dlclose(s_libcrypto_module);
+    if (s_libcrypto_module) {
+        dlclose(s_libcrypto_module);
+    }
 }
 #if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
 #    pragma GCC diagnostic pop

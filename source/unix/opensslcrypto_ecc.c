@@ -163,6 +163,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
 
     size_t key_length = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
     if (priv_key->len != key_length) {
+        AWS_LOGF_ERROR(AWS_LS_CAL_ECC, "Private key length does not match curve's expected length");
         aws_raise_error(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
         return NULL;
     }
@@ -179,6 +180,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
 
     BIGNUM *priv_key_num = BN_bin2bn(key_impl->key_pair.priv_d.buffer, key_impl->key_pair.priv_d.len, NULL);
     if (!EC_KEY_set_private_key(key_impl->ec_key, priv_key_num)) {
+        AWS_LOGF_ERROR(AWS_LS_CAL_ECC, "Failed to set openssl private key");
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         BN_free(priv_key_num);
         s_key_pair_destroy(&key_impl->key_pair);

@@ -63,7 +63,8 @@ static int s_crc32_common_update(
     uintptr_t crc_value = (uintptr_t)hash->impl;
     uint32_t crc = (uint32_t)crc_value;
 
-    /* hash->impl has type (void *) to match the rest of the API, but we are storing a uintptr, and useing it as such */
+    /* hash->impl has type (void *) to match the rest of the API, but we are storing as a uintptr, and using it as an
+     * int to avoid mem allocation */
     uintptr_t new_crc = aws_checksums(to_hash->ptr, (int)to_hash->len, crc);
     hash->impl = (void *)new_crc;
     return AWS_OP_SUCCESS;

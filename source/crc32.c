@@ -71,11 +71,11 @@ static int s_crc32_common_update(
 }
 
 static int s_crc32_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash) {
-    return s_crc32_common_update(hash, to_hash, &aws_checksums_crc32);
+    return s_crc32_common_update(hash, to_hash, aws_checksums_crc32);
 }
 
 static int s_crc32c_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash) {
-    return s_crc32_common_update(hash, to_hash, &aws_checksums_crc32c);
+    return s_crc32_common_update(hash, to_hash, aws_checksums_crc32c);
 }
 
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {

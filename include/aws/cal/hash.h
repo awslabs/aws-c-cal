@@ -10,6 +10,7 @@
 #include <aws/common/common.h>
 
 #define AWS_SHA256_LEN 32
+#define AWS_SHA1_LEN 20
 #define AWS_MD5_LEN 16
 #define AWS_CRC32_LEN 4
 #define AWS_CRC32C_LEN 4
@@ -39,6 +40,10 @@ AWS_EXTERN_C_BEGIN
  * Allocates and initializes a sha256 hash instance.
  */
 AWS_CAL_API struct aws_hash *aws_sha256_new(struct aws_allocator *allocator);
+/**
+ * Allocates and initializes a sha1 hash instance.
+ */
+AWS_CAL_API struct aws_hash *aws_sha1_new(struct aws_allocator *allocator);
 /**
  * Allocates and initializes an md5 hash instance.
  */
@@ -96,6 +101,20 @@ AWS_CAL_API int aws_sha256_compute(
     size_t truncate_to);
 
 /**
+ * Computes the sha1 hash over input and writes the digest output to 'output'.
+ * Use this if you don't need to stream the data you're hashing and you can load
+ * the entire input to hash into memory. If you specify truncate_to to something
+ * other than 0, the output will be truncated to that  number of bytes. For
+ * example if you want a SHA1 digest as the first 16 bytes, set truncate_to
+ * to 16. If you want the full digest size, just set this to 0.
+ */
+AWS_CAL_API int aws_sha1_compute(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *input,
+    struct aws_byte_buf *output,
+    size_t truncate_to);
+
+/**
  * Set the implementation of md5 to use. If you compiled without BYO_CRYPTO,
  * you do not need to call this. However, if use this, we will honor it,
  * regardless of compile options. This may be useful for testing purposes. If
@@ -112,6 +131,15 @@ AWS_CAL_API void aws_set_md5_new_fn(aws_hash_new_fn *fn);
  * you will segfault.
  */
 AWS_CAL_API void aws_set_sha256_new_fn(aws_hash_new_fn *fn);
+
+/**
+ * Set the implementation of sha1 to use. If you compiled without
+ * BYO_CRYPTO, you do not need to call this. However, if use this, we will
+ * honor it, regardless of compile options. This may be useful for testing
+ * purposes. If you did set BYO_CRYPTO, and you do not call this function
+ * you will segfault.
+ */
+AWS_CAL_API void aws_set_sha1_new_fn(aws_hash_new_fn *fn);
 
 AWS_EXTERN_C_END
 

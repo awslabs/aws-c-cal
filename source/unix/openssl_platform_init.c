@@ -111,11 +111,11 @@ enum aws_libcrypto_version {
 
 bool s_resolve_hmac_102(void *module) {
 #if !defined(OPENSSL_IS_AWSLC)
-    hmac_ctx_init init_fn = HMAC_CTX_init;
-    hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
-    hmac_ctx_update update_fn = HMAC_Update;
-    hmac_ctx_final final_fn = HMAC_Final;
-    hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
+    hmac_ctx_init init_fn = (hmac_ctx_init)HMAC_CTX_init;
+    hmac_ctx_clean_up clean_up_fn = (hmac_ctx_clean_up)HMAC_CTX_cleanup;
+    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
+    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
+    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
 
     /* were symbols bound by static linking? */
     bool has_102_symbols = init_fn && clean_up_fn && update_fn && final_fn && init_ex_fn;
@@ -151,13 +151,12 @@ bool s_resolve_hmac_102(void *module) {
 
 bool s_resolve_hmac_111(void *module) {
 #if !defined(OPENSSL_IS_AWSLC)
-    hmac_ctx_init init_fn = HMAC_CTX_init;
-    hmac_ctx_new new_fn = HMAC_CTX_new;
-    hmac_ctx_free free_fn = HMAC_CTX_free;
-    hmac_ctx_reset reset_fn = HMAC_CTX_reset;
-    hmac_ctx_update update_fn = HMAC_Update;
-    hmac_ctx_final final_fn = HMAC_Final;
-    hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
+    hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
+    hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
+    hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;
+    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
+    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
+    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
 
     /* were symbols bound by static linking? */
     bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
@@ -176,7 +175,7 @@ bool s_resolve_hmac_111(void *module) {
         }
     }
 
-    if (init_fn) {
+    if (new_fn) {
         hmac_ctx_table.new_fn = new_fn;
         hmac_ctx_table.reset_fn = reset_fn;
         hmac_ctx_table.free_fn = free_fn;
@@ -194,14 +193,14 @@ bool s_resolve_hmac_111(void *module) {
 
 bool s_resolve_hmac_lc(void *module) {
 #if defined(OPENSSL_IS_AWSLC)
-    hmac_ctx_init init_fn = HMAC_CTX_init;
-    hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
-    hmac_ctx_new new_fn = HMAC_CTX_new;
-    hmac_ctx_free free_fn = HMAC_CTX_free;
-    hmac_ctx_reset reset_fn = HMAC_CTX_reset;
-    hmac_ctx_update update_fn = HMAC_Update;
-    hmac_ctx_final final_fn = HMAC_Final;
-    hmac_ctx_init_ex init_ex_fn = HMAC_Init_ex;
+    hmac_ctx_init init_fn = (hmac_ctx_init)HMAC_CTX_init;
+    hmac_ctx_clean_up clean_up_fn = (hmac_ctx_clean_up)HMAC_CTX_cleanup;
+    hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
+    hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
+    hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;
+    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
+    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
+    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
 
     /* were symbols bound by static linking? */
     bool has_awslc_symbols = new_fn && free_fn && update_fn && final_fn && init_fn && init_ex_fn && reset_fn;
@@ -411,10 +410,13 @@ static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_vers
 
 static enum aws_libcrypto_version s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void *module) {
     enum aws_libcrypto_version found_version = s_resolve_libcrypto_hmac(version, module);
-    if (!found_version) {
+    if (found_version == AWS_LIBCRYPTO_NONE) {
+        FLOGF("Unable to resolve HMAC symbols");
         return AWS_LIBCRYPTO_NONE;
     }
-    if (!s_resolve_libcrypto_md(found_version, module)) {
+    found_version = s_resolve_libcrypto_md(found_version, module);
+    if (found_version == AWS_LIBCRYPTO_NONE) {
+        FLOGF("Unable to resolve MD symbols");
         return AWS_LIBCRYPTO_NONE;
     }
     return found_version;
@@ -450,6 +452,35 @@ static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
         FLOGF("libcrypto 1.1.1 not found");
     }
 
+    FLOGF("loading libcrypto.so");
+    module = dlopen("libcrypto.so", RTLD_NOW);
+    if (module) {
+        unsigned long (*openssl_version_num)(void) = NULL;
+        *(void **)(&openssl_version_num) = dlsym(module, "OpenSSL_version_num");
+        if (openssl_version_num) {
+            unsigned long version = openssl_version_num();
+            FLOGF("libcrypto.so reported version is 0x%lx", version);
+            enum aws_libcrypto_version result = AWS_LIBCRYPTO_NONE;
+            if (version >= 0x10101000L) {
+                FLOGF("probing libcrypto.so for 1.1.1 symbols");
+                result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, module);
+            } else if (version >= 0x10002000L) {
+                FLOGF("probing libcrypto.so for 1.0.2 symbols");
+                result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, module);
+            } else {
+                FLOGF("libcrypto.so reported version is unsupported");
+            }
+            if (result != AWS_LIBCRYPTO_NONE) {
+                return result;
+            }
+        } else {
+            FLOGF("Unable to determine version of libcrypto.so");
+        }
+        dlclose(module);
+    } else {
+        FLOGF("libcrypto.so not found");
+    }
+
     return AWS_LIBCRYPTO_NONE;
 }
 
@@ -468,6 +499,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     dlclose(process);
 
     if (result == AWS_LIBCRYPTO_NONE) {
+        FLOGF("libcrypto symbols were not statically linked, searching for shared libraries");
         result = s_resolve_libcrypto_lib();
     }
 

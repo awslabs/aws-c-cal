@@ -28,6 +28,8 @@ static struct openssl_evp_md_ctx_table evp_md_ctx_table;
 struct openssl_hmac_ctx_table *g_aws_openssl_hmac_ctx_table = NULL;
 struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
 
+static struct aws_allocator *s_libcrypto_allocator = NULL;
+
 /* weak refs to libcrypto functions to force them to at least try to link
  * and avoid dead-stripping
  */
@@ -53,8 +55,7 @@ extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak, used));
 /* common */
 extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak, used));
 extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
-extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak))
-__attribute__((used));
+extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak, used));
 
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
@@ -71,7 +72,7 @@ static HMAC_CTX *s_hmac_ctx_new(void) {
     AWS_PRECONDITION(
         g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
         "libcrypto 1.0 init called on libcrypto 1.1 vtable");
-    HMAC_CTX *ctx = aws_mem_calloc(aws_default_allocator(), 1, 300);
+    HMAC_CTX *ctx = aws_mem_calloc(s_libcrypto_allocator, 1, 300);
     AWS_FATAL_ASSERT(ctx && "Unable to allocate to HMAC_CTX");
     g_aws_openssl_hmac_ctx_table->init_fn(ctx);
     return ctx;
@@ -84,7 +85,7 @@ static void s_hmac_ctx_free(HMAC_CTX *ctx) {
         g_aws_openssl_hmac_ctx_table->clean_up_fn != s_hmac_ctx_clean_up_noop &&
         "libcrypto 1.0 clean_up called on libcrypto 1.1 vtable");
     g_aws_openssl_hmac_ctx_table->clean_up_fn(ctx);
-    aws_mem_release(aws_default_allocator(), ctx);
+    aws_mem_release(s_libcrypto_allocator, ctx);
 }
 
 /* libcrypto 1.0 shim for reset, matches HMAC_CTX_reset semantics */
@@ -237,7 +238,7 @@ bool s_resolve_hmac_lc(void *module) {
     return false;
 }
 
-static int s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
+static enum aws_libcrypto_version s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
     switch (version) {
         case AWS_LIBCRYPTO_LC:
             return s_resolve_hmac_lc(module) ? version : AWS_LIBCRYPTO_NONE;
@@ -396,7 +397,7 @@ bool s_resolve_md_lc(void *module) {
     return false;
 }
 
-static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
+static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
     switch (version) {
         case AWS_LIBCRYPTO_LC:
             return s_resolve_md_lc(module) ? version : AWS_LIBCRYPTO_NONE;
@@ -411,8 +412,8 @@ static int s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *modu
     return AWS_LIBCRYPTO_NONE;
 }
 
-static int s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void *module) {
-    int found_version = s_resolve_libcrypto_hmac(version, module);
+static enum aws_libcrypto_version s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void *module) {
+    enum aws_libcrypto_version found_version = s_resolve_libcrypto_hmac(version, module);
     if (!found_version) {
         return AWS_LIBCRYPTO_NONE;
     }
@@ -422,7 +423,7 @@ static int s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void 
     return found_version;
 }
 
-static int s_resolve_libcrypto_lib(void) {
+static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
     const char *libcrypto_102 = "libcrypto.so.1.0.0";
     const char *libcrypto_111 = "libcrypto.so.1.1";
 
@@ -430,7 +431,7 @@ static int s_resolve_libcrypto_lib(void) {
     void *module = dlopen(libcrypto_102, RTLD_NOW);
     if (module) {
         FLOGF("resolving against libcrypto 1.0.2");
-        int result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, module);
+        enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, module);
         if (result == AWS_LIBCRYPTO_1_0_2) {
             return result;
         }
@@ -443,7 +444,7 @@ static int s_resolve_libcrypto_lib(void) {
     module = dlopen(libcrypto_111, RTLD_NOW);
     if (module) {
         FLOGF("resolving against libcrypto 1.1.1");
-        int result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, module);
+        enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, module);
         if (result == AWS_LIBCRYPTO_1_1_1) {
             return result;
         }
@@ -457,7 +458,7 @@ static int s_resolve_libcrypto_lib(void) {
 
 static void *s_libcrypto_module = NULL;
 
-static int s_resolve_libcrypto(void) {
+static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     if (s_libcrypto_version != AWS_LIBCRYPTO_NONE) {
         return s_libcrypto_version;
     }
@@ -466,7 +467,7 @@ static int s_resolve_libcrypto(void) {
     FLOGF("searching process and loaded modules");
     void *process = dlopen(NULL, RTLD_NOW);
     AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
-    int result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
+    enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
     dlclose(process);
 
     if (result == AWS_LIBCRYPTO_NONE) {
@@ -485,7 +486,6 @@ static int s_resolve_libcrypto(void) {
 /* Openssl 1.0.x requires special handling for its locking callbacks or else it's not thread safe */
 #if !defined(OPENSSL_IS_AWSLC)
 static struct aws_mutex *s_libcrypto_locks = NULL;
-static struct aws_allocator *s_libcrypto_allocator = NULL;
 
 static void s_locking_fn(int mode, int n, const char *unused0, int unused1) {
     (void)unused0;
@@ -506,6 +506,8 @@ static unsigned long s_id_fn(void) {
 void aws_cal_platform_init(struct aws_allocator *allocator) {
     int version = s_resolve_libcrypto();
     AWS_FATAL_ASSERT(version != AWS_LIBCRYPTO_NONE && "libcrypto could not be resolved");
+
+    s_libcrypto_allocator = allocator;
 
 #if !defined(OPENSSL_IS_AWSLC)
     /* Ensure that libcrypto 1.0.2 has working locking mechanisms. This code is macro'ed
@@ -548,6 +550,8 @@ void aws_cal_platform_clean_up(void) {
     if (s_libcrypto_module) {
         dlclose(s_libcrypto_module);
     }
+
+    s_libcrypto_allocator = NULL;
 }
 #if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
 #    pragma GCC diagnostic pop

@@ -55,7 +55,6 @@ extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__(
 extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak))
 __attribute__((used));
-#endif
 
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
@@ -99,6 +98,9 @@ static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
     g_aws_openssl_hmac_ctx_table->init_fn(ctx);
     return 1;
 }
+
+#endif /* !OPENSSL_IS_AWSLC */
+
 
 enum aws_libcrypto_version {
     AWS_LIBCRYPTO_NONE = 0,

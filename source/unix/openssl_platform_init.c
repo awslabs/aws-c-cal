@@ -253,27 +253,29 @@ static enum aws_libcrypto_version s_resolve_libcrypto_hmac(enum aws_libcrypto_ve
     return AWS_LIBCRYPTO_NONE;
 }
 
+#if !defined(OPENSSL_IS_AWSLC)
 /* EVP_MD_CTX API */
 /* 1.0.2 NOTE: these are macros in 1.1.x, so we have to undef them to weak link */
-#if defined(EVP_MD_CTX_create)
-#    pragma push_macro("EVP_MD_CTX_create")
-#    undef EVP_MD_CTX_create
-#endif
+#    if defined(EVP_MD_CTX_create)
+#        pragma push_macro("EVP_MD_CTX_create")
+#        undef EVP_MD_CTX_create
+#    endif
 extern EVP_MD_CTX *EVP_MD_CTX_create(void) __attribute__((weak, used));
 static evp_md_ctx_new s_EVP_MD_CTX_create = EVP_MD_CTX_create;
-#if defined(EVP_MD_CTX_create)
-#    pragma pop_macro("EVP_MD_CTX_create")
-#endif
+#    if defined(EVP_MD_CTX_create)
+#        pragma pop_macro("EVP_MD_CTX_create")
+#    endif
 
-#if defined(EVP_MD_CTX_destroy)
-#    pragma push_macro("EVP_MD_CTX_destroy")
-#    undef EVP_MD_CTX_destroy
-#endif
+#    if defined(EVP_MD_CTX_destroy)
+#        pragma push_macro("EVP_MD_CTX_destroy")
+#        undef EVP_MD_CTX_destroy
+#    endif
 extern void EVP_MD_CTX_destroy(EVP_MD_CTX *) __attribute__((weak, used));
 static evp_md_ctx_free s_EVP_MD_CTX_destroy = EVP_MD_CTX_destroy;
-#if defined(EVP_MD_CTX_destroy)
-#    pragma pop_macro("EVP_MD_CTX_destroy")
-#endif
+#    if defined(EVP_MD_CTX_destroy)
+#        pragma pop_macro("EVP_MD_CTX_destroy")
+#    endif
+#endif /* !OPENSSL_IS_AWSLC */
 
 extern EVP_MD_CTX *EVP_MD_CTX_new(void) __attribute__((weak, used));
 extern void EVP_MD_CTX_free(EVP_MD_CTX *) __attribute__((weak, used));
@@ -282,9 +284,7 @@ extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((w
 extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 
 bool s_resolve_md_102(void *module) {
-#if defined(OPENSSL_IS_AWSLC)
-    return false;
-#endif
+#if !defined(OPENSSL_IS_AWSLC)
     evp_md_ctx_new md_create_fn = s_EVP_MD_CTX_create;
     evp_md_ctx_free md_destroy_fn = s_EVP_MD_CTX_destroy;
     evp_md_ctx_digest_init_ex md_init_ex_fn = EVP_DigestInit_ex;
@@ -315,14 +315,12 @@ bool s_resolve_md_102(void *module) {
         g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
         return true;
     }
-
+#endif
     return false;
 }
 
 bool s_resolve_md_111(void *module) {
-#if defined(OPENSSL_IS_AWSLC)
-    return false;
-#endif
+#if !defined(OPENSSL_IS_AWSLC)
     evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
     evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
     evp_md_ctx_digest_init_ex md_init_ex_fn = EVP_DigestInit_ex;
@@ -352,13 +350,12 @@ bool s_resolve_md_111(void *module) {
         g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
         return true;
     }
+#endif
     return false;
 }
 
 bool s_resolve_md_lc(void *module) {
-#if !defined(OPENSSL_IS_AWSLC)
-    return false;
-#endif
+#if defined(OPENSSL_IS_AWSLC)
     evp_md_ctx_new md_new_fn = EVP_MD_CTX_new;
     evp_md_ctx_new md_create_fn = EVP_MD_CTX_new;
     evp_md_ctx_free md_free_fn = EVP_MD_CTX_free;
@@ -393,7 +390,7 @@ bool s_resolve_md_lc(void *module) {
         g_aws_openssl_evp_md_ctx_table = &evp_md_ctx_table;
         return true;
     }
-
+#endif
     return false;
 }
 

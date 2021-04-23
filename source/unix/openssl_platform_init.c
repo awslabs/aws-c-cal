@@ -101,7 +101,6 @@ static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
 
 #endif /* !OPENSSL_IS_AWSLC */
 
-
 enum aws_libcrypto_version {
     AWS_LIBCRYPTO_NONE = 0,
     AWS_LIBCRYPTO_1_0_2,

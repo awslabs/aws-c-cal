@@ -108,9 +108,7 @@ enum aws_libcrypto_version {
 } s_libcrypto_version = AWS_LIBCRYPTO_NONE;
 
 bool s_resolve_hmac_102(void *module) {
-#if defined(OPENSSL_IS_AWSLC)
-    return false;
-#endif
+#if !defined(OPENSSL_IS_AWSLC)
     hmac_ctx_init init_fn = HMAC_CTX_init;
     hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
     hmac_ctx_update update_fn = HMAC_Update;
@@ -145,14 +143,12 @@ bool s_resolve_hmac_102(void *module) {
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }
-
+#endif
     return false;
 }
 
 bool s_resolve_hmac_111(void *module) {
-#if defined(OPENSSL_IS_AWSLC)
-    return false;
-#endif
+#if !defined(OPENSSL_IS_AWSLC)
     hmac_ctx_init init_fn = HMAC_CTX_init;
     hmac_ctx_new new_fn = HMAC_CTX_new;
     hmac_ctx_free free_fn = HMAC_CTX_free;
@@ -190,14 +186,12 @@ bool s_resolve_hmac_111(void *module) {
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }
-
+#endif
     return false;
 }
 
 bool s_resolve_hmac_lc(void *module) {
-#if !defined(OPENSSL_IS_AWSLC)
-    return false;
-#endif
+#if defined(OPENSSL_IS_AWSLC)
     hmac_ctx_init init_fn = HMAC_CTX_init;
     hmac_ctx_clean_up clean_up_fn = HMAC_CTX_cleanup;
     hmac_ctx_new new_fn = HMAC_CTX_new;
@@ -238,7 +232,7 @@ bool s_resolve_hmac_lc(void *module) {
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }
-
+#endif
     return false;
 }
 

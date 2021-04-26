@@ -120,7 +120,7 @@ bool s_resolve_hmac_102(void *module) {
     /* were symbols bound by static linking? */
     bool has_102_symbols = init_fn && clean_up_fn && update_fn && final_fn && init_ex_fn;
     if (has_102_symbols) {
-        FLOGF("found static libcrypto 1.0.2 HMAC");
+        FLOGF("found static libcrypto 1.0.2 HMAC symbols");
     } else {
         /* If symbols aren't already found, try to find the requested version */
         *(void **)(&init_fn) = dlsym(module, "HMAC_CTX_init");
@@ -162,7 +162,7 @@ bool s_resolve_hmac_111(void *module) {
     bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
 
     if (has_111_symbols) {
-        FLOGF("found static libcrypto 1.1.1 HMAC");
+        FLOGF("found static libcrypto 1.1.1 HMAC symbols");
     } else {
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
         *(void **)(&reset_fn) = dlsym(module, "HMAC_CTX_reset");
@@ -208,7 +208,9 @@ bool s_resolve_hmac_lc(void *module) {
     /* If symbols aren't already found, try to find the requested version */
     /* when built as a shared lib, and multiple versions of libcrypto are possibly
      * available (e.g. brazil), select AWS-LC by default for consistency */
-    if (!has_awslc_symbols) {
+    if (has_awslc_symbols) {
+        FLOGF("found static aws-lc HMAC symbols");
+    } else {
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
         *(void **)(&reset_fn) = dlsym(module, "HMAC_CTX_reset");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
@@ -293,7 +295,7 @@ bool s_resolve_md_102(void *module) {
     bool has_102_symbols = md_create_fn && md_destroy_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
 
     if (has_102_symbols) {
-        FLOGF("found static libcrypto 1.0.2 EVP_MD");
+        FLOGF("found static libcrypto 1.0.2 EVP_MD symbols");
     } else {
         *(void **)(&md_create_fn) = dlsym(module, "EVP_MD_CTX_create");
         *(void **)(&md_destroy_fn) = dlsym(module, "EVP_MD_CTX_destroy");
@@ -328,7 +330,7 @@ bool s_resolve_md_111(void *module) {
 
     bool has_111_symbols = md_new_fn && md_free_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
     if (has_111_symbols) {
-        FLOGF("found static libcrypto 1.1.1 EVP_MD");
+        FLOGF("found static libcrypto 1.1.1 EVP_MD symbols");
     } else {
         *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_new");
         *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_free");

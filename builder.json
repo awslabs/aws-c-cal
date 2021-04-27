@@ -1,21 +1,24 @@
 {
     "name": "aws-c-cal",
     "upstream": [
-        { "name": "aws-c-common" },
-        { "name": "aws-checksums" }
+        {
+            "name": "aws-c-common"
+        }
     ],
-    "downstream": [
-
-    ],
+    "downstream": [],
     "targets": {
         "linux": {
             "upstream": [
-                { "name": "aws-lc" }
+                {
+                    "name": "aws-lc"
+                }
             ]
         },
         "android": {
             "upstream": [
-                { "name": "aws-lc" }
+                {
+                    "name": "aws-lc"
+                }
             ]
         }
     }

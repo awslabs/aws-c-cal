@@ -2,7 +2,6 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
-#include <aws/cal/crc32.h>
 #include <aws/cal/hash.h>
 
 #ifndef BYO_CRYPTO
@@ -34,14 +33,6 @@ struct aws_hash *aws_sha256_new(struct aws_allocator *allocator) {
 
 struct aws_hash *aws_md5_new(struct aws_allocator *allocator) {
     return s_md5_new_fn(allocator);
-}
-
-struct aws_hash *aws_crc32_new(struct aws_allocator *allocator) {
-    return aws_crc32_default_new(allocator);
-}
-
-struct aws_hash *aws_crc32c_new(struct aws_allocator *allocator) {
-    return aws_crc32c_default_new(allocator);
 }
 
 void aws_set_md5_new_fn(aws_hash_new_fn *fn) {

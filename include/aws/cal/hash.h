@@ -12,8 +12,6 @@
 #define AWS_SHA256_LEN 32
 #define AWS_SHA1_LEN 20
 #define AWS_MD5_LEN 16
-#define AWS_CRC32_LEN 4
-#define AWS_CRC32C_LEN 4
 
 struct aws_hash;
 
@@ -48,14 +46,6 @@ AWS_CAL_API struct aws_hash *aws_sha1_new(struct aws_allocator *allocator);
  * Allocates and initializes an md5 hash instance.
  */
 AWS_CAL_API struct aws_hash *aws_md5_new(struct aws_allocator *allocator);
-/**
- * Allocates and initializes a crc32 hash instance
- */
-AWS_CAL_API struct aws_hash *aws_crc32_new(struct aws_allocator *allocator);
-/**
- * Allocates and initializes a crc32c hash instance
- */
-AWS_CAL_API struct aws_hash *aws_crc32c_new(struct aws_allocator *allocator);
 
 /**
  * Cleans up and deallocates hash.

@@ -17,5 +17,12 @@
                 { "name": "aws-lc" }
             ]
         }
+    },
+    "variants": {
+        "openssl": {
+            "!upstream": [
+                { "name": "aws-c-common" }
+            ]
+        }
     }
 }

@@ -20,9 +20,13 @@
     },
     "variants": {
         "openssl": {
-            "!upstream": [
-                { "name": "aws-c-common" }
-            ]
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        { "name": "aws-c-common" }
+                    ]
+                }
+            }
         }
     }
 }

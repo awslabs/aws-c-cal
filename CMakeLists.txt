@@ -9,7 +9,7 @@ if (POLICY CMP0069)
 endif()
 
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
-option(SYSTEM_LIBCRYPTO "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
+option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
 
 if (DEFINED CMAKE_PREFIX_PATH)
     file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
@@ -83,7 +83,7 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        if (SYSTEM_LIBCRYPTO)
+        if (USE_OPENSSL)
             find_package(OpenSSL REQUIRED)
             set(PLATFORM_LIBS OpenSSL::Crypto dl)
             set(CRYPTO_INCLUDE_DIR OPENSSL_INCLUDE_DIR)

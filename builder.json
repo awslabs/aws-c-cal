@@ -20,11 +20,18 @@
     },
     "variants": {
         "openssl": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "libssl-dev"
+                    ]
+                }
+            },
             "targets": {
                 "linux": {
                     "!upstream": [
                         { "name": "aws-c-common" }
-                    ]
+                    ],
                 }
             }
         }

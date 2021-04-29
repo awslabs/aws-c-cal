@@ -51,7 +51,11 @@ if (WIN32)
         file(GLOB AWS_CAL_OS_SRC
             "source/windows/*.c"
         )
-        set(PLATFORM_LIBS BCrypt)
+        if (AWS_SUPPORT_WIN7)
+            set(PLATFORM_LIBS BCrypt)
+        else()
+            set(PLATFORM_LIBS NCrypt)
+        endif()
     endif()
 
     if (MSVC)

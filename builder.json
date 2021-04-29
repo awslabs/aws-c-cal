@@ -31,7 +31,7 @@
                 "linux": {
                     "!upstream": [
                         { "name": "aws-c-common" }
-                    ],
+                    ]
                 }
             }
         }

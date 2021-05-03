@@ -5,7 +5,6 @@
 #include <aws/cal/hash.h>
 
 #ifndef BYO_CRYPTO
-// how does the linker know which default to link to?
 extern struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator);
 extern struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator);
 extern struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator);

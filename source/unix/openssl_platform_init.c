@@ -10,7 +10,7 @@
 #include <dlfcn.h>
 
 #include <aws/cal/private/opensslcrypto_common.h>
-
+#define AWS_LIBCRYPTO_LOG_RESOLVE 1
 #if defined(AWS_LIBCRYPTO_LOG_RESOLVE)
 #    define FLOGF(...)                                                                                                 \
         do {                                                                                                           \
@@ -402,7 +402,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_vers
         case AWS_LIBCRYPTO_1_1_1:
             return s_resolve_md_111(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_1_0_2:
-            return s_resolve_hmac_102(module) ? version : AWS_LIBCRYPTO_NONE;
+            return s_resolve_md_102(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_NONE:
             AWS_FATAL_ASSERT(!"Attempted to resolve invalid libcrypto MD API version AWS_LIBCRYPTO_NONE");
     }
@@ -413,12 +413,10 @@ static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_vers
 static enum aws_libcrypto_version s_resolve_libcrypto_symbols(enum aws_libcrypto_version version, void *module) {
     enum aws_libcrypto_version found_version = s_resolve_libcrypto_hmac(version, module);
     if (found_version == AWS_LIBCRYPTO_NONE) {
-        FLOGF("Unable to resolve HMAC symbols");
         return AWS_LIBCRYPTO_NONE;
     }
     found_version = s_resolve_libcrypto_md(found_version, module);
     if (found_version == AWS_LIBCRYPTO_NONE) {
-        FLOGF("Unable to resolve MD symbols");
         return AWS_LIBCRYPTO_NONE;
     }
     return found_version;
@@ -499,14 +497,17 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
     enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
     if (result == AWS_LIBCRYPTO_NONE) {
+        FLOGF("did not find aws-lc symbols linked");
         result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, process);
     }
     if (result == AWS_LIBCRYPTO_NONE) {
+        FLOGF("did not find libcrypto 1.0.2 symbols linked");
         result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, process);
     }
     dlclose(process);
 
     if (result == AWS_LIBCRYPTO_NONE) {
+        FLOGF("did not find libcrypto 1.1.1 symbols linked");
         FLOGF("libcrypto symbols were not statically linked, searching for shared libraries");
         result = s_resolve_libcrypto_lib();
     }
@@ -543,6 +544,8 @@ static unsigned long s_id_fn(void) {
 void aws_cal_platform_init(struct aws_allocator *allocator) {
     int version = s_resolve_libcrypto();
     AWS_FATAL_ASSERT(version != AWS_LIBCRYPTO_NONE && "libcrypto could not be resolved");
+    AWS_FATAL_ASSERT(g_aws_openssl_evp_md_ctx_table);
+    AWS_FATAL_ASSERT(g_aws_openssl_hmac_ctx_table);
 
     s_libcrypto_allocator = allocator;
 

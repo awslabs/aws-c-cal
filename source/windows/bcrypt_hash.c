@@ -88,8 +88,8 @@ static void s_load_md5_alg_handle(void *user_data) {
 struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     aws_thread_call_once(&s_sha256_once, s_load_sha256_alg_handle, NULL);
 
-    struct bcrypt_hash_handle *bcrypt_hash;
-    uint8_t *hash_obj;
+    struct bcrypt_hash_handle *bcrypt_hash = NULL;
+    uint8_t *hash_obj = NULL;
     aws_mem_acquire_many(allocator, 2, &bcrypt_hash, sizeof(struct bcrypt_hash_handle), &hash_obj, s_sha256_obj_len);
 
     if (!bcrypt_hash) {
@@ -117,8 +117,8 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
 struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator) {
     aws_thread_call_once(&s_sha1_once, s_load_sha1_alg_handle, NULL);
 
-    struct bcrypt_hash_handle *bcrypt_hash;
-    uint8_t *hash_obj;
+    struct bcrypt_hash_handle *bcrypt_hash = NULL;
+    uint8_t *hash_obj = NULL;
     aws_mem_acquire_many(allocator, 2, &bcrypt_hash, sizeof(struct bcrypt_hash_handle), &hash_obj, s_sha1_obj_len);
 
     if (!bcrypt_hash) {
@@ -146,8 +146,8 @@ struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator) {
 struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     aws_thread_call_once(&s_md5_once, s_load_md5_alg_handle, NULL);
 
-    struct bcrypt_hash_handle *bcrypt_hash;
-    uint8_t *hash_obj;
+    struct bcrypt_hash_handle *bcrypt_hash = NULL;
+    uint8_t *hash_obj = NULL;
     aws_mem_acquire_many(allocator, 2, &bcrypt_hash, sizeof(struct bcrypt_hash_handle), &hash_obj, s_md5_obj_len);
 
     if (!bcrypt_hash) {

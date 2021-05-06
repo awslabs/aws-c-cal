@@ -9,6 +9,7 @@ if (POLICY CMP0069)
 endif()
 
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
+option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
 
 if (DEFINED CMAKE_PREFIX_PATH)
     file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
@@ -82,8 +83,17 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        find_package(LibCrypto REQUIRED)
-        set(PLATFORM_LIBS LibCrypto::Crypto dl)
+        if (USE_OPENSSL)
+            find_package(OpenSSL REQUIRED)
+            set(PLATFORM_LIBS OpenSSL::Crypto dl)
+            set(CRYPTO_INCLUDE_DIR OPENSSL_INCLUDE_DIR)
+            message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
+        else()
+            find_package(LibCrypto REQUIRED)
+            set(PLATFORM_LIBS LibCrypto::Crypto dl)
+            set(CRYPTO_INCLUDE_DIR LibCrypto_INCLUDE_DIR)
+            message(STATUS "Using automatic libcrypto: ${LibCrypto_LIBRARY}")
+        endif()
     endif()
 endif()
 
@@ -107,7 +117,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
 elseif (NOT WIN32 AND NOT APPLE)
-    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:LibCrypto::Crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CRYPTO_INCLUDE_DIR})
 endif()
 
 # Our ABI is not yet stable

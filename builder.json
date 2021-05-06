@@ -1,25 +1,39 @@
 {
     "name": "aws-c-cal",
     "upstream": [
-        {
-            "name": "aws-c-common"
-        }
+        { "name": "aws-c-common" }
     ],
-    "downstream": [],
+    "downstream": [
+
+    ],
     "targets": {
         "linux": {
             "upstream": [
-                {
-                    "name": "aws-lc"
-                }
+                { "name": "aws-lc" }
             ]
         },
         "android": {
             "upstream": [
-                {
-                    "name": "aws-lc"
-                }
+                { "name": "aws-lc" }
             ]
+        }
+    },
+    "variants": {
+        "openssl": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "libssl-dev"
+                    ]
+                }
+            },
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        { "name": "aws-c-common" }
+                    ]
+                }
+            }
         }
     }
 }

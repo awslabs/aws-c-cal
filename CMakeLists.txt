@@ -83,8 +83,22 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        if (USE_OPENSSL OR NOT IN_SOURCE_BUILD)
+        if (USE_OPENSSL)
+            find_package(OpenSSL REQUIRED)
+            find_package(Threads REQUIRED)
+            add_library(crypto UNKNOWN IMPORTED)
+            set_target_properties(crypto PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
+            set_target_properties(crypto PROPERTIES
+                IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}")
+            add_dependencies(crypto Threads::Threads)
+            message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
+        elseif(NOT IN_SOURCE_BUILD)
             find_package(LibCrypto REQUIRED)
+            message(STATUS "Using automatic libcrypto: ${LibCrypto_LIBRARY}")
+        else()
+            message(STATUS "Using libcrypto from AWS-LC")
         endif()
         set(PLATFORM_LIBS crypto dl)
     endif()

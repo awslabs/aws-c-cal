@@ -19,6 +19,7 @@ static struct aws_hash *aws_hash_new_abort(struct aws_allocator *allocator) {
 }
 
 static aws_hash_new_fn *s_sha256_new_fn = aws_hash_new_abort;
+static aws_hash_new_fn *s_sha1_new_fn = aws_hash_new_abort;
 static aws_hash_new_fn *s_md5_new_fn = aws_hash_new_abort;
 #endif
 

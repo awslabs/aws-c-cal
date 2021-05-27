@@ -516,7 +516,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
 }
 
 /* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
-#if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
+#if !defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__ * 10 > 410)
 #    pragma GCC diagnostic push
 #    pragma GCC diagnostic ignored "-Waddress"
 #endif

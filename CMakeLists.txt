@@ -83,17 +83,28 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        if (USE_OPENSSL)
+        if (USE_OPENSSL AND NOT ANDROID)
             find_package(OpenSSL REQUIRED)
-            set(PLATFORM_LIBS OpenSSL::Crypto dl)
-            set(CRYPTO_INCLUDE_DIR OPENSSL_INCLUDE_DIR)
+            find_package(Threads REQUIRED)
+            add_library(crypto UNKNOWN IMPORTED)
+            set_target_properties(crypto PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
+            set_target_properties(crypto PROPERTIES
+                IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}")
+            add_dependencies(crypto Threads::Threads)
             message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
+        elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
+            if (TARGET crypto)
+                message(STATUS "Using libcrypto from AWS-LC")
+            else()
+                message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
+            endif()
         else()
             find_package(LibCrypto REQUIRED)
-            set(PLATFORM_LIBS LibCrypto::Crypto dl)
-            set(CRYPTO_INCLUDE_DIR LibCrypto_INCLUDE_DIR)
             message(STATUS "Using automatic libcrypto: ${LibCrypto_LIBRARY}")
         endif()
+        set(PLATFORM_LIBS crypto dl)
     endif()
 endif()
 
@@ -117,7 +128,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
 elseif (NOT WIN32 AND NOT APPLE)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${CRYPTO_INCLUDE_DIR})
+    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:crypto,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
 # Our ABI is not yet stable

@@ -21,6 +21,8 @@ if (crypto_FOUND)
     get_target_property(crypto_INCLUDE_DIR crypto INTERFACE_INCLUDE_DIRECTORIES)
     message(STATUS "aws-c-cal found target: crypto")
     message(STATUS "crypto Include Dir: ${crypto_INCLUDE_DIR}")
+    # some versions of cmake have a super esoteric bug around capitalization differences between
+    # find dependency and find package, just avoid that here by setting both.
     set(LIBCRYPTO_FOUND true)
     set(LibCrypto_FOUND true)
 else()

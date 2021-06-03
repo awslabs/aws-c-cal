@@ -62,13 +62,13 @@ int aws_ecc_oid_from_curve_name(enum aws_ecc_curve_name curve_name, struct aws_b
     return AWS_OP_SUCCESS;
 }
 
-#ifndef BYO_CRYPTO
-
 typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_from_public_key_fn)(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *public_key_x,
     const struct aws_byte_cursor *public_key_y);
+
+#ifndef BYO_CRYPTO
 
 extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     struct aws_allocator *allocator,

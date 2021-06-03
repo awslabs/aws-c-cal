@@ -156,7 +156,7 @@ static struct aws_ecc_key_pair_vtable vtable = {
     .destroy = s_key_pair_destroy,
 };
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key) {

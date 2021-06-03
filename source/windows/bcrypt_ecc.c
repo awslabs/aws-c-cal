@@ -366,7 +366,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     return s_alloc_pair_and_init_buffers(allocator, curve_name, empty, empty, *priv_key);
 }
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *public_key_x,

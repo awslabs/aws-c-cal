@@ -49,6 +49,10 @@ static struct aws_log_subject_info s_cal_log_subject_infos[] = {
     DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_HASH, "hash", "Subject for hashing specific logging."),
     DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_HMAC, "hmac", "Subject for hmac specific logging."),
     DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_DER, "der", "Subject for der specific logging."),
+    DEFINE_LOG_SUBJECT_INFO(
+        AWS_LS_CAL_LIBCRYPTO_RESOLVE,
+        "libcrypto_resolve",
+        "Subject for libcrypto symbol resolution logging."),
 };
 
 static struct aws_log_subject_info_list s_cal_log_subject_list = {

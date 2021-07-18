@@ -92,5 +92,5 @@ Great! So do we! At a minimum, file an issue letting us know. If you want to fil
 Are you writing C directly? Then you should.
 Are you using any other programming language? This functionality will be exposed via that language specific crt packages.
 ### I found a security vulnerability in this package. What do I do?
-Due to the fact that this package is specifically performing cryptographic operations, please don't file a public issue. Instead, email aws-sdk-common-runtime@amazon.com, and we'll work with you directly.
+Due to the fact that this package is specifically performing cryptographic operations, please don't fill a public issue. Instead, email <aws-sdk-common-runtime@amazon.com>, and we'll work with you directly.
 

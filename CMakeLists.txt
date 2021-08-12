@@ -176,6 +176,8 @@ install(FILES ${EXPORT_MODULES}
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT BYO_CRYPTO)
     add_subdirectory(bin/sha256_profile)
+    add_subdirectory(bin/crc_profile)
+    add_subdirectory(bin/crc_benchmark)
     include(CTest)
     if (BUILD_TESTING)
         add_subdirectory(tests)

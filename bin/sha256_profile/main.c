@@ -13,6 +13,7 @@
 static void s_profile_streaming_hash_at_chunk_size(
     struct aws_allocator *allocator,
     struct aws_byte_cursor to_hash,
+    bool print,
     size_t chunk_size,
     size_t alignment) {
     struct aws_hash *hash_impl = aws_sha256_new(allocator);
@@ -43,13 +44,15 @@ static void s_profile_streaming_hash_at_chunk_size(
     AWS_FATAL_ASSERT(!aws_hash_finalize(hash_impl, &output_buf, 0) && "hash finalize failed");
     uint64_t end = 0;
     AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&end) && "clock get ticks failed");
-    fprintf(stdout, "SHA256 streaming computation took %" PRIu64 "ns\n", end - start);
+    if (print) {
+        fprintf(stdout, "SHA256 streaming computation took %" PRIu64 "ns\n", end - start);
+    }
 
     aws_byte_buf_clean_up(&output_buf);
     aws_hash_destroy(hash_impl);
 }
 
-static void s_profile_oneshot_hash(struct aws_allocator *allocator, struct aws_byte_cursor to_hash) {
+static void s_profile_oneshot_hash(struct aws_allocator *allocator, struct aws_byte_cursor to_hash, bool print) {
     struct aws_byte_buf output_buf;
 
     AWS_FATAL_ASSERT(
@@ -60,7 +63,9 @@ static void s_profile_oneshot_hash(struct aws_allocator *allocator, struct aws_b
     AWS_FATAL_ASSERT(!aws_sha256_compute(allocator, &to_hash, &output_buf, 0) && "Hash computation failed");
     uint64_t end = 0;
     AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&end) && "clock get ticks failed");
-    fprintf(stdout, "SHA256 oneshot computation took %" PRIu64 "ns\n", end - start);
+    if (print) {
+        fprintf(stdout, "SHA256 oneshot computation took %" PRIu64 "ns\n", end - start);
+    }
 }
 
 static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size, const char *profile_name) {
@@ -71,38 +76,53 @@ static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size,
     AWS_FATAL_ASSERT(!aws_device_random_buffer(&to_hash) && "reading random data failed");
     struct aws_byte_cursor to_hash_cur = aws_byte_cursor_from_buf(&to_hash);
 
+    /* To load the code into the cache, and get a fair comparison we first run without printing timing, and then
+        run again with times printed */
     fprintf(stdout, "********************* Chunked/Alignment Runs *********************************\n\n");
     fprintf(stdout, "****** 128 byte chunks ******\n\n");
     fprintf(stdout, "8-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 128, 8);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 128, 8);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 128, 8);
     fprintf(stdout, "16-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 128, 16);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 128, 16);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 128, 16);
     fprintf(stdout, "64-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 128, 64);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 128, 64);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 128, 64);
     fprintf(stdout, "128-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 128, 128);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 128, 128);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 128, 128);
     fprintf(stdout, "\n****** 256 byte chunks ******\n\n");
     fprintf(stdout, "8-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 256, 8);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 256, 8);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 256, 8);
     fprintf(stdout, "16-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 256, 16);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 256, 16);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 256, 16);
     fprintf(stdout, "64-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 256, 64);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 256, 64);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 256, 64);
     fprintf(stdout, "128-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 256, 128);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 256, 128);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 256, 128);
 
     fprintf(stdout, "\n******* 512 byte chunks *****\n\n");
     fprintf(stdout, "8-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 512, 8);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 512, 8);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 512, 8);
     fprintf(stdout, "16-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 512, 16);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 512, 16);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 512, 16);
     fprintf(stdout, "64-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 512, 64);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 512, 64);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 512, 64);
     fprintf(stdout, "128-byte alignment:\n");
-    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, 512, 128);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, false, 512, 128);
+    s_profile_streaming_hash_at_chunk_size(allocator, to_hash_cur, true, 512, 128);
 
     fprintf(stdout, "\n********************** Oneshot Run *******************************************\n\n");
-    s_profile_oneshot_hash(allocator, to_hash_cur);
+    s_profile_oneshot_hash(allocator, to_hash_cur, false);
+    s_profile_oneshot_hash(allocator, to_hash_cur, true);
     fprintf(stdout, "\n\n");
 }
 

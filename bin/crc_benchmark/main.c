@@ -36,24 +36,16 @@ void print_stats(
     (void)size;
     fprintf(stdout, "chunks\n");
     for (size_t i = 0; i < num_chunks; i++) {
-        fprintf(stdout, "%" PRIu32 ",", chunk_sizes[i]);
+        fprintf(
+            stdout,
+            "chunk size: %" PRIu32 ", min: %" PRIu64 ", max: %" PRIu64 ", mean: %f, variance: %f",
+            chunk_sizes[i],
+            min[i],
+            max[i],
+            mean[i],
+            variance[i]);
     }
-    fprintf(stdout, "\nmin\n");
-    for (size_t i = 0; i < num_chunks; i++) {
-        fprintf(stdout, "%" PRIu64 ",", min[i]);
-    }
-    fprintf(stdout, "\nmax\n");
-    for (size_t i = 0; i < num_chunks; i++) {
-        fprintf(stdout, "%" PRIu64 ",", max[i]);
-    }
-    fprintf(stdout, "\nmean\n");
-    for (size_t i = 0; i < num_chunks; i++) {
-        fprintf(stdout, "%f,", mean[i]);
-    }
-    fprintf(stdout, "\nvariance\n");
-    for (size_t i = 0; i < num_chunks; i++) {
-        fprintf(stdout, "%f,", variance[i]);
-    }
+    fprintf(stdout, "\n");
 }
 
 static void profile_sequence_chunks(
@@ -121,6 +113,9 @@ static void profile(
     }
     uint64_t *total_max = aws_mem_calloc(allocator, num_chunks, sizeof(uint64_t));
 
+    uint64_t start = 0;
+    uint64_t end = 0;
+    AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&start) && "clock get ticks failed.");
     for (uint32_t i = 0; i < num_sequences; i++) {
         double *means = aws_mem_calloc(allocator, num_chunks, sizeof(double));
         double *variance = aws_mem_calloc(allocator, num_chunks, sizeof(double));
@@ -140,6 +135,12 @@ static void profile(
         for (size_t j = 0; j < num_chunks; j++) {
             update_summay(i + 1, &total_mean[j], &total_variance[j], &total_min[j], &total_max[j], means[j]);
         }
+        if (i % 100 == 0) {
+            AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&end) && "clock get ticks failed.");
+            fprintf(stdout, "count: %d: %" PRIu64 "\n", i, end - start);
+            start = end;
+        }
+        aws_byte_buf_clean_up(&to_hash);
         aws_mem_release(allocator, means);
         aws_mem_release(allocator, variance);
         aws_mem_release(allocator, mins);
@@ -148,6 +149,7 @@ static void profile(
     for (size_t j = 0; j < num_chunks; j++) {
         finalize_summary(num_sequences, &total_variance[j]);
     }
+    fprintf(stdout, "crc32\n");
     print_stats(total_mean, total_variance, total_min, total_max, chunk_sizes, num_chunks, size);
     aws_mem_release(allocator, total_mean);
     aws_mem_release(allocator, total_variance);
@@ -157,7 +159,9 @@ static void profile(
 
 int main(void) {
     struct aws_allocator *allocator = aws_default_allocator();
-    uint32_t chunks = {1 << 20};
-    profile(allocator, 1 << 23, &chunks, 1, 2000, 10, aws_checksums_crc32c);
+    uint32_t chunks[] = {1 << 22, 1 << 20, 1 << 10, 1 << 9, 1 << 8, 1 << 7};
+    profile(allocator, 1 << 22, chunks, 6, 1000, 1, aws_checksums_crc32c);
+    // uint32_t chunks[] = {1 << 19, 1 << 9, 1 << 8, 1 << 7};
+    // profile(allocator, 1 << 19, chunks, 4, 10000, 1, aws_checksums_crc32);
     return 0;
 }

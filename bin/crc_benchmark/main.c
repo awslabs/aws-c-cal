@@ -34,11 +34,10 @@ void print_stats(
     size_t num_chunks,
     size_t size) {
     (void)size;
-    fprintf(stdout, "chunks\n");
     for (size_t i = 0; i < num_chunks; i++) {
         fprintf(
             stdout,
-            "chunk size: %" PRIu32 ", min: %" PRIu64 ", max: %" PRIu64 ", mean: %f, variance: %f",
+            "chunk size: %" PRIu32 ", min: %" PRIu64 ", max: %" PRIu64 ", mean: %f, variance: %f\n",
             chunk_sizes[i],
             min[i],
             max[i],
@@ -59,16 +58,15 @@ static void profile_sequence_chunks(
     uint32_t (*checksum_fn)(const uint8_t *, int, uint32_t)) {
     for (uint32_t i = 0; i < iterations; i++) {
         uint64_t start = 0;
+        uint64_t end = 0;
         uint32_t output = 0;
-        AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&start) && "clock get ticks failed.");
         struct aws_byte_cursor to_hash_seeked = to_hash;
+        AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&start) && "clock get ticks failed.");
         while (to_hash_seeked.len) {
             size_t remaining = (size_t)chunk_size > to_hash_seeked.len ? to_hash_seeked.len : (size_t)chunk_size;
-
             struct aws_byte_cursor chunk_to_process = aws_byte_cursor_advance(&to_hash_seeked, remaining);
             output = checksum_fn(chunk_to_process.ptr, chunk_to_process.len, output);
         }
-        uint64_t end = 0;
         AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&end) && "clock get ticks failed");
         update_summay(i + 1, avg, variance, min, max, end - start);
     }
@@ -149,7 +147,6 @@ static void profile(
     for (size_t j = 0; j < num_chunks; j++) {
         finalize_summary(num_sequences, &total_variance[j]);
     }
-    fprintf(stdout, "crc32\n");
     print_stats(total_mean, total_variance, total_min, total_max, chunk_sizes, num_chunks, size);
     aws_mem_release(allocator, total_mean);
     aws_mem_release(allocator, total_variance);
@@ -159,9 +156,27 @@ static void profile(
 
 int main(void) {
     struct aws_allocator *allocator = aws_default_allocator();
-    uint32_t chunks[] = {1 << 22, 1 << 20, 1 << 10, 1 << 9, 1 << 8, 1 << 7};
-    profile(allocator, 1 << 22, chunks, 6, 1000, 1, aws_checksums_crc32c);
-    // uint32_t chunks[] = {1 << 19, 1 << 9, 1 << 8, 1 << 7};
-    // profile(allocator, 1 << 19, chunks, 4, 10000, 1, aws_checksums_crc32);
+    uint32_t chunks[] = {
+        1 << 22,
+        1 << 21,
+        1 << 20,
+        1 << 19,
+        1 << 18,
+        1 << 17,
+        1 << 16,
+        1 << 15,
+        1 << 14,
+        1 << 13,
+        1 << 12,
+        1 << 11,
+        1 << 10,
+        1 << 9,
+        1 << 8,
+        1 << 7};
+    size_t num_chunks = 16;
+    fprintf(stdout, "C crc32\n");
+    profile(allocator, 1 << 22, chunks, num_chunks, 1000, 1, aws_checksums_crc32);
+    fprintf(stdout, "C crc32c\n");
+    profile(allocator, 1 << 22, chunks, num_chunks, 1000, 1, aws_checksums_crc32c);
     return 0;
 }

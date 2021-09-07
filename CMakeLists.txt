@@ -175,9 +175,9 @@ install(FILES ${EXPORT_MODULES}
         COMPONENT Development)
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT BYO_CRYPTO)
-    add_subdirectory(bin/sha256_profile)
     include(CTest)
     if (BUILD_TESTING)
+        add_subdirectory(bin/sha256_profile)
         add_subdirectory(tests)
     endif()
 endif()

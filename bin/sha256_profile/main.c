@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#include <aws/cal/cal.h>
 #include <aws/cal/hash.h>
 
 #include <aws/common/clock.h>
@@ -108,6 +109,7 @@ static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size,
 
 int main(void) {
     struct aws_allocator *allocator = aws_default_allocator();
+    aws_cal_library_init(allocator);
 
     struct aws_hash *hash_impl = aws_sha256_new(allocator);
     fprintf(stdout, "Starting profile run for Sha256 using implementation %s\n\n", hash_impl->vtable->provider);

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#include <aws/cal/cal.h>
 #include <aws/cal/hash.h>
 
 #include <aws/common/clock.h>
@@ -61,6 +62,7 @@ static void s_profile_oneshot_hash(struct aws_allocator *allocator, struct aws_b
     uint64_t end = 0;
     AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&end) && "clock get ticks failed");
     fprintf(stdout, "SHA256 oneshot computation took %" PRIu64 "ns\n", end - start);
+    aws_byte_buf_clean_up(&output_buf);
 }
 
 static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size, const char *profile_name) {
@@ -104,10 +106,12 @@ static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size,
     fprintf(stdout, "\n********************** Oneshot Run *******************************************\n\n");
     s_profile_oneshot_hash(allocator, to_hash_cur);
     fprintf(stdout, "\n\n");
+    aws_byte_buf_clean_up(&to_hash);
 }
 
 int main(void) {
     struct aws_allocator *allocator = aws_default_allocator();
+    aws_cal_library_init(allocator);
 
     struct aws_hash *hash_impl = aws_sha256_new(allocator);
     fprintf(stdout, "Starting profile run for Sha256 using implementation %s\n\n", hash_impl->vtable->provider);
@@ -117,5 +121,6 @@ int main(void) {
     s_run_profiles(allocator, 1024 * 512, "512 KB");
 
     aws_hash_destroy(hash_impl);
+    aws_cal_library_clean_up();
     return 0;
 }

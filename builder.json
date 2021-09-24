@@ -3,9 +3,7 @@
     "upstream": [
         { "name": "aws-c-common" }
     ],
-    "downstream": [
-
-    ],
+    "downstream": [],
     "targets": {
         "linux": {
             "upstream": [
@@ -35,5 +33,11 @@
                 }
             }
         }
-    }
+    },
+    "test_steps": [
+        "test",
+        [
+            "{install_dir}/bin/sha256_profile"
+        ]
+    ]
 }

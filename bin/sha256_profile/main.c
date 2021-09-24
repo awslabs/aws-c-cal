@@ -62,6 +62,7 @@ static void s_profile_oneshot_hash(struct aws_allocator *allocator, struct aws_b
     uint64_t end = 0;
     AWS_FATAL_ASSERT(!aws_high_res_clock_get_ticks(&end) && "clock get ticks failed");
     fprintf(stdout, "SHA256 oneshot computation took %" PRIu64 "ns\n", end - start);
+    aws_byte_buf_clean_up(&output_buf);
 }
 
 static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size, const char *profile_name) {
@@ -105,6 +106,7 @@ static void s_run_profiles(struct aws_allocator *allocator, size_t to_hash_size,
     fprintf(stdout, "\n********************** Oneshot Run *******************************************\n\n");
     s_profile_oneshot_hash(allocator, to_hash_cur);
     fprintf(stdout, "\n\n");
+    aws_byte_buf_clean_up(&to_hash);
 }
 
 int main(void) {

@@ -119,5 +119,6 @@ int main(void) {
     s_run_profiles(allocator, 1024 * 512, "512 KB");
 
     aws_hash_destroy(hash_impl);
+    aws_cal_library_clean_up();
     return 0;
 }

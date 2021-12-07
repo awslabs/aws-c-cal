@@ -66,7 +66,7 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
 
     size_t buffer_len = output->capacity - output->len;
 
-    if (buffer_len < AWS_SHA1_LEN) {
+    if (buffer_len < hash->digest_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 

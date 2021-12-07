@@ -166,7 +166,7 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
 
     if (AWS_LIKELY(g_aws_openssl_evp_md_ctx_table->final_ex_fn(
             ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
-        output->len += buffer_len;
+        output->len += hash->digest_size;
         hash->good = false;
         return AWS_OP_SUCCESS;
     }

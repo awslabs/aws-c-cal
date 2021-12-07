@@ -73,7 +73,7 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
 
     CC_MD5_Final(output->buffer + output->len, &ctx->cc_hash);
     hash->good = false;
-    output->len += buffer_len;
+    output->len += hash->digest_size;
     return AWS_OP_SUCCESS;
 }
 

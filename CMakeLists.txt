@@ -86,13 +86,7 @@ else ()
         if (USE_OPENSSL AND NOT ANDROID)
             find_package(OpenSSL REQUIRED)
             find_package(Threads REQUIRED)
-            add_library(crypto UNKNOWN IMPORTED)
-            set_target_properties(crypto PROPERTIES
-                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
-            set_target_properties(crypto PROPERTIES
-                IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}")
-            add_dependencies(crypto Threads::Threads)
+            set(PLATFORM_LIBS OpenSSL::Crypto Threads::Threads)
             message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
         elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
             if (TARGET crypto)

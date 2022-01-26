@@ -82,18 +82,17 @@ if(LIBCRYPTO_FOUND OR LibCrypto_FOUND)
     message(STATUS "LibCrypto Include Dir: ${LibCrypto_INCLUDE_DIR}")
     message(STATUS "LibCrypto Shared Lib:  ${LibCrypto_SHARED_LIBRARY}")
     message(STATUS "LibCrypto Static Lib:  ${LibCrypto_STATIC_LIBRARY}")
-    if (NOT TARGET crypto AND
+    if (NOT TARGET LibCrypto::Crypto AND
         (EXISTS "${LibCrypto_LIBRARY}")
         )
         set(THREADS_PREFER_PTHREAD_FLAG ON)
         find_package(Threads REQUIRED)
-        add_library(crypto UNKNOWN IMPORTED)
-        set_target_properties(crypto PROPERTIES
+        add_library(LibCrypto::Crypto UNKNOWN IMPORTED)
+        set_target_properties(LibCrypto::Crypto PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${LibCrypto_INCLUDE_DIR}")
-        set_target_properties(crypto PROPERTIES
+        set_target_properties(LibCrypto::Crypto PROPERTIES
             IMPORTED_LINK_INTERFACE_LANGUAGES "C"
             IMPORTED_LOCATION "${LibCrypto_LIBRARY}")
-        add_dependencies(crypto Threads::Threads)
+        add_dependencies(LibCrypto::Crypto Threads::Threads)
     endif()
 endif()
-

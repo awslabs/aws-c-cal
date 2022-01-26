@@ -129,7 +129,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
 elseif (NOT WIN32 AND NOT APPLE)
-    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+    if (TARGET crypto)
+        target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:crypto,INTERFACE_INCLUDE_DIRECTORIES>)
+    else()
+        target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:LibCrypto::Crypto, INTERFACE_INCLUDE_DIRECTORIES>)
+    endif()
 endif()
 
 # Our ABI is not yet stable

@@ -8,6 +8,8 @@ if (POLICY CMP0069)
     cmake_policy(SET CMP0069 NEW) # Enable LTO/IPO if available in the compiler, see AwsCFlags
 endif()
 
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
 option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
 
@@ -96,9 +98,9 @@ else ()
             endif()
             set(PLATFORM_LIBS crypto dl)
         else()
-            find_package(LibCrypto REQUIRED)
+            find_package(crypto REQUIRED)
             message(STATUS "Using automatic libcrypto: ${LibCrypto_LIBRARY}")
-            set(PLATFORM_LIBS LibCrypto::Crypto dl)
+            set(PLATFORM_LIBS AWS::crypto dl)
         endif()
     endif()
 endif()
@@ -164,7 +166,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     COMPONENT Development)
 
 list(APPEND EXPORT_MODULES
-    "cmake/modules/FindLibCrypto.cmake"
+    "cmake/modules/FindCrypto.cmake"
     )
 
 install(FILES ${EXPORT_MODULES}

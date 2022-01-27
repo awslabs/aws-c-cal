@@ -166,7 +166,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     COMPONENT Development)
 
 list(APPEND EXPORT_MODULES
-    "cmake/modules/FindCrypto.cmake"
+    "cmake/modules/Findcrypto.cmake"
     )
 
 install(FILES ${EXPORT_MODULES}

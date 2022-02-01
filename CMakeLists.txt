@@ -8,6 +8,8 @@ if (POLICY CMP0069)
     cmake_policy(SET CMP0069 NEW) # Enable LTO/IPO if available in the compiler, see AwsCFlags
 endif()
 
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
 option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
 
@@ -86,13 +88,7 @@ else ()
         if (USE_OPENSSL AND NOT ANDROID)
             find_package(OpenSSL REQUIRED)
             find_package(Threads REQUIRED)
-            add_library(crypto UNKNOWN IMPORTED)
-            set_target_properties(crypto PROPERTIES
-                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
-            set_target_properties(crypto PROPERTIES
-                IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}")
-            add_dependencies(crypto Threads::Threads)
+            set(PLATFORM_LIBS OpenSSL::Crypto Threads::Threads)
             message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
         elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
             if (TARGET crypto)
@@ -100,11 +96,12 @@ else ()
             else()
                 message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
             endif()
+            set(PLATFORM_LIBS crypto dl)
         else()
-            find_package(LibCrypto REQUIRED)
-            message(STATUS "Using automatic libcrypto: ${LibCrypto_LIBRARY}")
+            find_package(crypto REQUIRED)
+            message(STATUS "Using libcrypto from cmake path")
+            set(PLATFORM_LIBS AWS::crypto dl)
         endif()
-        set(PLATFORM_LIBS crypto dl)
     endif()
 endif()
 
@@ -127,8 +124,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
-elseif (NOT WIN32 AND NOT APPLE)
-    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:crypto,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
 # Our ABI is not yet stable
@@ -167,7 +162,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     COMPONENT Development)
 
 list(APPEND EXPORT_MODULES
-    "cmake/modules/FindLibCrypto.cmake"
+    "cmake/modules/Findcrypto.cmake"
     )
 
 install(FILES ${EXPORT_MODULES}

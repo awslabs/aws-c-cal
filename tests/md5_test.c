@@ -381,6 +381,8 @@ static int s_md5_test_extra_buffer_space_fn(struct aws_allocator *allocator, voi
     aws_byte_buf_clean_up(&digest_size_buf);
     aws_byte_buf_clean_up(&super_size_buf);
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(md5_test_extra_buffer_space, s_md5_test_extra_buffer_space_fn)

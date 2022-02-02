@@ -356,6 +356,8 @@ static int s_sha256_hmac_test_extra_buffer_space_fn(struct aws_allocator *alloca
     aws_byte_buf_clean_up(&digest_size_buf);
     aws_byte_buf_clean_up(&super_size_buf);
 
+    aws_cal_library_clean_up();
+
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(sha256_hmac_test_extra_buffer_space, s_sha256_hmac_test_extra_buffer_space_fn)

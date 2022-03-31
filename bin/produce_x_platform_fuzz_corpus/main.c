@@ -62,6 +62,10 @@ static void s_parse_options(int argc, char **argv, struct produce_corpus_ctx *ct
     }
 }
 
+/**
+ * Runs thousands of ECDSA signatures, and dumps them out to a file. This assumes the same public key and
+ * message to sign scheme is used by the verifying program.
+ */
 int main(int argc, char *argv[]) {
     struct aws_allocator *allocator = aws_default_allocator();
     aws_cal_library_init(allocator);

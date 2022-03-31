@@ -63,6 +63,11 @@ static void s_parse_options(int argc, char **argv, struct run_corpus_ctx *ctx) {
     }
 }
 
+/**
+ * Attempts to load a corpus directory. If it's successful, it loads each platform's ECDSA corpus, and makes sure
+ * it can actually verify the signatures in it provided the same key and message to sign are used as those used
+ * to produce the signature.
+ */
 int main(int argc, char *argv[]) {
     struct aws_allocator *allocator = aws_default_allocator();
     aws_cal_library_init(allocator);

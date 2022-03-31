@@ -231,6 +231,8 @@ int main(int argc, char *argv[]) {
         if (aws_directory_entry_iterator_next(dir_iter)) {
             break;
         }
+
+        entry = aws_directory_entry_iterator_get_value(dir_iter);
     }
     aws_directory_entry_iterator_destroy(dir_iter);
     aws_string_destroy(scan_path_str);

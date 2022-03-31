@@ -164,10 +164,12 @@ int main(int argc, char *argv[]) {
             struct aws_byte_buf to_hash;
             aws_byte_buf_init(&to_hash, allocator, 1024);
 
-           
             char line_buf[1024];
             AWS_ZERO_ARRAY(line_buf);
-            while (fgets(line_buf, 1024 ,corpus_input_file)) {
+            size_t signatures_processed = 0;
+            size_t signatures_failed = 0;
+
+            while (fgets(line_buf, 1024, corpus_input_file)) {
 
                 /* -1 to strip off the newline delimiter */
                 struct aws_byte_cursor line_cur = aws_byte_cursor_from_c_str(line_buf);
@@ -188,11 +190,19 @@ int main(int argc, char *argv[]) {
                 struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&hex_decoded_buf);
 
                 if (aws_ecc_key_pair_verify_signature(verifying_key, &signed_value_cur, &signature_cur)) {
+                    struct aws_byte_buf hex_encoded_sha;
+                    aws_byte_buf_init(&hex_encoded_sha, allocator, 1024);
+
+                    aws_hex_encode(&signed_value_cur, &hex_encoded_sha);
+                    struct aws_byte_cursor failed_sha = aws_byte_cursor_from_buf(&hex_encoded_sha);
+
                     fprintf(
                         stderr,
                         "Failed to validate signature\n signature: " PRInSTR "\n message_signed: " PRInSTR "\n\n",
-                        AWS_BYTE_CURSOR_PRI(signature_cur),
-                        AWS_BYTE_CURSOR_PRI(signed_value_cur));
+                        AWS_BYTE_CURSOR_PRI(line_cur),
+                        AWS_BYTE_CURSOR_PRI(failed_sha));
+                    signatures_failed++;
+                    aws_byte_buf_clean_up(&hex_encoded_sha);
                 }
 
                 aws_byte_buf_reset(&hex_decoded_buf, true);
@@ -200,9 +210,13 @@ int main(int argc, char *argv[]) {
 
                 aws_byte_buf_append_dynamic(&to_hash, &to_append);
                 AWS_ZERO_ARRAY(line_buf);
-
+                signatures_processed++;
             }
-            fprintf(stdout, "Corpus verification complete\n\n");
+            fprintf(
+                stdout,
+                "Corpus verification complete with %d failures out of %d signatures processed\n\n",
+                (int)signatures_failed,
+                (int)signatures_processed);
 
             aws_byte_buf_clean_up(&hex_decoded_buf);
             fclose(corpus_input_file);

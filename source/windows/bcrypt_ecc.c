@@ -82,6 +82,10 @@ static size_t s_signature_length(const struct aws_ecc_key_pair *key_pair) {
     return s_der_overhead + aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2;
 }
 
+static bool s_trim_zeros_predicate(uint8_t value) {
+    return value == 0;
+}
+
 static int s_sign_message(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
@@ -124,8 +128,12 @@ static int s_sign_message(
 
     aws_der_encoder_begin_sequence(encoder);
     struct aws_byte_cursor integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer, coordinate_len);
+    /* trim off the leading zero padding for DER encoding */
+    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
     aws_der_encoder_write_integer(encoder, integer_cur);
     integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer + coordinate_len, coordinate_len);
+    /* trim off the leading zero padding for DER encoding */
+    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
     aws_der_encoder_write_integer(encoder, integer_cur);
     aws_der_encoder_end_sequence(encoder);
 

@@ -96,9 +96,9 @@ int main(int argc, char *argv[]) {
         struct aws_byte_cursor root_path = aws_byte_cursor_from_c_str(ctx.root_path);
         aws_byte_buf_append_dynamic(&scan_path, &root_path);
 
-        if (root_path.ptr[root_path.len - 1] != AWS_PATH_DELIM) {
+        /* if (root_path.ptr[root_path.len - 1] != AWS_PATH_DELIM) {
             aws_byte_buf_append_byte_dynamic(&scan_path, (uint8_t)AWS_PATH_DELIM);
-        }
+        }*/
     }
 
     struct aws_string *scan_path_str = aws_string_new_from_buf(allocator, &scan_path);
@@ -154,8 +154,6 @@ int main(int argc, char *argv[]) {
                 exit(-1);
             }
 
-            char *line = NULL;
-            size_t line_len = 0;
             struct aws_byte_buf hex_decoded_buf;
             aws_byte_buf_init(&hex_decoded_buf, allocator, 1024);
 
@@ -166,11 +164,14 @@ int main(int argc, char *argv[]) {
             struct aws_byte_buf to_hash;
             aws_byte_buf_init(&to_hash, allocator, 1024);
 
-            ssize_t num_chars = 0;
-            while ((num_chars = getline(&line, &line_len, corpus_input_file)) != -1) {
+           
+            char line_buf[1024];
+            AWS_ZERO_ARRAY(line_buf);
+            while (fgets(line_buf, 1024 ,corpus_input_file)) {
 
                 /* -1 to strip off the newline delimiter */
-                struct aws_byte_cursor line_cur = aws_byte_cursor_from_array(line, num_chars - 1);
+                struct aws_byte_cursor line_cur = aws_byte_cursor_from_c_str(line_buf);
+                line_cur.len -= 1;
 
                 if (aws_hex_decode(&line_cur, &hex_decoded_buf) != AWS_OP_SUCCESS) {
                     fprintf(
@@ -194,12 +195,12 @@ int main(int argc, char *argv[]) {
                         AWS_BYTE_CURSOR_PRI(signed_value_cur));
                 }
 
-                free(line);
                 aws_byte_buf_reset(&hex_decoded_buf, true);
                 aws_byte_buf_reset(&signed_value, true);
 
                 aws_byte_buf_append_dynamic(&to_hash, &to_append);
-                line = NULL;
+                AWS_ZERO_ARRAY(line_buf);
+
             }
             fprintf(stdout, "Corpus verification complete\n\n");
 

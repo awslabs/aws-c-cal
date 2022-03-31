@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
-    struct aws_byte_cursor corpus_file_name = aws_byte_cursor_from_c_str("p256_sig_corpus.txt");   
+    struct aws_byte_cursor corpus_file_name = aws_byte_cursor_from_c_str("p256_sig_corpus.txt");
     size_t corpus_runs = 0;
     const struct aws_directory_entry *entry = aws_directory_entry_iterator_get_value(dir_iter);
     while (entry) {

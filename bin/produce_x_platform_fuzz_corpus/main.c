@@ -8,7 +8,6 @@
 #include <aws/cal/hash.h>
 
 #include <aws/common/command_line_parser.h>
-#include <aws/common/device_random.h>
 #include <aws/common/encoding.h>
 #include <aws/common/file.h>
 #include <aws/common/string.h>
@@ -86,7 +85,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-#ifdef __WIN32__
+#ifdef _WIN32
     sub_dir_cur = aws_byte_cursor_from_c_str("windows\\");
 #elif __APPLE__
     sub_dir_cur = aws_byte_cursor_from_c_str("darwin/");

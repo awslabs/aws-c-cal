@@ -98,19 +98,14 @@ else ()
             endif()
             set(PLATFORM_LIBS crypto dl)
         else()
-            find_package(crypto REQUIRED)
-
-            set(CRYPTO_TARGET_TO_USE AWS::crypto)
-            # Best effort, AWS::crypto first for backward compatibility
-            foreach(CRYPTO_TO_TRY AWS::crypto; crypto)
-                if (TARGET "${CRYPTO_TO_TRY}")
-                    set(CRYPTO_TARGET_TO_USE ${CRYPTO_TO_TRY})
-                    break()
-                endif()
-            endforeach()
-
-            message(STATUS "Using ${CRYPTO_TARGET_TO_USE} from cmake path")
-            set(PLATFORM_LIBS ${CRYPTO_TARGET_TO_USE} dl)
+            #  note aws_use_package() does this for you, except it appends to the public link targets
+            # which we probably don't want for this case where we want the crypto dependency private
+            if (IN_SOURCE_BUILD)
+                set(PLATFORM_LIBS crypto dl)
+            else()
+                find_package(crypto REQUIRED)
+                set(PLATFORM_LIBS AWS::crypto dl)
+            endif()
         endif()
     endif()
 endif()

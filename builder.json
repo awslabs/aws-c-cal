@@ -7,12 +7,18 @@
     "targets": {
         "linux": {
             "upstream": [
-                { "name": "aws-lc" }
+                { 
+                    "name": "aws-lc",
+                    "revision": "v1.0.2"
+                }
             ]
         },
         "android": {
             "upstream": [
-                { "name": "aws-lc" }
+                { 
+                    "name": "aws-lc", 
+                    "revision": "v1.0.2"
+                }
             ]
         }
     },

@@ -43,7 +43,8 @@
     "test_steps": [
         "test",
         [
-            "{install_dir}/bin/sha256_profile"
+            "{install_dir}/bin/sha256_profile",
+            "{install_dir}/bin/run_x_platform_fuzz_corpus --corpus-path {source_dir}/ecdsa-fuzz-corpus"
         ]
     ]
 }

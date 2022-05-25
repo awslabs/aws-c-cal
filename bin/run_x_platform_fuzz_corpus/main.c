@@ -146,6 +146,8 @@ int main(int argc, char *argv[]) {
 
                 aws_directory_entry_iterator_destroy(potential_corpus_dir);
             }
+
+            aws_string_destroy(potential_corpus_path);
         }
 
         if (corpus_file) {
@@ -224,9 +226,14 @@ int main(int argc, char *argv[]) {
                 (int)signatures_processed);
 
             aws_byte_buf_clean_up(&hex_decoded_buf);
+            aws_byte_buf_clean_up(&to_hash);
+            aws_byte_buf_clean_up(&signed_value);
+
             fclose(corpus_input_file);
             aws_string_destroy(mode);
         }
+
+        aws_string_destroy(corpus_file);
 
         if (aws_directory_entry_iterator_next(dir_iter)) {
             break;
@@ -236,6 +243,8 @@ int main(int argc, char *argv[]) {
     }
     aws_directory_entry_iterator_destroy(dir_iter);
     aws_string_destroy(scan_path_str);
+
+    aws_byte_buf_clean_up(&scan_path);
 
     aws_ecc_key_pair_release(verifying_key);
 

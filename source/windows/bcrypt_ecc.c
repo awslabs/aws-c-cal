@@ -333,14 +333,14 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
         aws_byte_buf_append(&key_impl->key_pair.key_buf, &priv_key);
     }
 
-    key_impl->key_pair.pub_x.buffer = key_impl->key_pair.key_buf.buffer + sizeof(key_blob);
-    key_impl->key_pair.pub_x.len = key_impl->key_pair.pub_x.capacity = s_key_coordinate_size;
+    key_impl->key_pair.pub_x =
+        aws_byte_buf_from_array(key_impl->key_pair.key_buf.buffer + sizeof(key_blob), s_key_coordinate_size);
 
-    key_impl->key_pair.pub_y.buffer = key_impl->key_pair.pub_x.buffer + s_key_coordinate_size;
-    key_impl->key_pair.pub_y.len = key_impl->key_pair.pub_y.capacity = s_key_coordinate_size;
+    key_impl->key_pair.pub_y =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_x.buffer + s_key_coordinate_size, s_key_coordinate_size);
 
-    key_impl->key_pair.priv_d.buffer = key_impl->key_pair.pub_y.buffer + s_key_coordinate_size;
-    key_impl->key_pair.priv_d.len = key_impl->key_pair.priv_d.capacity = s_key_coordinate_size;
+    key_impl->key_pair.priv_d =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_y.buffer + s_key_coordinate_size, s_key_coordinate_size);
 
     BCRYPT_ALG_HANDLE alg_handle = s_key_alg_handle_from_curve_name(curve_name);
     NTSTATUS status = BCryptImportKeyPair(
@@ -434,14 +434,14 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     aws_byte_buf_secure_zero(&key_impl->key_pair.key_buf);
 
-    key_impl->key_pair.pub_x.buffer = key_impl->key_pair.key_buf.buffer + sizeof(BCRYPT_ECCKEY_BLOB);
-    key_impl->key_pair.pub_x.len = key_impl->key_pair.pub_x.capacity = key_coordinate_size;
+    key_impl->key_pair.pub_x =
+        aws_byte_buf_from_array(key_impl->key_pair.key_buf.buffer + sizeof(BCRYPT_ECCKEY_BLOB), key_coordinate_size);
 
-    key_impl->key_pair.pub_y.buffer = key_impl->key_pair.pub_x.buffer + key_coordinate_size;
-    key_impl->key_pair.pub_y.len = key_impl->key_pair.pub_y.capacity = key_coordinate_size;
+    key_impl->key_pair.pub_y =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_x.buffer + key_coordinate_size, key_coordinate_size);
 
-    key_impl->key_pair.priv_d.buffer = key_impl->key_pair.pub_y.buffer + key_coordinate_size;
-    key_impl->key_pair.priv_d.len = key_impl->key_pair.priv_d.capacity = key_coordinate_size;
+    key_impl->key_pair.priv_d =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_y.buffer + key_coordinate_size, key_coordinate_size);
 
     if (s_derive_public_key(&key_impl->key_pair)) {
         goto error;

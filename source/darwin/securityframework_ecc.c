@@ -189,15 +189,15 @@ static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
     }
 
     if (pub_x.ptr) {
-        cc_key_pair->key_pair.pub_x.buffer = cc_key_pair->key_pair.key_buf.buffer + 1;
-        cc_key_pair->key_pair.pub_x.len = s_key_coordinate_size;
+        cc_key_pair->key_pair.pub_x =
+            aws_byte_buf_from_array(cc_key_pair->key_pair.key_buf.buffer + 1, s_key_coordinate_size);
 
-        cc_key_pair->key_pair.pub_y.buffer = cc_key_pair->key_pair.pub_x.buffer + s_key_coordinate_size;
-        cc_key_pair->key_pair.pub_y.len = s_key_coordinate_size;
+        cc_key_pair->key_pair.pub_y =
+            aws_byte_buf_from_array(cc_key_pair->key_pair.pub_x.buffer + s_key_coordinate_size, s_key_coordinate_size);
     }
 
-    cc_key_pair->key_pair.priv_d.buffer = cc_key_pair->key_pair.key_buf.buffer + 1 + (s_key_coordinate_size * 2);
-    cc_key_pair->key_pair.priv_d.len = s_key_coordinate_size;
+    cc_key_pair->key_pair.priv_d = aws_byte_buf_from_array(
+        cc_key_pair->key_pair.key_buf.buffer + 1 + (s_key_coordinate_size * 2), s_key_coordinate_size);
     cc_key_pair->key_pair.vtable = &s_key_pair_vtable;
     cc_key_pair->key_pair.curve_name = curve_name;
 

@@ -2,10 +2,23 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(aws-c-common)
 
+macro(aws_load_targets type)
+    include(${CMAKE_CURRENT_LIST_DIR}/${type}/@PROJECT_NAME@-targets.cmake)
+endmacro()
+
+# try to load the lib follow BUILD_SHARED_LIBS. Fall back if not exist.
 if (BUILD_SHARED_LIBS)
-    include(${CMAKE_CURRENT_LIST_DIR}/shared/@PROJECT_NAME@-targets.cmake)
+    if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/shared")
+        aws_load_targets(shared)
+    else()
+        aws_load_targets(static)
+    endif()
 else()
-    include(${CMAKE_CURRENT_LIST_DIR}/static/@PROJECT_NAME@-targets.cmake)
+    if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/static")
+        aws_load_targets(static)
+    else()
+        aws_load_targets(shared)
+    endif()
 endif()
 
 if (NOT BYO_CRYPTO AND NOT WIN32 AND NOT APPLE)

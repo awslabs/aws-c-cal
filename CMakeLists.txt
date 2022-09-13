@@ -78,7 +78,12 @@ elseif (APPLE)
            message(FATAL_ERROR "Security Framework not found")
         endif ()
 
-        list(APPEND PLATFORM_LIBS "-framework Security")
+        find_library(COREFOUNDATION_LIB CoreFoundation)
+        if(NOT COREFOUNDATION_LIB)
+           message(FATAL_ERROR "CoreFoundation Framework not found")
+        endif()
+
+        list(APPEND PLATFORM_LIBS "-framework Security -framework CoreFoundation")
     endif()
 else ()
     if (NOT BYO_CRYPTO)

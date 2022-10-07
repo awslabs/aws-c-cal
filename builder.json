@@ -8,16 +8,14 @@
         "linux": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "v1.3.0", "_comment": "avoid commit 3530140 which breaks manylinux1"
+                    "name": "aws-lc"
                 }
             ]
         },
         "android": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "v1.3.0", "_comment": "avoid commit 3530140 which breaks manylinux1"
+                    "name": "aws-lc"
                 }
             ]
         }

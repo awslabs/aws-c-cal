@@ -48,6 +48,12 @@ file(GLOB AWS_CAL_SRC
         "source/*.c"
 )
 
+function(add_libdl_to_platform_libs)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+        set(PLATFORM_LIBS dl)
+    endif()
+endfunction()
+
 if (WIN32)
 
     if (NOT BYO_CRYPTO)
@@ -96,15 +102,18 @@ else ()
             else()
                 message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
             endif()
-            set(PLATFORM_LIBS crypto dl)
+            set(PLATFORM_LIBS crypto)
+            add_libdl_to_platform_libs()
         else()
             #  note aws_use_package() does this for you, except it appends to the public link targets
             # which we probably don't want for this case where we want the crypto dependency private
             if (IN_SOURCE_BUILD)
-                set(PLATFORM_LIBS crypto dl)
+                set(PLATFORM_LIBS crypto)
+                add_libdl_to_platform_libs()
             else()
                 find_package(crypto REQUIRED)
-                set(PLATFORM_LIBS AWS::crypto dl)
+                set(PLATFORM_LIBS AWS::crypto)
+                add_libdl_to_platform_libs()
             endif()
         endif()
     endif()

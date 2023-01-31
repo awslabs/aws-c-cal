@@ -50,7 +50,7 @@ file(GLOB AWS_CAL_SRC
 
 function(add_libdl_to_platform_libs)
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-        set(PLATFORM_LIBS dl)
+        list(APPEND PLATFORM_LIBS dl)
     endif()
 endfunction()
 

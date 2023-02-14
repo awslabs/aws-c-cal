@@ -30,14 +30,17 @@ int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher
     return cipher->vtable->finalize_decryption(cipher, out);
 }
 
-int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out)
-{
-    return cipher->vtable->get_initialization_vector(cipher, out);
+int aws_symmetric_cipher_get_encryption_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    return aws_byte_buf_write_from_whole_buffer(out, cipher->encryption_tag);
 }
 
-int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out)
+int aws_symmetric_cipher_get_decryption_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    return aws_byte_buf_write_from_whole_buffer(out, cipher->decryption_tag);
+}
+
+int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out)
 {
-    return cipher->vtable->get_tag(cipher, out);
+    return aws_byte_buf_write_from_whole_buffer(out, cipher->iv);
 }
 
 static int s_symmetric_cipher_generate_random_bytes(struct aws_byte_buf *out, size_t len, bool is_counter_mode) {

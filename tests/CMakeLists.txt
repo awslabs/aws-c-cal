@@ -72,6 +72,12 @@ add_test_case(ecdsa_test_import_asn1_key_pair_invalid_fails)
 add_test_case(ecdsa_test_signature_format)
 add_test_case(ecdsa_p256_test_small_coordinate_verification)
 
+add_test_case(aes_cbc_NIST_CBCGFSbox256_case_1)
+add_test_case(aes_cbc_NIST_CBCVarKey256_case_254)
+add_test_case(aes_cbc_NIST_CBCVarTxt256_case_110)
+add_test_case(aes_cbc_NIST_CBCMMT256_case_4)
+add_test_case(aes_cbc_NIST_CBCMMT256_case_9)
+
 add_test_case(der_encode_integer)
 add_test_case(der_encode_boolean)
 add_test_case(der_encode_null)

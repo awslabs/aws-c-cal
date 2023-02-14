@@ -47,7 +47,9 @@ static int s_symmetric_cipher_generate_random_bytes(struct aws_byte_buf *out, si
     size_t len_to_generate = is_counter_mode ? (3 * len)  / 4 : len;
 
     if ((out->capacity - out->len) < len_to_generate) {
-        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        if (aws_byte_buf_reserve_relative(out, len_to_generate)) {
+            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        }
     }
 
     struct aws_byte_buf output_cpy = *out;

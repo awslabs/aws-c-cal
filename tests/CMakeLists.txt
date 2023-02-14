@@ -77,6 +77,7 @@ add_test_case(aes_cbc_NIST_CBCVarKey256_case_254)
 add_test_case(aes_cbc_NIST_CBCVarTxt256_case_110)
 add_test_case(aes_cbc_NIST_CBCMMT256_case_4)
 add_test_case(aes_cbc_NIST_CBCMMT256_case_9)
+add_test_case(aes_cbc_test_with_generated_key_iv)
 
 add_test_case(der_encode_integer)
 add_test_case(der_encode_boolean)

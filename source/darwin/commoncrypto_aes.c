@@ -151,6 +151,8 @@ static int s_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws
 static void s_destroy(struct aws_symmetric_cipher *cipher) {
     aws_byte_buf_clean_up_secure(&cipher->key);
     aws_byte_buf_clean_up_secure(&cipher->iv);
+    aws_byte_buf_clean_up_secure(&cipher->tag);
+    aws_byte_buf_clean_up_secure(&cipher->aad);
 
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
@@ -314,11 +316,11 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new(
 }
 
 static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
-    if (cipher->encryption_tag.len) {
-        aws_byte_buf_clean_up_secure(&cipher->encryption_tag);
+    /* user specification takes precedence. If its wrong its wrong */
+    if (!cipher->tag.len) {
+        aws_byte_buf_init(&cipher->tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
     }
 
-    aws_byte_buf_init(&cipher->encryption_tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     CCStatus status;
@@ -327,9 +329,9 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
      * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
      */
 #ifdef MAC_13_AVAILABLE
-    status = CCCryptorGCMFinalize(cc_cipher->encryptor_handle, cipher->encryption_tag.buffer, tag_length);
+    status = CCCryptorGCMFinalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
 #else
-    status = CCCryptorGCMFinal(cc_cipher->encryptor_handle, cipher->encryption_tag.buffer, &tag_length);
+    status = CCCryptorGCMFinal(cc_cipher->encryptor_handle, cipher->tag.buffer, &tag_length);
 #endif
 
     if (status != kCCSuccess) {
@@ -337,16 +339,11 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-    cipher->encryption_tag.len = tag_length;
+    cipher->tag.len = tag_length;
     return AWS_OP_SUCCESS;
 }
 
 static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
-    if (cipher->decryption_tag.len) {
-        aws_byte_buf_clean_up_secure(&cipher->decryption_tag);
-    }
-
-    aws_byte_buf_init(&cipher->decryption_tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     CCStatus status;
@@ -355,9 +352,9 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
      * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
      */
 #ifdef MAC_13_AVAILABLE
-    status = CCCryptorGCMFinalize(cc_cipher->decryptor_handle, cipher->decryption_tag.buffer, tag_length);
+    status = CCCryptorGCMFinalize(cc_cipher->decryptor_handle, cipher->tag.buffer, tag_length);
 #else
-    status = CCCryptorGCMFinal(cc_cipher->decryptor_handle, cipher->decryption_tag.buffer, &tag_length);
+    status = CCCryptorGCMFinal(cc_cipher->decryptor_handle, cipher->tag.buffer, &tag_length);
 #endif
 
     if (status != kCCSuccess) {
@@ -365,7 +362,6 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-    cipher->decryption_tag.len = tag_length;
     return AWS_OP_SUCCESS;
 }
 

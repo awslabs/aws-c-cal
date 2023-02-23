@@ -30,8 +30,7 @@ struct aws_symmetric_cipher {
     struct aws_byte_buf iv;
     struct aws_byte_buf key;
     struct aws_byte_buf aad;
-    struct aws_byte_buf encryption_tag;
-    struct aws_byte_buf decryption_tag;
+    struct aws_byte_buf tag;
     size_t block_size;
     size_t key_length_bits;
     bool good;
@@ -51,9 +50,8 @@ int aws_symmetric_cipher_decrypt(struct aws_symmetric_cipher *cipher, const stru
 int aws_symmetric_cipher_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 
+int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
-int aws_symmetric_cipher_get_encryption_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
-int aws_symmetric_cipher_get_decryption_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 
 int aws_symmetric_cipher_generate_initialization_vector(size_t len_bytes, bool is_counter_mode, struct aws_byte_buf *out);
 int aws_symmetric_cipher_generate_key(size_t keyLengthBytes, struct aws_byte_buf *out);

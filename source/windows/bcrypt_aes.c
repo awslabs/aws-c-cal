@@ -9,11 +9,10 @@
 
 #define NT_SUCCESS(status) ((NTSTATUS)status >= 0)
 
-static BCRYPT_ALG_HANDLE s_aes_cbc_algorithm_handle = NULL;
 static aws_thread_once s_aes_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
-
+static BCRYPT_ALG_HANDLE s_aes_cbc_algorithm_handle = NULL;
 static BCRYPT_ALG_HANDLE s_aes_gcm_algorithm_handle = NULL;
-static aws_thread_once s_aes_gcm_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
+static BCRYPT_ALG_HANDLE s_aes_ctr_algorithm_handle = NULL;
 
 struct aes_bcrypt_cipher {
     struct aws_symmetric_cipher cipher;
@@ -26,7 +25,7 @@ struct aes_bcrypt_cipher {
     bool encrypt_decrypt_called;
 };
 
-static void s_load_cbc_alg_handle(void *user_data) {
+static void s_load_alg_handles(void *user_data) {
     (void)user_data;
 
     /* this function is incredibly slow, LET IT LEAK*/
@@ -41,16 +40,11 @@ static void s_load_cbc_alg_handle(void *user_data) {
         0);
 
     AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for CBC chaining mode failed");
-}
 
-static void s_load_gcm_alg_handle(void *user_data) {
-    (void)user_data;
+    /* Set up GCM algorithm */
+    status = BCryptOpenAlgorithmProvider(&s_aes_gcm_algorithm_handle, BCRYPT_AES_ALGORITHM, NULL, 0);
+    AWS_ASSERT(s_aes_gcm_algorithm_handle && "BCryptOpenAlgorithmProvider() failed");
 
-    /* Load the AES algorithm */
-    NTSTATUS status = BCryptOpenAlgorithmProvider(&s_aes_gcm_algorithm_handle, BCRYPT_AES_ALGORITHM, NULL, 0);
-    AWS_ASSERT(s_aes_algorithm_handle && "BCryptOpenAlgorithmProvider() failed");
-
-    /* Set the chaining mode to GCM */
     status = BCryptSetProperty(
         s_aes_gcm_algorithm_handle,
         BCRYPT_CHAINING_MODE,
@@ -59,6 +53,19 @@ static void s_load_gcm_alg_handle(void *user_data) {
         0);
 
     AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for GCM chaining mode failed");
+
+    /* Setup CTR algorithm */
+    status = BCryptOpenAlgorithmProvider(&s_aes_ctr_algorithm_handle, BCRYPT_AES_ALGORITHM, NULL, 0);
+    AWS_ASSERT(s_aes_ctr_algorithm_handle && "BCryptOpenAlgorithmProvider() failed");
+
+    status = BCryptSetProperty(
+        s_aes_ctr_algorithm_handle,
+        BCRYPT_CHAINING_MODE,
+        (PUCHAR)BCRYPT_CHAIN_MODE_ECB,
+        (ULONG)(wcslen(BCRYPT_CHAIN_MODE_ECB) + 1),
+        0);
+
+    AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for ECB chaining mode failed");
 }
 
 static BCRYPT_KEY_HANDLE s_import_key_blob(
@@ -386,7 +393,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
 
-    aws_thread_call_once(&s_aes_thread_once, s_load_cbc_alg_handle, NULL);
+    aws_thread_call_once(&s_aes_thread_once, s_load_alg_handles, NULL);
 
     struct aes_bcrypt_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct aes_bcrypt_cipher));
 
@@ -427,7 +434,45 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     const struct aws_byte_cursor *iv,
     const struct aws_byte_cursor *aad) {
 
-    // complete me please
+    aws_thread_call_once(&s_aes_thread_once, s_load_alg_handles, NULL);
+    struct aes_bcrypt_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct aes_bcrypt_cipher));
+
+    cipher->cipher.allocator = allocator;
+    cipher->cipher.block_size = AWS_AES_256_CIPHER_BLOCK_SIZE;
+    cipher->cipher.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
+    cipher->alg_handle = s_aes_gcm_algorithm_handle;
+    cipher->cipher.vtable = &s_aes_gcm_vtable;
+
+    if (s_initialize_cipher_materials(cipher, key, iv, true, true) != AWS_OP_SUCCESS) {
+        goto error;
+    }
+
+    aws_byte_buf_init(&cipher->overflow, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
+    cipher->working_iv = cipher->cipher.iv;
+    cipher->cipher.impl = cipher;
+    cipher->cipher.good = true;
+
+    // Create a new authenticated cipher mode info object for GCM mode
+    BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO auth_info = {0};
+    BCRYPT_INIT_AUTH_MODE_INFO(auth_info);
+    auth_info.pbNonce = cipher->cipher.iv.buffer;
+    auth_info.cbNonce = (ULONG)cipher->cipher.iv.len;
+    auth_info.pbAuthData = (PUCHAR)aad->ptr;
+    auth_info.cbAuthData = (ULONG)aad->len;
+
+    // Set the authenticated cipher mode info on the cipher object
+    status = BCryptSetProperty(cipher->key_handle, BCRYPT_AUTH_MODE_INFO, (PUCHAR)&auth_info, sizeof(auth_info), 0);
+    if (status != STATUS_SUCCESS) {
+        goto error;
+    }
+
+    return &cipher->cipher;
+
+error:
+    if (cipher != NULL) {
+        s_aes_default_destroy(&cipher->cipher);
+    }
+
     return NULL;
 }
 
@@ -438,6 +483,9 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new(
     (void)allocator;
     (void)key;
     (void)iv;
+
+    aws_thread_call_once(&s_aes_thread_once, s_load_alg_handles, NULL);
+
     // complete me please
 
     return NULL;

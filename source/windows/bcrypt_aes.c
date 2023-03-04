@@ -386,7 +386,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
 
-    aws_thread_call_once(&s_aes_thread_once, s_load_alg_handle, NULL);
+    aws_thread_call_once(&s_aes_thread_once, s_load_cbc_alg_handle, NULL);
 
     struct aes_bcrypt_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct aes_bcrypt_cipher));
 
@@ -396,7 +396,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     cipher->alg_handle = s_aes_cbc_algorithm_handle;
     cipher->cipher.vtable = &s_aes_cbc_vtable;
 
-    if (s_initialize_cipher_materials(cipher, key, iv, false) != AWS_OP_SUCCESS) {
+    if (s_initialize_cipher_materials(cipher, key, iv, false, false) != AWS_OP_SUCCESS) {
         goto error;
     }
 

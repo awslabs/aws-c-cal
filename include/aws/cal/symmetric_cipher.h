@@ -57,7 +57,8 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad);
+    const struct aws_byte_cursor *aad,
+    const struct aws_byte_cursor *decryption_tag);
 
 void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher);
 int aws_symmetric_cipher_encrypt(

@@ -462,7 +462,7 @@ static int s_check_multi_block_gcm(
     const struct aws_byte_cursor *expected,
     const struct aws_byte_cursor *tag,
     const struct aws_byte_cursor *aad) {
-    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, key, iv, aad);
+    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, key, iv, aad, NULL);
     ASSERT_NOT_NULL(cipher);
 
     struct aws_byte_buf encrypted_buf;
@@ -981,7 +981,7 @@ AWS_TEST_CASE(gcm_256_KAT_3, s_gcm_256_KAT_3_fn)
 
 static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
-    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, NULL, NULL, NULL);
+    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, NULL, NULL, NULL, NULL);
     ASSERT_NOT_NULL(cipher);
 
     struct aws_byte_buf encrypted_buf;

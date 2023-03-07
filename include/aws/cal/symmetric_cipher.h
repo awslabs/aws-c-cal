@@ -17,6 +17,7 @@ struct aws_symmetric_cipher_vtable {
     const char *alg_name;
     const char *provider;
     void (*destroy)(struct aws_symmetric_cipher *cipher);
+    int (*reset)(struct aws_symmetric_cipher *cipher);
     int (*encrypt)(
         struct aws_symmetric_cipher *cipher,
         const struct aws_byte_cursor *to_encrypt,
@@ -72,6 +73,8 @@ int aws_symmetric_cipher_decrypt(
 
 int aws_symmetric_cipher_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+
+int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
 
 int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);

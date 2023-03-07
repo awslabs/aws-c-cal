@@ -31,6 +31,10 @@ int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher
     return cipher->vtable->finalize_decryption(cipher, out);
 }
 
+int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher) {
+    return cipher->vtable->reset(cipher);
+}
+
 int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     return aws_byte_buf_write_from_whole_buffer(out, cipher->tag);
 }

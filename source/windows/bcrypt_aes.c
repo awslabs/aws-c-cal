@@ -4,8 +4,10 @@
  */
 #include <aws/cal/symmetric_cipher.h>
 
-#include <bcrypt.h>
 #include <windows.h>
+
+/* keep the space to prevent formatters from reordering this with the Windows.h header. */
+#include <bcrypt.h>
 
 #define NT_SUCCESS(status) ((NTSTATUS)status >= 0)
 
@@ -99,6 +101,36 @@ static BCRYPT_KEY_HANDLE s_import_key_blob(
     return key_handle;
 }
 
+static void s_aes_default_destroy(struct aws_symmetric_cipher *cipher) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    /* unless we're in CTR mode, the working iv is the same buffer as the iv.
+       so prevent a double free here by checking the addresses first. */
+    bool working_iv_optimized = cipher->iv.buffer == cipher_impl->working_iv.buffer;
+    aws_byte_buf_clean_up_secure(&cipher->key);
+    aws_byte_buf_clean_up_secure(&cipher->iv);
+    aws_byte_buf_clean_up_secure(&cipher->tag);
+    aws_byte_buf_clean_up_secure(&cipher->aad);
+
+    if (!working_iv_optimized) {
+        aws_byte_buf_clean_up_secure(&cipher_impl->working_iv);
+    }
+
+    aws_byte_buf_clean_up_secure(&cipher_impl->overflow);
+    aws_byte_buf_clean_up_secure(&cipher_impl->working_mac_buffer);
+
+    if (cipher_impl->key_handle) {
+        BCryptDestroyKey(cipher_impl->key_handle);
+        cipher_impl->key_handle = NULL;
+    }
+
+    if (cipher_impl->auth_info_ptr) {
+        aws_mem_release(cipher->allocator, cipher_impl->auth_info_ptr);
+    }
+
+    aws_mem_release(cipher->allocator, cipher_impl);
+}
+
 static int s_initialize_cipher_materials(
     struct aes_bcrypt_cipher *cipher,
     const struct aws_byte_cursor *key,
@@ -110,39 +142,49 @@ static int s_initialize_cipher_materials(
     bool is_gcm) {
     (void)is_ctr_mode;
 
-    if (key) {
-        aws_byte_buf_init_copy_from_cursor(&cipher->cipher.key, cipher->cipher.allocator, *key);
-    } else {
-        aws_byte_buf_init(&cipher->cipher.key, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-        aws_symmetric_cipher_generate_key(AWS_AES_256_KEY_BYTE_LEN, &cipher->cipher.key);
+    if (!cipher->cipher.key.len) {
+        if (key) {
+            aws_byte_buf_init_copy_from_cursor(&cipher->cipher.key, cipher->cipher.allocator, *key);
+        } else {
+            aws_byte_buf_init(&cipher->cipher.key, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+            aws_symmetric_cipher_generate_key(AWS_AES_256_KEY_BYTE_LEN, &cipher->cipher.key);
+        }
     }
 
-    if (iv) {
-        aws_byte_buf_init_copy_from_cursor(&cipher->cipher.iv, cipher->cipher.allocator, *iv);
-    } else {
-        aws_byte_buf_init(&cipher->cipher.iv, cipher->cipher.allocator, iv_size);
-        aws_symmetric_cipher_generate_initialization_vector(iv_size, false, &cipher->cipher.iv);
+    if (!cipher->cipher.iv.len) {
+        if (iv) {
+            aws_byte_buf_init_copy_from_cursor(&cipher->cipher.iv, cipher->cipher.allocator, *iv);
+        } else {
+            aws_byte_buf_init(&cipher->cipher.iv, cipher->cipher.allocator, iv_size);
+            aws_symmetric_cipher_generate_initialization_vector(iv_size, false, &cipher->cipher.iv);
+        }
     }
 
     if (is_gcm) {
 
-        if (tag) {
-            aws_byte_buf_init_copy_from_cursor(&cipher->cipher.tag, cipher->cipher.allocator, *tag);
-        } else {
-            aws_byte_buf_init(&cipher->cipher.tag, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-            aws_byte_buf_secure_zero(&cipher->cipher.tag);
+        if (!cipher->cipher.tag.len) {
+            if (tag) {
+                aws_byte_buf_init_copy_from_cursor(&cipher->cipher.tag, cipher->cipher.allocator, *tag);
+            } else {
+                aws_byte_buf_init(&cipher->cipher.tag, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+                aws_byte_buf_secure_zero(&cipher->cipher.tag);
+                /* windows handles this, just go ahead and tell the API it's got a length. */
+                cipher->cipher.tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
+            }
+        }
+
+        if (!cipher->cipher.aad.len) {
+            if (aad) {
+                aws_byte_buf_init_copy_from_cursor(&cipher->cipher.aad, cipher->cipher.allocator, *aad);
+            }
+        }
+
+        if (!cipher->working_mac_buffer.len) {
+            aws_byte_buf_init(&cipher->working_mac_buffer, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+            aws_byte_buf_secure_zero(&cipher->working_mac_buffer);
             /* windows handles this, just go ahead and tell the API it's got a length. */
-            cipher->cipher.tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
+            cipher->working_mac_buffer.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
         }
-
-        if (aad) {
-            aws_byte_buf_init_copy_from_cursor(&cipher->cipher.aad, cipher->cipher.allocator, *aad);
-        }
-
-        aws_byte_buf_init(&cipher->working_mac_buffer, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-        aws_byte_buf_secure_zero(&cipher->working_mac_buffer);
-        /* windows handles this, just go ahead and tell the API it's got a length. */
-        cipher->working_mac_buffer.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
     }
 
     cipher->key_handle = s_import_key_blob(cipher->alg_handle, cipher->cipher.allocator, &cipher->cipher.key);
@@ -151,6 +193,8 @@ static int s_initialize_cipher_materials(
         cipher->cipher.good = false;
         return AWS_OP_ERR;
     }
+
+    cipher->cipher_flags = 0;
 
     if (!is_gcm) {
         NTSTATUS status = BCryptSetProperty(
@@ -179,14 +223,61 @@ static int s_initialize_cipher_materials(
         cipher->auth_info_ptr->pbMacContext = cipher->working_mac_buffer.buffer;
         cipher->auth_info_ptr->cbMacContext = (ULONG)cipher->working_mac_buffer.len;
 
-        if (aad) {
-            aws_byte_buf_init_copy_from_cursor(&cipher->cipher.aad, cipher->cipher.allocator, *aad);
+        if (cipher->cipher.aad.len) {
             cipher->auth_info_ptr->pbAuthData = (PUCHAR)cipher->cipher.aad.buffer;
             cipher->auth_info_ptr->cbAuthData = (ULONG)cipher->cipher.aad.len;
         }
     }
 
     return AWS_OP_SUCCESS;
+}
+
+static void s_clear_reusable_components(struct aws_symmetric_cipher *cipher) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+    bool working_iv_optimized = cipher->iv.buffer == cipher_impl->working_iv.buffer;
+
+    if (!working_iv_optimized) {
+        aws_byte_buf_secure_zero(&cipher_impl->working_iv);
+    }
+
+    if (cipher_impl->key_handle) {
+        BCryptDestroyKey(cipher_impl->key_handle);
+        cipher_impl->key_handle = NULL;
+    }
+
+    if (cipher_impl->auth_info_ptr) {
+        aws_mem_release(cipher->allocator, cipher_impl->auth_info_ptr);
+        cipher_impl->auth_info_ptr = NULL;
+    }
+
+    aws_byte_buf_secure_zero(&cipher_impl->overflow);
+    aws_byte_buf_secure_zero(&cipher_impl->working_mac_buffer);
+    /* windows handles this, just go ahead and tell the API it's got a length. */
+    cipher_impl->working_mac_buffer.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
+}
+
+static int s_reset_cbc_cipher(struct aws_symmetric_cipher *cipher) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    s_clear_reusable_components(cipher);
+    return s_initialize_cipher_materials(
+        cipher_impl, NULL, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, false, false);
+}
+
+static int s_reset_ctr_cipher(struct aws_symmetric_cipher *cipher) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    s_clear_reusable_components(cipher);
+    return s_initialize_cipher_materials(
+        cipher_impl, NULL, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, true, false);
+}
+
+static int s_reset_gcm_cipher(struct aws_symmetric_cipher *cipher) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    s_clear_reusable_components(cipher);
+    return s_initialize_cipher_materials(
+        cipher_impl, NULL, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true);
 }
 
 static int s_aes_default_encrypt(
@@ -217,7 +308,7 @@ static int s_aes_default_encrypt(
 
     if (cipher_impl->auth_info_ptr) {
         iv = cipher_impl->working_iv.buffer;
-        iv_size = (ULONG)cipher_impl->working_iv.len;
+        iv_size = (ULONG)cipher_impl->working_iv.capacity;
     }
 
     /* iv was set on the key itself, so we don't need to pass it here. */
@@ -257,12 +348,12 @@ static struct aws_byte_buf s_fill_in_overflow(
 
     if (cipher_impl->overflow.len > 0) {
         aws_byte_buf_init_copy(&final_to_operate_on, cipher->allocator, &cipher_impl->overflow);
-        aws_byte_buf_append(&final_to_operate_on, to_operate);
+        aws_byte_buf_append_dynamic(&final_to_operate_on, to_operate);
+        aws_byte_buf_secure_zero(&cipher_impl->overflow);
     } else {
         aws_byte_buf_init_copy_from_cursor(&final_to_operate_on, cipher->allocator, *to_operate);
     }
 
-    aws_byte_buf_secure_zero(&cipher_impl->overflow);
     size_t overflow = final_to_operate_on.len % RESERVE_SIZE;
 
     if (final_to_operate_on.len > RESERVE_SIZE) {
@@ -270,7 +361,7 @@ static struct aws_byte_buf s_fill_in_overflow(
 
         struct aws_byte_cursor slice_for_overflow = aws_byte_cursor_from_buf(&final_to_operate_on);
         aws_byte_cursor_advance(&slice_for_overflow, final_to_operate_on.len - offset);
-        aws_byte_buf_write_from_whole_cursor(&cipher_impl->overflow, slice_for_overflow);
+        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &slice_for_overflow);
         final_to_operate_on.len -= offset;
     } else {
         struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_operate_on);
@@ -289,6 +380,8 @@ static int s_aes_cbc_encrypt(
 
     struct aws_byte_buf final_to_encrypt = s_fill_in_overflow(cipher, to_encrypt);
     struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_encrypt);
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+    cipher_impl->encrypt_decrypt_called = true;
     int ret_val = s_aes_default_encrypt(cipher, &final_cur, out);
     aws_byte_buf_clean_up_secure(&final_to_encrypt);
 
@@ -321,7 +414,7 @@ static int s_default_aes_decrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_decrypt->len == 0) {
+    if (to_decrypt->len == 0 && cipher_impl->encrypt_decrypt_called) {
         return AWS_OP_SUCCESS;
     }
 
@@ -330,7 +423,7 @@ static int s_default_aes_decrypt(
 
     if (cipher_impl->auth_info_ptr) {
         iv = cipher_impl->working_iv.buffer;
-        iv_size = (ULONG)cipher_impl->working_iv.len;
+        iv_size = (ULONG)cipher_impl->working_iv.capacity;
     }
 
     size_t predicted_write_lengths = to_decrypt->len;
@@ -372,6 +465,8 @@ static int s_aes_cbc_decrypt(
     struct aws_byte_buf *out) {
     struct aws_byte_buf final_to_decrypt = s_fill_in_overflow(cipher, to_decrypt);
     struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_decrypt);
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+    cipher_impl->encrypt_decrypt_called = true;
 
     int ret_val = s_default_aes_decrypt(cipher, &final_cur, out);
     aws_byte_buf_clean_up_secure(&final_to_decrypt);
@@ -399,36 +494,6 @@ static int s_aes_cbc_finalize_decryption(struct aws_symmetric_cipher *cipher, st
     return AWS_OP_SUCCESS;
 }
 
-static void s_aes_default_destroy(struct aws_symmetric_cipher *cipher) {
-    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
-
-    /* unless we're in CTR mode, the working iv is the same buffer as the iv.
-       so prevent a double free here by checking the addresses first. */
-    bool working_iv_optimized = cipher->iv.buffer == cipher_impl->working_iv.buffer;
-    aws_byte_buf_clean_up_secure(&cipher->key);
-    aws_byte_buf_clean_up_secure(&cipher->iv);
-    aws_byte_buf_clean_up_secure(&cipher->tag);
-    aws_byte_buf_clean_up_secure(&cipher->aad);
-
-    if (!working_iv_optimized) {
-        aws_byte_buf_clean_up_secure(&cipher_impl->working_iv);
-    }
-
-    aws_byte_buf_clean_up_secure(&cipher_impl->overflow);
-    aws_byte_buf_clean_up_secure(&cipher_impl->working_mac_buffer);
-
-    if (cipher_impl->key_handle) {
-        BCryptDestroyKey(cipher_impl->key_handle);
-        cipher_impl->key_handle = NULL;
-    }
-
-    if (cipher_impl->auth_info_ptr) {
-        aws_mem_release(cipher->allocator, cipher_impl->auth_info_ptr);
-    }
-
-    aws_mem_release(cipher->allocator, cipher_impl);
-}
-
 static struct aws_symmetric_cipher_vtable s_aes_cbc_vtable = {
     .alg_name = "AES-CBC 256",
     .provider = "Windows CNG",
@@ -437,6 +502,7 @@ static struct aws_symmetric_cipher_vtable s_aes_cbc_vtable = {
     .finalize_encryption = s_aes_cbc_finalize_encryption,
     .finalize_decryption = s_aes_cbc_finalize_decryption,
     .destroy = s_aes_default_destroy,
+    .reset = s_reset_cbc_cipher,
 };
 
 struct aws_symmetric_cipher *aws_aes_cbc_256_new(
@@ -499,14 +565,15 @@ static int s_aes_gcm_encrypt(
     if (working_buffer.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
         size_t offset = working_buffer.len % AWS_AES_256_CIPHER_BLOCK_SIZE;
         size_t seek_to = working_buffer.len - (AWS_AES_256_CIPHER_BLOCK_SIZE + offset);
-        struct aws_byte_cursor offset_working_buffer = aws_byte_cursor_from_buf(&working_buffer);
-        aws_byte_cursor_advance(&offset_working_buffer, seek_to);
-        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &offset_working_buffer);
+        struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
+        struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
+        /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
+           new overfloew should be. */
+        struct aws_byte_cursor new_overflow_cur = working_buf_cur;
+        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &new_overflow_cur);
 
-        struct aws_byte_cursor shortened_working_buf = aws_byte_cursor_from_buf(&working_buffer);
-        shortened_working_buf.len = seek_to;
         cipher_impl->encrypt_decrypt_called = true;
-        ret_val = s_aes_default_encrypt(cipher, &shortened_working_buf, out);
+        ret_val = s_aes_default_encrypt(cipher, &working_slice, out);
     } else {
         struct aws_byte_cursor working_buffer_cur = aws_byte_cursor_from_buf(&working_buffer);
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_buffer_cur);
@@ -545,14 +612,15 @@ static int s_aes_gcm_decrypt(
     if (working_buffer.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
         size_t offset = working_buffer.len % AWS_AES_256_CIPHER_BLOCK_SIZE;
         size_t seek_to = working_buffer.len - (AWS_AES_256_CIPHER_BLOCK_SIZE + offset);
-        struct aws_byte_cursor offset_working_buffer = aws_byte_cursor_from_buf(&working_buffer);
-        aws_byte_cursor_advance(&offset_working_buffer, seek_to);
-        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &offset_working_buffer);
+        struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
+        struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
+        /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
+           new overfloew should be. */
+        struct aws_byte_cursor new_overflow_cur = working_buf_cur;
+        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &new_overflow_cur);
 
-        struct aws_byte_cursor shortened_working_buf = aws_byte_cursor_from_buf(&working_buffer);
-        shortened_working_buf.len = seek_to;
         cipher_impl->encrypt_decrypt_called = true;
-        ret_val = s_default_aes_decrypt(cipher, &shortened_working_buf, out);
+        ret_val = s_default_aes_decrypt(cipher, &working_slice, out);
     } else {
         struct aws_byte_cursor working_buffer_cur = aws_byte_cursor_from_buf(&working_buffer);
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_buffer_cur);
@@ -569,6 +637,7 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_aes_default_encrypt(cipher, &remaining_cur, out);
     aws_byte_buf_secure_zero(&cipher_impl->overflow);
+    aws_byte_buf_secure_zero(&cipher_impl->working_iv);
     return ret_val;
 }
 
@@ -579,6 +648,7 @@ static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, st
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_default_aes_decrypt(cipher, &remaining_cur, out);
     aws_byte_buf_secure_zero(&cipher_impl->overflow);
+    aws_byte_buf_secure_zero(&cipher_impl->working_iv);
     return ret_val;
 }
 
@@ -590,6 +660,7 @@ static struct aws_symmetric_cipher_vtable s_aes_gcm_vtable = {
     .finalize_encryption = s_aes_gcm_finalize_encryption,
     .finalize_decryption = s_aes_gcm_finalize_decryption,
     .destroy = s_aes_default_destroy,
+    .reset = s_reset_gcm_cipher,
 };
 
 struct aws_symmetric_cipher *aws_aes_gcm_256_new(
@@ -617,7 +688,6 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     aws_byte_buf_init(&cipher->overflow, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
     aws_byte_buf_init(&cipher->working_iv, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
     aws_byte_buf_secure_zero(&cipher->working_iv);
-    cipher->working_iv.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
 
     cipher->cipher.impl = cipher;
     cipher->cipher.good = true;

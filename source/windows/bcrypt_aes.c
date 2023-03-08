@@ -9,6 +9,44 @@
 /* keep the space to prevent formatters from reordering this with the Windows.h header. */
 #include <bcrypt.h>
 
+static int s_xor_cursors(const struct aws_byte_cursor* a, const struct aws_byte_cursor* b, struct aws_byte_buf* dest) {
+    size_t min_size = 0;
+    size_t max_size = 0;
+    struct aws_byte_cursor *larger_set;
+
+    if (a->len > b->len) {
+        larger_set = a;
+        max_size = a->len;
+        min_size = b->len;
+    } else {
+        larger_set = b;
+        max_size = b->len;
+        min_size = a->len;
+    }
+
+    if (dest->capacity - dest->len < max_size) {
+        if (aws_byte_buf_reserve_relative(dest, max_size)) {
+            return AWS_OP_ERR;
+        }
+    }
+
+    /* If the profiler is saying this is slow, SIMD the loop below. */
+    uint8_t *array_ref = dest->buffer + dest->len;
+
+    for (size_t i = 0; i < min_size; ++i) {
+        array_ref[i] = a->ptr[i] ^ b->ptr[i];    
+    }
+
+    /* fill the back. */
+    for (size_t i = min_size; i < max_size; ++i) {
+        array_ref[i] = larger_set->ptr[i];
+    }
+
+    dest->len += max_size;
+
+    return AWS_OP_SUCCESS;
+}
+
 #define NT_SUCCESS(status) ((NTSTATUS)status >= 0)
 
 static aws_thread_once s_aes_thread_once = AWS_THREAD_ONCE_STATIC_INIT;

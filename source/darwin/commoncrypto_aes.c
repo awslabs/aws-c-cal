@@ -184,6 +184,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     struct cc_aes_cipher *cc_cipher = aws_mem_calloc(allocator, 1, sizeof(struct cc_aes_cipher));
     cc_cipher->cipher_base.allocator = allocator;
     cc_cipher->cipher_base.block_size = AWS_AES_256_CIPHER_BLOCK_SIZE;
+    cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
     cc_cipher->cipher_base.impl = cc_cipher;
     cc_cipher->cipher_base.vtable = &s_aes_cbc_vtable;
 

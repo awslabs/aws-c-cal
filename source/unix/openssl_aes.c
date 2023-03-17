@@ -82,6 +82,7 @@ static int s_decrypt(
     if (!EVP_DecryptUpdate(
             openssl_cipher->decryptor_ctx, out->buffer + out->len, &len_written, input->ptr, (int)input->len)) {
         cipher->good = false;
+
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -155,11 +156,42 @@ static int s_reset(struct aws_symmetric_cipher *cipher) {
     return AWS_OP_SUCCESS;
 }
 
+static int s_init_cbc_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    if (!EVP_EncryptInit_ex(
+            openssl_cipher->encryptor_ctx,
+            EVP_aes_256_cbc(),
+            NULL,
+            openssl_cipher->cipher_base.key.buffer,
+            openssl_cipher->cipher_base.iv.buffer) ||
+        !EVP_DecryptInit_ex(
+            openssl_cipher->decryptor_ctx,
+            EVP_aes_256_cbc(),
+            NULL,
+            openssl_cipher->cipher_base.key.buffer,
+            openssl_cipher->cipher_base.iv.buffer)) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_reset_cbc_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    int ret_val = s_reset(cipher);
+
+    if (ret_val == AWS_OP_SUCCESS) {
+        return s_init_cbc_cipher_materials(cipher);
+    }
+
+    return ret_val;
+}
+
 static struct aws_symmetric_cipher_vtable s_cbc_vtable = {
     .alg_name = "AES-CBC 256",
     .provider = "OpenSSL Compatible LibCrypto",
     .destroy = s_destroy,
-    .reset = s_reset,
+    .reset = s_reset_cbc_cipher_materials,
     .decrypt = s_decrypt,
     .encrypt = s_encrypt,
     .finalize_decryption = s_finalize_decryption,
@@ -201,24 +233,11 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     cipher->decryptor_ctx = EVP_CIPHER_CTX_new();
     AWS_FATAL_ASSERT(cipher->decryptor_ctx && "Cipher initialization failed!");
 
-    if (!(EVP_EncryptInit_ex(
-              cipher->encryptor_ctx,
-              EVP_aes_256_cbc(),
-              NULL,
-              cipher->cipher_base.key.buffer,
-              cipher->cipher_base.iv.buffer) ||
-          !(EVP_DecryptInit_ex(
-              cipher->decryptor_ctx,
-              EVP_aes_256_cbc(),
-              NULL,
-              cipher->cipher_base.key.buffer,
-              cipher->cipher_base.iv.buffer)))) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    if (s_init_cbc_cipher_materials(&cipher->cipher_base) != AWS_OP_SUCCESS) {
         goto error;
     }
 
     cipher->cipher_base.good = true;
-
     return &cipher->cipher_base;
 
 error:
@@ -226,11 +245,44 @@ error:
     return NULL;
 }
 
+static int s_init_ctr_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    if (!(EVP_EncryptInit_ex(
+              openssl_cipher->encryptor_ctx,
+              EVP_aes_256_ctr(),
+              NULL,
+              openssl_cipher->cipher_base.key.buffer,
+              openssl_cipher->cipher_base.iv.buffer) &&
+          EVP_CIPHER_CTX_set_padding(openssl_cipher->encryptor_ctx, 0)) ||
+        !(EVP_DecryptInit_ex(
+              openssl_cipher->decryptor_ctx,
+              EVP_aes_256_ctr(),
+              NULL,
+              openssl_cipher->cipher_base.key.buffer,
+              openssl_cipher->cipher_base.iv.buffer) &&
+          EVP_CIPHER_CTX_set_padding(openssl_cipher->decryptor_ctx, 0))) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_reset_ctr_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    int ret_val = s_reset(cipher);
+
+    if (ret_val == AWS_OP_SUCCESS) {
+        return s_init_ctr_cipher_materials(cipher);
+    }
+
+    return ret_val;
+}
+
 static struct aws_symmetric_cipher_vtable s_ctr_vtable = {
     .alg_name = "AES-CTR 256",
     .provider = "OpenSSL Compatible LibCrypto",
     .destroy = s_destroy,
-    .reset = s_reset,
+    .reset = s_reset_ctr_cipher_materials,
     .decrypt = s_decrypt,
     .encrypt = s_encrypt,
     .finalize_decryption = s_finalize_decryption,
@@ -272,21 +324,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new(
     cipher->decryptor_ctx = EVP_CIPHER_CTX_new();
     AWS_FATAL_ASSERT(cipher->decryptor_ctx && "Cipher initialization failed!");
 
-    if (!(EVP_EncryptInit_ex(
-              cipher->encryptor_ctx,
-              EVP_aes_256_ctr(),
-              NULL,
-              cipher->cipher_base.key.buffer,
-              cipher->cipher_base.iv.buffer) ||
-          !(EVP_CIPHER_CTX_set_padding(cipher->encryptor_ctx, 0)) ||
-          !(EVP_DecryptInit_ex(
-              cipher->decryptor_ctx,
-              EVP_aes_256_ctr(),
-              NULL,
-              cipher->cipher_base.key.buffer,
-              cipher->cipher_base.iv.buffer)) ||
-          !(EVP_CIPHER_CTX_set_padding(cipher->decryptor_ctx, 0)))) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    if (s_init_ctr_cipher_materials(&cipher->cipher_base) != AWS_OP_SUCCESS) {
         goto error;
     }
 
@@ -298,15 +336,100 @@ error:
     return NULL;
 }
 
+static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    int ret_val = s_finalize_encryption(cipher, out);
+
+    if (ret_val == AWS_OP_SUCCESS) {
+        if (!cipher->tag.len) {
+            if (!EVP_CIPHER_CTX_ctrl(
+                    openssl_cipher->encryptor_ctx,
+                    EVP_CTRL_GCM_GET_TAG,
+                    (int)cipher->tag.capacity,
+                    cipher->tag.buffer)) {
+                cipher->good = false;
+                return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+            }
+            cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
+        }
+    }
+
+    return ret_val;
+}
+
+static int s_init_gcm_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    if (!(EVP_EncryptInit_ex(openssl_cipher->encryptor_ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) &&
+          EVP_EncryptInit_ex(
+              openssl_cipher->encryptor_ctx,
+              NULL,
+              NULL,
+              openssl_cipher->cipher_base.key.buffer,
+              openssl_cipher->cipher_base.iv.buffer) &&
+          EVP_CIPHER_CTX_set_padding(openssl_cipher->encryptor_ctx, 0)) ||
+        !(EVP_DecryptInit_ex(openssl_cipher->decryptor_ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) &&
+          EVP_DecryptInit_ex(
+              openssl_cipher->decryptor_ctx,
+              NULL,
+              NULL,
+              openssl_cipher->cipher_base.key.buffer,
+              openssl_cipher->cipher_base.iv.buffer) &&
+          EVP_CIPHER_CTX_set_padding(openssl_cipher->decryptor_ctx, 0))) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    if (openssl_cipher->cipher_base.aad.len) {
+        int outLen = 0;
+        if (!EVP_EncryptUpdate(
+                openssl_cipher->encryptor_ctx,
+                NULL,
+                &outLen,
+                openssl_cipher->cipher_base.aad.buffer,
+                (int)openssl_cipher->cipher_base.aad.len) ||
+            !EVP_DecryptUpdate(
+                openssl_cipher->decryptor_ctx,
+                NULL,
+                &outLen,
+                openssl_cipher->cipher_base.aad.buffer,
+                (int)openssl_cipher->cipher_base.aad.len)) {
+            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        }
+    }
+
+    if (openssl_cipher->cipher_base.tag.len) {
+        if (!EVP_CIPHER_CTX_ctrl(
+                openssl_cipher->decryptor_ctx,
+                EVP_CTRL_GCM_SET_TAG,
+                (int)openssl_cipher->cipher_base.tag.len,
+                openssl_cipher->cipher_base.tag.buffer)) {
+            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        }
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_reset_gcm_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    int ret_val = s_reset(cipher);
+
+    if (ret_val == AWS_OP_SUCCESS) {
+        return s_init_gcm_cipher_materials(cipher);
+    }
+
+    return ret_val;
+}
+
 static struct aws_symmetric_cipher_vtable s_gcm_vtable = {
     .alg_name = "AES-GCM 256",
     .provider = "OpenSSL Compatible LibCrypto",
     .destroy = s_destroy,
-    .reset = s_reset,
+    .reset = s_reset_gcm_cipher_materials,
     .decrypt = s_decrypt,
     .encrypt = s_encrypt,
     .finalize_decryption = s_finalize_decryption,
-    .finalize_encryption = s_finalize_encryption,
+    .finalize_encryption = s_finalize_gcm_encryption,
 };
 
 struct aws_symmetric_cipher *aws_aes_gcm_256_new(
@@ -347,42 +470,22 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     cipher->decryptor_ctx = EVP_CIPHER_CTX_new();
     AWS_FATAL_ASSERT(cipher->decryptor_ctx && "Decryptor cipher initialization failed!");
 
-    /* Initialize the cipher contexts with the specified key and IV. */
-    if (!(EVP_EncryptInit_ex(cipher->encryptor_ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) &&
-          EVP_EncryptInit_ex(
-              cipher->encryptor_ctx, NULL, NULL, cipher->cipher_base.key.buffer, cipher->cipher_base.iv.buffer) &&
-          EVP_DecryptInit_ex(cipher->decryptor_ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) &&
-          EVP_DecryptInit_ex(
-              cipher->decryptor_ctx, NULL, NULL, cipher->cipher_base.key.buffer, cipher->cipher_base.iv.buffer))) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-        goto error;
-    }
-
     /* Set AAD if provided */
     if (aad) {
         aws_byte_buf_init_copy_from_cursor(&cipher->cipher_base.aad, allocator, *aad);
-
-        if (!EVP_EncryptUpdate(
-                cipher->encryptor_ctx, NULL, NULL, cipher->cipher_base.aad.buffer, (int)cipher->cipher_base.aad.len) ||
-            !EVP_DecryptUpdate(
-                cipher->decryptor_ctx, NULL, NULL, cipher->cipher_base.aad.buffer, (int)cipher->cipher_base.aad.len)) {
-            aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-            goto error;
-        }
     }
 
-    /* Set tag size */
-    if (decryption_tag->len) {
+    /* Set tag for the decryptor to use.*/
+    if (decryption_tag) {
         aws_byte_buf_init_copy_from_cursor(&cipher->cipher_base.tag, allocator, *decryption_tag);
+    } else {
+        /* we'll need this later when we grab the tag during encryption time. */
+        aws_byte_buf_init(&cipher->cipher_base.tag, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+    }
 
-        if (EVP_CIPHER_CTX_ctrl(
-                cipher->decryptor_ctx,
-                EVP_CTRL_GCM_SET_TAG,
-                (int)cipher->cipher_base.tag.len,
-                cipher->cipher_base.tag.buffer) == 0) {
-            aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-            goto error;
-        }
+    /* Initialize the cipher contexts with the specified key and IV. */
+    if (s_init_gcm_cipher_materials(&cipher->cipher_base)) {
+        goto error;
     }
 
     cipher->cipher_base.good = true;

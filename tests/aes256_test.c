@@ -27,7 +27,7 @@ static int s_check_single_block_cbc(
     ASSERT_BIN_ARRAYS_EQUALS(expected->ptr, expected->len, encrypted_buf.buffer, encrypted_buf.len);
     encrypted_buf.len += AWS_AES_256_CIPHER_BLOCK_SIZE;
 
-    // aws_symmetric_cipher_reset(cipher);
+    aws_symmetric_cipher_reset(cipher);
     struct aws_byte_cursor encrypted_cur = aws_byte_cursor_from_buf(&encrypted_buf);
     struct aws_byte_buf decrypted_buf;
     aws_byte_buf_init(&decrypted_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);

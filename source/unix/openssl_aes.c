@@ -10,6 +10,7 @@ struct openssl_aes_cipher {
     struct aws_symmetric_cipher cipher_base;
     EVP_CIPHER_CTX *encryptor_ctx;
     EVP_CIPHER_CTX *decryptor_ctx;
+    struct aws_byte_buf working_buffer;
 };
 
 static int s_encrypt(
@@ -152,6 +153,7 @@ static int s_reset(struct aws_symmetric_cipher *cipher) {
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
+    aws_byte_buf_secure_zero(&openssl_cipher->working_buffer);
     cipher->good = true;
     return AWS_OP_SUCCESS;
 }
@@ -485,6 +487,245 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
 
     /* Initialize the cipher contexts with the specified key and IV. */
     if (s_init_gcm_cipher_materials(&cipher->cipher_base)) {
+        goto error;
+    }
+
+    cipher->cipher_base.good = true;
+    return &cipher->cipher_base;
+
+error:
+    s_destroy(&cipher->cipher_base);
+    return NULL;
+}
+
+static int s_key_wrap_encrypt_decrypt(
+    struct aws_symmetric_cipher *cipher,
+    const struct aws_byte_cursor *input,
+    struct aws_byte_buf *out) {
+    (void)out;
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    return aws_byte_buf_append_dynamic(&openssl_cipher->working_buffer, input);
+}
+
+static const size_t MIN_CEK_LENGTH_BYTES = 128 / 8;
+static const unsigned char INTEGRITY_VALUE = 0xA6;
+#define KEYWRAP_BLOCK_SIZE 8u
+
+static int s_key_wrap_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    if (openssl_cipher->working_buffer.len < MIN_CEK_LENGTH_BYTES) {
+        cipher->good = false;
+        return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    }
+
+    /* the following is an in place implementation of
+       RFC 3394 using the alternate in-place implementation.
+       we use one in-place buffer instead of the copy at the end.
+       the one letter variable names are meant to directly reflect the variables in the RFC */
+    size_t required_buffer_space = openssl_cipher->working_buffer.len + cipher->block_size;
+    size_t available_write_space = out->capacity - out->len;
+
+    if (available_write_space < required_buffer_space) {
+        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
+            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        }
+    }
+    /* put the integrity check register in the first 8 bytes of the final buffer. */
+    aws_byte_buf_write_u8_n(out, INTEGRITY_VALUE, KEYWRAP_BLOCK_SIZE);
+    struct aws_byte_cursor a = aws_byte_cursor_from_array(out->buffer + out->len, KEYWRAP_BLOCK_SIZE);
+
+    struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&openssl_cipher->working_buffer);
+    aws_byte_buf_append_dynamic(out, &working_buf_cur);
+
+    /* put the register buffer after the integrity check register */
+    struct aws_byte_cursor r =
+        aws_byte_cursor_from_array(out->buffer + out->len + KEYWRAP_BLOCK_SIZE, KEYWRAP_BLOCK_SIZE);
+
+    int n = (int)(openssl_cipher->working_buffer.len / KEYWRAP_BLOCK_SIZE);
+
+    uint8_t b_buf[KEYWRAP_BLOCK_SIZE * 2] = {0};
+    struct aws_byte_buf b = aws_byte_buf_from_array(b_buf, sizeof(b_buf));
+    int b_out_len = b.capacity;
+
+    uint8_t temp_buf[KEYWRAP_BLOCK_SIZE * 2] = {0};
+    struct aws_byte_buf temp_input = aws_byte_buf_from_array(temp_buf, sizeof(temp_buf));
+
+    for (int j = 0; j <= 5; ++j) {
+        for (int i = 1; i <= n; ++i) {
+            /* concat A and R[i], A should be most significant and then R[i] should be least significant. */
+            aws_byte_buf_append(&temp_input, &a);
+            aws_byte_buf_append(&temp_input, &r);
+
+            /* encrypt the concatenated A and R[I] and store it in B */
+            if (!EVP_EncryptUpdate(
+                    openssl_cipher->encryptor_ctx, b.buffer, &b_out_len, temp_input.buffer, (int)temp_input.len)) {
+                cipher->good = false;
+                return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+            }
+
+            unsigned char t = (unsigned char)((n * j) + i);
+            /* put the 64 MSB ^ T into A */
+            memcpy(a.ptr, b.buffer, KEYWRAP_BLOCK_SIZE);
+            a.ptr[7] ^= t;
+
+            /* put the 64 LSB into R[i] */
+            memcpy(r.ptr, b.buffer + KEYWRAP_BLOCK_SIZE, KEYWRAP_BLOCK_SIZE);
+            /* increment i -> R[i] */
+            aws_byte_cursor_advance(&r, KEYWRAP_BLOCK_SIZE);
+        }
+        /* reset R */
+        r = aws_byte_cursor_from_array(out->buffer + out->len + KEYWRAP_BLOCK_SIZE, KEYWRAP_BLOCK_SIZE);
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_key_wrap_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    if (openssl_cipher->working_buffer.len < MIN_CEK_LENGTH_BYTES + KEYWRAP_BLOCK_SIZE) {
+        cipher->good = false;
+        return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    }
+
+    /* the following is an in place implementation of
+       RFC 3394 using the alternate in-place implementation.
+       we use one in-place buffer instead of the copy at the end.
+       the one letter variable names are meant to directly reflect the variables in the RFC */
+    size_t required_buffer_space = openssl_cipher->working_buffer.len - KEYWRAP_BLOCK_SIZE;
+    size_t available_write_space = out->capacity - out->len;
+
+    if (available_write_space < required_buffer_space) {
+        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
+            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        }
+    }
+
+    struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&openssl_cipher->working_buffer);
+    aws_byte_cursor_advance(&working_buf_cur, KEYWRAP_BLOCK_SIZE);
+    aws_byte_buf_append_dynamic(out, &working_buf_cur);
+
+    /* integrity register should be the first 8 bytes of the final buffer. */
+    struct aws_byte_cursor a = aws_byte_cursor_from_buf(&openssl_cipher->working_buffer);
+
+    /* the register buffer after the integrity check register. For decryption, start at the last array position (8 bytes
+     * before the end) */
+    struct aws_byte_cursor r =
+        aws_byte_cursor_from_array(out->buffer + out->len + required_buffer_space, KEYWRAP_BLOCK_SIZE);
+
+    int n = (int)(required_buffer_space / KEYWRAP_BLOCK_SIZE);
+
+    uint8_t b_buf[KEYWRAP_BLOCK_SIZE * 10] = {0};
+    struct aws_byte_buf b = aws_byte_buf_from_array(b_buf, sizeof(b_buf));
+    int b_out_len = b.capacity;
+
+    uint8_t temp_buf[KEYWRAP_BLOCK_SIZE * 2] = {0};
+    struct aws_byte_buf temp_input = aws_byte_buf_from_array(temp_buf, sizeof(temp_buf));
+
+    for (int j = 5; j >= 0; --j) {
+        for (int i = n; i >= 1; --i) {
+            a.len = KEYWRAP_BLOCK_SIZE;
+            /* concat A and R[i], A should be most significant and then R[i] should be least significant. */
+            aws_byte_buf_append(&temp_input, &a);
+
+            unsigned char t = (unsigned char)((n * j) + i);
+            temp_input.buffer[temp_input.len - 1] ^= t;
+            aws_byte_buf_append(&temp_input, &r);
+
+            /* Decrypt the concatenated buffer */
+            if (!EVP_DecryptUpdate(
+                    openssl_cipher->decryptor_ctx, b.buffer, &b_out_len, temp_input.buffer, (int)temp_input.len)) {
+                cipher->good = false;
+                return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+            }
+
+            /* set A to 64 MSB of decrypted result */
+            memcpy(a.ptr, b.buffer, KEYWRAP_BLOCK_SIZE);
+            /* set the R[i] to the 64 LSB of decrypted result */
+            memcpy(r.ptr, b.buffer + KEYWRAP_BLOCK_SIZE, KEYWRAP_BLOCK_SIZE);
+            /* decrement i -> R[i] */
+            r.ptr -= KEYWRAP_BLOCK_SIZE;
+            r.len = KEYWRAP_BLOCK_SIZE;
+        }
+        /* reset R */
+        r = aws_byte_cursor_from_array(out->buffer + out->len + required_buffer_space, KEYWRAP_BLOCK_SIZE);
+    }
+
+    /* here we perform the integrity check to make sure A == 0xA6A6A6A6A6A6A6A6 */
+    for (size_t i = 0; i < KEYWRAP_BLOCK_SIZE; ++i) {
+        if (a.ptr[i] != INTEGRITY_VALUE) {
+            cipher->good = false;
+            return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+        }
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_init_keywrap_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
+    if (!(EVP_EncryptInit_ex(openssl_cipher->encryptor_ctx, EVP_aes_256_ecb(), NULL, cipher->key.buffer, NULL) &&
+          EVP_CIPHER_CTX_set_padding(openssl_cipher->encryptor_ctx, 0)) ||
+        !(EVP_DecryptInit_ex(openssl_cipher->decryptor_ctx, EVP_aes_256_ecb(), NULL, cipher->key.buffer, NULL) &&
+          EVP_CIPHER_CTX_set_padding(openssl_cipher->decryptor_ctx, 0))) {
+        cipher->good = false;
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_reset_keywrap_cipher_materials(struct aws_symmetric_cipher *cipher) {
+    int ret_val = s_reset(cipher);
+
+    if (ret_val == AWS_OP_SUCCESS) {
+        return s_init_keywrap_cipher_materials(cipher);
+    }
+
+    return ret_val;
+}
+
+static struct aws_symmetric_cipher_vtable s_keywrap_vtable = {
+    .alg_name = "AES-KEYWRAP 256",
+    .provider = "OpenSSL Compatible LibCrypto",
+    .destroy = s_destroy,
+    .reset = s_reset_keywrap_cipher_materials,
+    .decrypt = s_key_wrap_encrypt_decrypt,
+    .encrypt = s_key_wrap_encrypt_decrypt,
+    .finalize_decryption = s_key_wrap_finalize_encryption,
+    .finalize_encryption = s_key_wrap_finalize_decryption,
+};
+
+struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key) {
+    struct openssl_aes_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct openssl_aes_cipher));
+    cipher->cipher_base.allocator = allocator;
+    cipher->cipher_base.block_size = KEYWRAP_BLOCK_SIZE;
+    cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
+    cipher->cipher_base.vtable = &s_keywrap_vtable;
+    cipher->cipher_base.impl = cipher;
+
+    /* Copy key into the cipher context. */
+    if (key) {
+        aws_byte_buf_init_copy_from_cursor(&cipher->cipher_base.key, allocator, *key);
+    } else {
+        aws_byte_buf_init(&cipher->cipher_base.key, allocator, AWS_AES_256_KEY_BYTE_LEN);
+        aws_symmetric_cipher_generate_key(AWS_AES_256_KEY_BYTE_LEN, &cipher->cipher_base.key);
+    }
+
+    /* Initialize the cipher contexts. */
+    cipher->encryptor_ctx = EVP_CIPHER_CTX_new();
+    AWS_FATAL_ASSERT(cipher->encryptor_ctx && "Encryptor cipher initialization failed!");
+
+    cipher->decryptor_ctx = EVP_CIPHER_CTX_new();
+    AWS_FATAL_ASSERT(cipher->decryptor_ctx && "Decryptor cipher initialization failed!");
+
+    /* Initialize the cipher contexts with the specified key and IV. */
+    if (s_init_keywrap_cipher_materials(&cipher->cipher_base)) {
         goto error;
     }
 

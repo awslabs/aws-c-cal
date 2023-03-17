@@ -116,6 +116,21 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     const struct aws_byte_cursor *decryption_tag);
 
 /**
+ * Creates an instance of AES Keywrap with 256-bit key.
+ * If key is NULL, it will be generated internally.
+ * You can get the generated key back by calling:
+ *
+ * aws_symmetric_cipher_get_key()
+ *
+ * If key is set, that key will be copied internally and used by the cipher.
+ *
+ * Returns NULL on failure. You can check aws_last_error() to get the error code indicating the failure cause.
+ */
+struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key);
+
+/**
  * Cleans up internal resources and state for cipher and then deallocates it.
  */
 void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher);

@@ -1016,3 +1016,289 @@ static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocat
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(gcm_test_with_generated_key_iv, s_aes_gcm_test_with_generated_key_iv_fn)
+
+static int s_test_aes_keywrap_RFC3394_256BitKey256CekTestVector(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t key[] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+    };
+    size_t key_length = sizeof(key);
+
+    uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
+                       0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    size_t input_length = sizeof(input);
+
+    uint8_t expected_output[] = {0x28, 0xC9, 0xF4, 0x04, 0xC4, 0xB8, 0x10, 0xF4, 0xCB, 0xCC, 0xB3, 0x5C, 0xFB, 0x87,
+                                 0xF8, 0x26, 0x3F, 0x57, 0x86, 0xE2, 0xD8, 0x0E, 0xD3, 0x26, 0xCB, 0xC7, 0xF0, 0xE7,
+                                 0x1A, 0x99, 0xF4, 0x3B, 0xFB, 0x98, 0x8B, 0x9B, 0x7A, 0x02, 0xDD, 0x21};
+    size_t expected_output_length = sizeof(expected_output);
+
+    struct aws_byte_cursor input_cur = aws_byte_cursor_from_array(input, input_length);
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, key_length);
+    struct aws_byte_buf output_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&output_buf, allocator, expected_output_length));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_keywrap_256_new(allocator, &key_cur);
+    ASSERT_NOT_NULL(cipher);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, &input_cur, &output_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &output_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(expected_output, expected_output_length, output_buf.buffer, output_buf.len);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
+
+    struct aws_byte_buf decrypted_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted_buf, allocator, input_length));
+
+    struct aws_byte_cursor encrypted_data = aws_byte_cursor_from_buf(&output_buf);
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, &encrypted_data, &decrypted_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(input, input_length, decrypted_buf.buffer, decrypted_buf.len);
+
+    aws_symmetric_cipher_destroy(cipher);
+    aws_byte_buf_clean_up(&output_buf);
+    aws_byte_buf_clean_up(&decrypted_buf);
+
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(aes_keywrap_RFC3394_256BitKey256CekTestVector, s_test_aes_keywrap_RFC3394_256BitKey256CekTestVector);
+
+static int s_test_Rfc3394_256BitKey_TestIntegrityCheckFailed(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+                       0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
+    size_t input_length = sizeof(input);
+
+    uint8_t key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+                     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
+    size_t key_length = sizeof(key);
+
+    uint8_t expected_output[] = {0x28, 0xC9, 0xF4, 0x04, 0xC4, 0xB8, 0x10, 0xF4, 0xCB, 0xCC, 0xB3, 0x5C, 0xFB, 0x87,
+                                 0xF8, 0x26, 0x3F, 0x57, 0x86, 0xE2, 0xD8, 0x0E, 0xD3, 0x26, 0xCB, 0xC7, 0xF0, 0xE7,
+                                 0x1A, 0x99, 0xF4, 0x3B, 0xFB, 0x98, 0x8B, 0x9B, 0x7A, 0x02, 0xDD, 0x21};
+    size_t expected_output_length = sizeof(expected_output);
+
+    struct aws_byte_cursor input_cur = aws_byte_cursor_from_array(input, input_length);
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, key_length);
+    struct aws_byte_buf output_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&output_buf, allocator, expected_output_length));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_keywrap_256_new(allocator, &key_cur);
+    ASSERT_NOT_NULL(cipher);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, &input_cur, &output_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &output_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(expected_output, expected_output_length, output_buf.buffer, output_buf.len);
+
+    /* Mutate one byte of the encrypted data */
+    output_buf.buffer[0] ^= 0x01;
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
+
+    struct aws_byte_buf decrypted_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted_buf, allocator, input_length));
+
+    struct aws_byte_cursor encrypted_data = aws_byte_cursor_from_buf(&output_buf);
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, &encrypted_data, &decrypted_buf));
+    ASSERT_FAILS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    ASSERT_FALSE(cipher->good);
+
+    aws_symmetric_cipher_destroy(cipher);
+    aws_byte_buf_clean_up(&output_buf);
+    aws_byte_buf_clean_up(&decrypted_buf);
+
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(
+    aes_keywrap_Rfc3394_256BitKey_TestIntegrityCheckFailed,
+    s_test_Rfc3394_256BitKey_TestIntegrityCheckFailed);
+
+static int s_test_RFC3394_256BitKeyTestBadPayload(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+                       0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
+    size_t input_length = sizeof(input);
+
+    uint8_t key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+                     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
+    size_t key_length = sizeof(key);
+
+    uint8_t expected_output[] = {0x28, 0xC9, 0xF4, 0x04, 0xC4, 0xB8, 0x10, 0xF4, 0xCB, 0xCC, 0xB3, 0x5C, 0xFB, 0x87,
+                                 0xF8, 0x26, 0x3F, 0x57, 0x86, 0xE2, 0xD8, 0x0E, 0xD3, 0x26, 0xCB, 0xC7, 0xF0, 0xE7,
+                                 0x1A, 0x99, 0xF4, 0x3B, 0xFB, 0x98, 0x8B, 0x9B, 0x7A, 0x02, 0xDD, 0x21};
+    size_t expected_output_length = sizeof(expected_output);
+
+    struct aws_byte_cursor input_cur = aws_byte_cursor_from_array(input, input_length);
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, key_length);
+    struct aws_byte_buf output_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&output_buf, allocator, expected_output_length));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_keywrap_256_new(allocator, &key_cur);
+    ASSERT_NOT_NULL(cipher);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, &input_cur, &output_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &output_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(expected_output, expected_output_length, output_buf.buffer, output_buf.len);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
+
+    struct aws_byte_buf decrypted_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted_buf, allocator, input_length));
+
+    struct aws_byte_cursor encrypted_data = aws_byte_cursor_from_buf(&output_buf);
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, &encrypted_data, &decrypted_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(input, input_length, decrypted_buf.buffer, decrypted_buf.len);
+
+    aws_symmetric_cipher_destroy(cipher);
+    aws_byte_buf_clean_up(&output_buf);
+    aws_byte_buf_clean_up(&decrypted_buf);
+}
+
+AWS_TEST_CASE(aes_keywrap_RFC3394_256BitKeyTestBadPayload, s_test_RFC3394_256BitKeyTestBadPayload);
+
+static int s_test_RFC3394_256BitKey128BitCekTestVector(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    size_t input_length = sizeof(input);
+
+    uint8_t key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+                     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
+    size_t key_length = sizeof(key);
+
+    uint8_t expected_output[] = {0x64, 0xE8, 0xC3, 0xF9, 0xCE, 0x0F, 0x5B, 0xA2, 0x63, 0xE9, 0x77, 0x79,
+                                 0x05, 0x81, 0x8A, 0x2A, 0x93, 0xC8, 0x19, 0x1E, 0x7D, 0x6E, 0x8A, 0xE7};
+    size_t expected_output_length = sizeof(expected_output);
+
+    struct aws_byte_cursor input_cur = aws_byte_cursor_from_array(input, input_length);
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, key_length);
+    struct aws_byte_buf output_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&output_buf, allocator, expected_output_length));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_keywrap_256_new(allocator, &key_cur);
+    ASSERT_NOT_NULL(cipher);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, &input_cur, &output_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &output_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(expected_output, expected_output_length, output_buf.buffer, output_buf.len);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
+    ASSERT_TRUE(cipher->good);
+
+    struct aws_byte_buf decrypted_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted_buf, allocator, input_length));
+
+    struct aws_byte_cursor encrypted_data = aws_byte_cursor_from_buf(&output_buf);
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, &encrypted_data, &decrypted_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    aws_symmetric_cipher_destroy(cipher);
+    aws_byte_buf_clean_up(&output_buf);
+    aws_byte_buf_clean_up(&decrypted_buf);
+
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(aes_keywrap_RFC3394_256BitKey128BitCekTestVector, s_test_RFC3394_256BitKey128BitCekTestVector);
+
+static int s_test_RFC3394_256BitKey128BitCekIntegrityCheckFailedTestVector(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    size_t input_length = sizeof(input);
+
+    uint8_t key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+                     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
+    size_t key_length = sizeof(key);
+
+    uint8_t expected_output[] = {0x64, 0xE8, 0xC3, 0xF9, 0xCE, 0x0F, 0x5B, 0xA2, 0x63, 0xE9, 0x77, 0x79,
+                                 0x05, 0x81, 0x8A, 0x2A, 0x93, 0xC8, 0x19, 0x1E, 0x7D, 0x6E, 0x8A, 0xE7};
+    size_t expected_output_length = sizeof(expected_output);
+
+    struct aws_byte_cursor input_cur = aws_byte_cursor_from_array(input, input_length);
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, key_length);
+    struct aws_byte_buf output_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&output_buf, allocator, expected_output_length));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_keywrap_256_new(allocator, &key_cur);
+    ASSERT_NOT_NULL(cipher);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, &input_cur, &output_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &output_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(expected_output, expected_output_length, output_buf.buffer, output_buf.len);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
+
+    struct aws_byte_buf decrypted_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted_buf, allocator, input_length));
+
+    struct aws_byte_cursor encrypted_data = aws_byte_cursor_from_buf(&output_buf);
+    encrypted_data.ptr[1] = encrypted_data.ptr[1] + encrypted_data.ptr[2];
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, &encrypted_data, &decrypted_buf));
+    ASSERT_FAILS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    ASSERT_FALSE(cipher->good);
+
+    aws_symmetric_cipher_destroy(cipher);
+    aws_byte_buf_clean_up(&output_buf);
+    aws_byte_buf_clean_up(&decrypted_buf);
+
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(
+    aes_keywrap_RFC3394_256BitKey128BitCekIntegrityCheckFailedTestVector,
+    s_test_RFC3394_256BitKey128BitCekIntegrityCheckFailedTestVector);
+
+static int s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    size_t input_length = sizeof(input);
+
+    uint8_t key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+                     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
+    size_t key_length = sizeof(key);
+
+    uint8_t expected_output[] = {0x64, 0xE8, 0xC3, 0xF9, 0xCE, 0x0F, 0x5B, 0xA2, 0x63, 0xE9, 0x77, 0x79,
+                                 0x05, 0x81, 0x8A, 0x2A, 0x93, 0xC8, 0x19, 0x1E, 0x7D, 0x6E, 0x8A, 0xE7};
+    size_t expected_output_length = sizeof(expected_output);
+
+    struct aws_byte_cursor input_cur = aws_byte_cursor_from_array(input, input_length);
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, key_length);
+    struct aws_byte_buf output_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&output_buf, allocator, expected_output_length));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_keywrap_256_new(allocator, &key_cur);
+    ASSERT_NOT_NULL(cipher);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, &input_cur, &output_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &output_buf));
+    ASSERT_BIN_ARRAYS_EQUALS(expected_output, expected_output_length, output_buf.buffer, output_buf.len);
+
+    ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
+
+    struct aws_byte_buf decrypted_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted_buf, allocator, input_length));
+
+    struct aws_byte_cursor encrypted_data = aws_byte_cursor_from_buf(&output_buf);
+    encrypted_data.ptr[14] = encrypted_data.ptr[13] + encrypted_data.ptr[14];
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, &encrypted_data, &decrypted_buf));
+    ASSERT_FAILS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    ASSERT_FALSE(cipher->good);
+
+    aws_symmetric_cipher_destroy(cipher);
+    aws_byte_buf_clean_up(&output_buf);
+    aws_byte_buf_clean_up(&decrypted_buf);
+
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(
+    aes_keywrap_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector,
+    s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector);

@@ -16,6 +16,7 @@ static aws_thread_once s_aes_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
 static BCRYPT_ALG_HANDLE s_aes_cbc_algorithm_handle = NULL;
 static BCRYPT_ALG_HANDLE s_aes_gcm_algorithm_handle = NULL;
 static BCRYPT_ALG_HANDLE s_aes_ctr_algorithm_handle = NULL;
+static BCRYPT_ALG_HANDLE s_aes_keywrap_algorithm_handle = NULL;
 
 struct aes_bcrypt_cipher {
     struct aws_symmetric_cipher cipher;
@@ -78,6 +79,12 @@ static void s_load_alg_handles(void *user_data) {
         0);
 
     AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for ECB chaining mode failed");
+
+    /* Setup KEYWRAP algorithm */
+    status = BCryptOpenAlgorithmProvider(&s_aes_keywrap_algorithm_handle, BCRYPT_AES_ALGORITHM, NULL, 0);
+    AWS_ASSERT(s_aes_ctr_algorithm_handle && "BCryptOpenAlgorithmProvider() failed");
+
+    AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for KeyWrap failed");
 }
 
 static BCRYPT_KEY_HANDLE s_import_key_blob(
@@ -163,7 +170,7 @@ static int s_initialize_cipher_materials(
         }
     }
 
-    if (!cipher->cipher.iv.len) {
+    if (!cipher->cipher.iv.len && iv_size) {
         if (iv) {
             aws_byte_buf_init_copy_from_cursor(&cipher->cipher.iv, cipher->cipher.allocator, *iv);
         } else {
@@ -211,7 +218,7 @@ static int s_initialize_cipher_materials(
     /* In GCM mode, the IV is set on the auth info pointer and a working copy
        is passed to each encryt call. CBC and CTR mode function differently here
        and the IV is set on the key itself. */
-    if (!is_gcm) {
+    if (!is_gcm && cipher->cipher.iv.len) {
         NTSTATUS status = BCryptSetProperty(
             cipher->key_handle,
             BCRYPT_INITIALIZATION_VECTOR,
@@ -223,7 +230,7 @@ static int s_initialize_cipher_materials(
             cipher->cipher.good = false;
             return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }
-    } else {
+    } else if (is_gcm) {
 
         cipher->auth_info_ptr =
             aws_mem_acquire(cipher->cipher.allocator, sizeof(BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO));
@@ -911,6 +918,195 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new(
 
     aws_byte_buf_init(&cipher->overflow, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
     aws_byte_buf_init_copy(&cipher->working_iv, allocator, &cipher->cipher.iv);
+
+    cipher->cipher.impl = cipher;
+    cipher->cipher.good = true;
+
+    return &cipher->cipher;
+
+error:
+    if (cipher != NULL) {
+        s_aes_default_destroy(&cipher->cipher);
+    }
+
+    return NULL;
+}
+
+/* This is just an encrypted key. Append them to a buffer and on finalize export/import the key using AES keywrap. */
+static int s_key_wrap_encrypt_decrypt(
+    struct aws_symmetric_cipher *cipher,
+    const struct aws_byte_cursor *input,
+    struct aws_byte_buf *out) {
+    (void)out;
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    return aws_byte_buf_append_dynamic(&cipher_impl->overflow, input);
+}
+
+/* Import the buffer we've been appending to as an AES key. Then export it using AES Keywrap format. */
+static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    BCRYPT_KEY_HANDLE key_handle_to_encrypt =
+        s_import_key_blob(s_aes_keywrap_algorithm_handle, cipher->allocator, &cipher_impl->overflow);
+
+    NTSTATUS status = 0;
+
+    ULONG output_size = 0;
+    /* Call with NULL first to get the required size. */
+    status = BCryptExportKey(
+        key_handle_to_encrypt, cipher_impl->key_handle, BCRYPT_AES_WRAP_KEY_BLOB, NULL, 0, &output_size, 0);
+
+    if (!NT_SUCCESS(status)) {
+        cipher->good = false;
+        return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    }
+
+    int ret_val = AWS_OP_ERR;
+
+    if (out->capacity - out->len < output_size) {
+        if (aws_byte_buf_reserve_relative(out, output_size)) {
+            goto clean_up;
+        }
+    }
+
+    /* now actually export the key */
+    ULONG len_written = 0;
+    status = BCryptExportKey(
+        key_handle_to_encrypt,
+        cipher_impl->key_handle,
+        BCRYPT_AES_WRAP_KEY_BLOB,
+        out->buffer + out->len,
+        output_size,
+        &len_written,
+        0);
+
+    if (!NT_SUCCESS(status)) {
+        cipher->good = false;
+        goto clean_up;
+    }
+
+    out->len += len_written;
+
+    ret_val = AWS_OP_SUCCESS;
+
+clean_up:
+    if (key_handle_to_encrypt) {
+        BCryptDestroyKey(key_handle_to_encrypt);
+    }
+
+    return ret_val;
+}
+
+/* Import the buffer we've been appending to as an AES Key Wrapped key. Then export the raw AES key. */
+
+static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    BCRYPT_KEY_HANDLE import_key = NULL;
+
+    /* use the cipher key to import the buffer as an AES keywrapped key. */
+    NTSTATUS status = BCryptImportKey(
+        s_aes_keywrap_algorithm_handle,
+        cipher_impl->key_handle,
+        BCRYPT_AES_WRAP_KEY_BLOB,
+        &import_key,
+        NULL,
+        0,
+        cipher_impl->overflow.buffer,
+        cipher_impl->overflow.len,
+        0);
+    (void)status;
+
+    int ret_val = AWS_OP_ERR;
+
+    if (import_key) {
+        ULONG export_size = 0;
+
+        struct aws_byte_buf key_data_blob;
+        aws_byte_buf_init(
+            &key_data_blob, cipher->allocator, sizeof(BCRYPT_KEY_DATA_BLOB_HEADER) + cipher_impl->overflow.len);
+
+        /* Now just export the key out as a raw AES key. */
+        status = BCryptExportKey(
+            import_key,
+            NULL,
+            BCRYPT_KEY_DATA_BLOB,
+            key_data_blob.buffer,
+            (ULONG)key_data_blob.capacity,
+            &export_size,
+            0);
+
+        key_data_blob.len += export_size;
+
+        if (NT_SUCCESS(status)) {
+
+            if (out->capacity - out->len < export_size) {
+                if (aws_byte_buf_reserve_relative(out, export_size)) {
+                    goto clean_up;
+                }
+            }
+
+            BCRYPT_KEY_DATA_BLOB_HEADER *stream_header = (BCRYPT_KEY_DATA_BLOB_HEADER *)key_data_blob.buffer;
+
+            AWS_FATAL_ASSERT(
+                aws_byte_buf_write(
+                    out, key_data_blob.buffer + sizeof(BCRYPT_KEY_DATA_BLOB_HEADER), stream_header->cbKeyData) &&
+                "Copying key data failed but the allocation should have already occured successfully");
+            ret_val = AWS_OP_SUCCESS;
+
+        } else {
+            cipher->good = false;
+        }
+
+    clean_up:
+        aws_byte_buf_clean_up_secure(&key_data_blob);
+        BCryptDestroyKey(import_key);
+
+    } else {
+        cipher->good = false;
+    }
+
+    return ret_val;
+}
+
+static int s_reset_keywrap_cipher(struct aws_symmetric_cipher *cipher) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    s_clear_reusable_components(cipher);
+
+    return s_initialize_cipher_materials(cipher_impl, NULL, NULL, NULL, NULL, 0, false, false);
+}
+
+static struct aws_symmetric_cipher_vtable s_aes_keywrap_vtable = {
+    .alg_name = "AES-KEYWRAP 256",
+    .provider = "Windows CNG",
+    .decrypt = s_key_wrap_encrypt_decrypt,
+    .encrypt = s_key_wrap_encrypt_decrypt,
+    .finalize_encryption = s_keywrap_finalize_encryption,
+    .finalize_decryption = s_keywrap_finalize_decryption,
+    .destroy = s_aes_default_destroy,
+    .reset = s_reset_keywrap_cipher,
+};
+
+struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key) {
+
+    aws_thread_call_once(&s_aes_thread_once, s_load_alg_handles, NULL);
+    struct aes_bcrypt_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct aes_bcrypt_cipher));
+
+    cipher->cipher.allocator = allocator;
+    cipher->cipher.block_size = 8;
+    cipher->cipher.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
+    cipher->alg_handle = s_aes_keywrap_algorithm_handle;
+    cipher->cipher.vtable = &s_aes_keywrap_vtable;
+
+    if (s_initialize_cipher_materials(cipher, key, NULL, NULL, NULL, 0, false, false) != AWS_OP_SUCCESS) {
+        goto error;
+    }
+
+    aws_byte_buf_init(&cipher->overflow, allocator, (AWS_AES_256_CIPHER_BLOCK_SIZE * 2) + 8);
 
     cipher->cipher.impl = cipher;
     cipher->cipher.good = true;

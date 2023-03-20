@@ -1159,6 +1159,8 @@ static int s_test_RFC3394_256BitKeyTestBadPayload(struct aws_allocator *allocato
     aws_symmetric_cipher_destroy(cipher);
     aws_byte_buf_clean_up(&output_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
+
+    return AWS_OP_SUCCESS;
 }
 
 AWS_TEST_CASE(aes_keywrap_RFC3394_256BitKeyTestBadPayload, s_test_RFC3394_256BitKeyTestBadPayload);

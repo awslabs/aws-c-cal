@@ -10,7 +10,7 @@ if NOT type $CLANG_FORMAT 2> /dev/null ; then
 fi
 
 FAIL=0
-SOURCE_FILES=`find bin source include tests -type f \( -name '*.h' -o -name '*.c' \)`
+SOURCE_FILES=`find bin source include tests -type f \( -name '*.h' -o -name '*.c' \) -not -name 'common_cryptor_spi.h'`
 for i in $SOURCE_FILES
 do
     $CLANG_FORMAT -output-replacements-xml $i | grep -c "<replacement " > /dev/null
@@ -22,3 +22,4 @@ do
 done
 
 exit $FAIL
+

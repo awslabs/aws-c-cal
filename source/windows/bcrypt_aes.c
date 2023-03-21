@@ -1014,7 +1014,7 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
         NULL,
         0,
         cipher_impl->overflow.buffer,
-        cipher_impl->overflow.len,
+        (ULONG)cipher_impl->overflow.len,
         0);
     (void)status;
 

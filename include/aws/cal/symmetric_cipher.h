@@ -62,7 +62,7 @@ AWS_EXTERN_C_BEGIN
  *
  * Returns NULL on failure. You can check aws_last_error() to get the error code indicating the failure cause.
  */
-struct aws_symmetric_cipher *aws_aes_cbc_256_new(
+AWS_CAL_API struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv);
@@ -81,7 +81,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new(
  *
  * Returns NULL on failure. You can check aws_last_error() to get the error code indicating the failure cause.
  */
-struct aws_symmetric_cipher *aws_aes_ctr_256_new(
+AWS_CAL_API struct aws_symmetric_cipher *aws_aes_ctr_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv);
@@ -108,7 +108,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new(
  *
  * Returns NULL on failure. You can check aws_last_error() to get the error code indicating the failure cause.
  */
-struct aws_symmetric_cipher *aws_aes_gcm_256_new(
+AWS_CAL_API struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
@@ -126,14 +126,14 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
  *
  * Returns NULL on failure. You can check aws_last_error() to get the error code indicating the failure cause.
  */
-struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
+AWS_CAL_API struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key);
 
 /**
  * Cleans up internal resources and state for cipher and then deallocates it.
  */
-void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher);
+AWS_CAL_API void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher);
 
 /**
  * Encrypts the value in to_encrypt and writes the encrypted data into out.
@@ -145,7 +145,7 @@ void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher);
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_encrypt(
+AWS_CAL_API int aws_symmetric_cipher_encrypt(
     struct aws_symmetric_cipher *cipher,
     const struct aws_byte_cursor *to_encrypt,
     struct aws_byte_buf *out);
@@ -160,7 +160,7 @@ int aws_symmetric_cipher_encrypt(
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_decrypt(
+AWS_CAL_API int aws_symmetric_cipher_decrypt(
     struct aws_symmetric_cipher *cipher,
     const struct aws_byte_cursor *to_decrypt,
     struct aws_byte_buf *out);
@@ -178,7 +178,7 @@ int aws_symmetric_cipher_decrypt(
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+AWS_CAL_API int aws_symmetric_cipher_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 
 /**
  * Decrypts any remaining data that was reserved for final padding, loads GMACs etc... and if there is any
@@ -193,7 +193,7 @@ int aws_symmetric_cipher_finalize_encryption(struct aws_symmetric_cipher *cipher
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+AWS_CAL_API int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 
 /**
  * Resets the cipher state for starting a new encrypt or decrypt operation. Note encrypt/decrypt cannot be mixed on the
@@ -203,7 +203,7 @@ int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
+AWS_CAL_API int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
 
 /**
  * Gets the current GMAC tag. If not AES GCM, this function will just copy an empty buffer over.
@@ -213,7 +213,7 @@ int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+AWS_CAL_API int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 
 /**
  * Gets the original intialization vector.
@@ -221,7 +221,9 @@ int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+AWS_CAL_API int aws_symmetric_cipher_get_initialization_vector(
+    struct aws_symmetric_cipher *cipher,
+    struct aws_byte_buf *out);
 
 /**
  * Gets the original ke.
@@ -229,7 +231,7 @@ int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+AWS_CAL_API int aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
 
 /**
  * Generates a secure random initialization vector of length len_bytes. If is_counter_mode is set, the final 4 bytes
@@ -241,7 +243,7 @@ int aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher, struct aws
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_generate_initialization_vector(
+AWS_CAL_API int aws_symmetric_cipher_generate_initialization_vector(
     size_t len_bytes,
     bool is_counter_mode,
     struct aws_byte_buf *out);
@@ -255,7 +257,7 @@ int aws_symmetric_cipher_generate_initialization_vector(
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-int aws_symmetric_cipher_generate_key(size_t keyLengthBytes, struct aws_byte_buf *out);
+AWS_CAL_API int aws_symmetric_cipher_generate_key(size_t keyLengthBytes, struct aws_byte_buf *out);
 AWS_EXTERN_C_END
 
 #endif /* AWS_CAL_SYMMETRIC_CIPHER_H */

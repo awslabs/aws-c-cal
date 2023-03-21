@@ -21,8 +21,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-
-//clang - format off
+/* clang-format off */
 #ifndef	_CC_CryptorSPI_H_
 #define _CC_CryptorSPI_H_
 
@@ -455,5 +454,5 @@
 #ifdef __cplusplus
 }
 #endif
-//clang - format on
 #endif /* _CC_CryptorSPI_H_ */
+/* clang-format on */

@@ -727,8 +727,8 @@ error:
    If there's a bug in here, it's being hit inside the finalize call when there's an input stream that isn't an even
    multiple of 16. */
 static int s_xor_cursors(const struct aws_byte_cursor *a, const struct aws_byte_cursor *b, struct aws_byte_buf *dest) {
-    size_t min_size = aws_min_u64(b->len, a->len);
-
+    size_t min_size = aws_min_size(b->len, a->len);
+    
     if (dest->capacity - dest->len < min_size) {
         if (aws_byte_buf_reserve_relative(dest, min_size)) {
             return AWS_OP_ERR;

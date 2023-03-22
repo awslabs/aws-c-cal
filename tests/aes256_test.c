@@ -598,7 +598,7 @@ static int s_gcm_NIST_gcmEncryptExtIV256_PTLen_128_Test_0_fn(struct aws_allocato
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
     struct aws_byte_cursor expected_cur = aws_byte_cursor_from_array(expected, sizeof(expected));
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag_cur));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
 
     return s_check_multi_block_gcm(allocator, &key_cur, &iv_cur, &data_cur, &expected_cur, &tag_cur, NULL);
 }
@@ -682,7 +682,7 @@ static int s_gcm_NIST_gcmEncryptExtIV256_PTLen_104_Test_3_fn(struct aws_allocato
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
     struct aws_byte_cursor expected_cur = aws_byte_cursor_from_array(expected, sizeof(expected));
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag_cur));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
 
     return s_check_multi_block_gcm(allocator, &key_cur, &iv_cur, &data_cur, &expected_cur, &tag_cur, NULL);
 }
@@ -742,7 +742,7 @@ static int s_gcm_NIST_gcmEncryptExtIV256_PTLen_256_Test_6_fn(struct aws_allocato
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
     struct aws_byte_cursor expected_cur = aws_byte_cursor_from_array(expected, sizeof(expected));
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag_cur));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
 
     return s_check_multi_block_gcm(allocator, &key_cur, &iv_cur, &data_cur, &expected_cur, &tag_cur, NULL);
 }
@@ -789,7 +789,7 @@ static int s_gcm_NIST_gcmEncryptExtIV256_PTLen_408_Test_8_fn(struct aws_allocato
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
     struct aws_byte_cursor expected_cur = aws_byte_cursor_from_array(expected, sizeof(expected));
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag_cur));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
 
     return s_check_multi_block_gcm(allocator, &key_cur, &iv_cur, &data_cur, &expected_cur, &tag_cur, NULL);
 }
@@ -847,7 +847,7 @@ static int s_gcm_256_KAT_1_fn(struct aws_allocator *allocator, void *ctx) {
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = {0};
     struct aws_byte_cursor expected_cur = {0};
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag_cur));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
 
     return s_check_multi_block_gcm(allocator, &key_cur, &iv_cur, &data_cur, &expected_cur, &tag_cur, &aad_cur);
@@ -917,7 +917,7 @@ static int s_gcm_256_KAT_2_fn(struct aws_allocator *allocator, void *ctx) {
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
     struct aws_byte_cursor expected_cur = aws_byte_cursor_from_array(expected, sizeof(expected));
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag_cur));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
 
     return s_check_multi_block_gcm(allocator, &key_cur, &iv_cur, &data_cur, &expected_cur, &tag_cur, &aad_cur);
@@ -981,7 +981,7 @@ static int s_gcm_256_KAT_3_fn(struct aws_allocator *allocator, void *ctx) {
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
     struct aws_byte_cursor expected_cur = aws_byte_cursor_from_array(expected, sizeof(expected));
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag_cur));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
     struct aws_byte_cursor aad_cur = {0};
 
     return s_check_multi_block_gcm(allocator, &key_cur, &iv_cur, &data_cur, &expected_cur, &tag_cur, &aad_cur);

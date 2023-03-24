@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
-#include <aws/cal/symmetric_cipher.h>
+#include <aws/cal/private/symmetric_cipher_priv.h>
 
 #include <CommonCrypto/CommonCryptor.h>
 #include <CommonCrypto/CommonHMAC.h>
@@ -11,11 +11,11 @@
 
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
-#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
-#    if defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_13)
-#        define MAC_13_AVAILABLE 1
-#    elif defined(__MAC_10_14_4) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_14_4)
-#        define MAC_14_4_AVAILABLE 1
+#if defined(__MAC_OS_X_VERSION_MIN_ALLOWED)
+#    if defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MIN_ALLOWED >= __MAC_10_13)
+#        define MAC_10_13_AVAILABLE 1
+#    elif defined(__MAC_10_14_4) && (__MAC_OS_X_VERSION_MIN_ALLOWED >= __MAC_10_14_4)
+#        define MAC_10_14_4_AVAILABLE 1
 #    endif
 #endif
 
@@ -403,7 +403,7 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
     /* Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
      * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
      */
-#ifdef MAC_13_AVAILABLE
+#ifdef MAC_10_13_AVAILABLE
     status = CCCryptorGCMFinalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
 #else
     status = CCCryptorGCMFinal(cc_cipher->encryptor_handle, cipher->tag.buffer, &tag_length);
@@ -428,7 +428,7 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
     /* Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
      * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
      */
-#ifdef MAC_13_AVAILABLE
+#ifdef MAC_10_13_AVAILABLE
     status = CCCryptorGCMFinalize(cc_cipher->decryptor_handle, cipher->tag.buffer, tag_length);
 #else
     status = CCCryptorGCMFinal(cc_cipher->decryptor_handle, cipher->tag.buffer, &tag_length);
@@ -521,7 +521,7 @@ static int s_initialize_gcm_cipher_materials(
         kCCModeOptionCTR_BE,
         &cc_cipher->decryptor_handle);
 
-#ifdef MAC_13_AVAILABLE
+#ifdef MAC_10_13_AVAILABLE
     status |=
         CCCryptorGCMSetIV(cc_cipher->decryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 #else

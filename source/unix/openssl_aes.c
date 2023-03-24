@@ -2,7 +2,7 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
-#include <aws/cal/symmetric_cipher.h>
+#include <aws/cal/private/symmetric_cipher_priv.h>
 
 #include <openssl/evp.h>
 

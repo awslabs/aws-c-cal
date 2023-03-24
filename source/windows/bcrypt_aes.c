@@ -2,7 +2,7 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
-#include <aws/cal/symmetric_cipher.h>
+#include <aws/cal/private/symmetric_cipher_priv.h>
 
 #include <windows.h>
 
@@ -403,10 +403,10 @@ static struct aws_byte_buf s_fill_in_overflow(
 
 static int s_aes_cbc_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *to_encrypt,
+    const struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
 
-    struct aws_byte_buf final_to_encrypt = s_fill_in_overflow(cipher, to_encrypt);
+    struct aws_byte_buf final_to_encrypt = s_fill_in_overflow(cipher, &to_encrypt);
     struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_encrypt);
     int ret_val = s_aes_default_encrypt(cipher, &final_cur, out);
     aws_byte_buf_clean_up_secure(&final_to_encrypt);
@@ -481,9 +481,9 @@ static int s_default_aes_decrypt(
 
 static int s_aes_cbc_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *to_decrypt,
+    const struct aws_byte_cursor to_decrypt,
     struct aws_byte_buf *out) {
-    struct aws_byte_buf final_to_decrypt = s_fill_in_overflow(cipher, to_decrypt);
+    struct aws_byte_buf final_to_decrypt = s_fill_in_overflow(cipher, &to_decrypt);
     struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_decrypt);
     int ret_val = s_default_aes_decrypt(cipher, &final_cur, out);
     aws_byte_buf_clean_up_secure(&final_to_decrypt);
@@ -554,11 +554,11 @@ error:
    turn the auth chaining flag off and compute the GMAC correctly. */
 static int s_aes_gcm_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *to_encrypt,
+    const struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_encrypt->len == 0) {
+    if (to_encrypt.len == 0) {
         return AWS_OP_SUCCESS;
     }
 
@@ -571,10 +571,9 @@ static int s_aes_gcm_encrypt(
 
         aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, overflow_cur);
         aws_byte_buf_reset(&cipher_impl->overflow, true);
-        aws_byte_buf_append_dynamic(&working_buffer, to_encrypt);
+        aws_byte_buf_append_dynamic(&working_buffer, &to_encrypt);
     } else {
-        struct aws_byte_cursor to_encrypt_cpy = *to_encrypt;
-        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_encrypt_cpy);
+        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_encrypt);
     }
 
     int ret_val = AWS_OP_ERR;
@@ -603,11 +602,11 @@ static int s_aes_gcm_encrypt(
 
 static int s_aes_gcm_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *to_decrypt,
+    const struct aws_byte_cursor to_decrypt,
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_decrypt->len == 0) {
+    if (to_decrypt.len == 0) {
         return AWS_OP_SUCCESS;
     }
 
@@ -620,10 +619,9 @@ static int s_aes_gcm_decrypt(
 
         aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, overflow_cur);
         aws_byte_buf_reset(&cipher_impl->overflow, true);
-        aws_byte_buf_append_dynamic(&working_buffer, to_decrypt);
+        aws_byte_buf_append_dynamic(&working_buffer, &to_decrypt);
     } else {
-        struct aws_byte_cursor to_encrypt_cpy = *to_decrypt;
-        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_encrypt_cpy);
+        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_decrypt);
     }
 
     int ret_val = AWS_OP_ERR;
@@ -754,11 +752,11 @@ static int s_xor_cursors(const struct aws_byte_cursor *a, const struct aws_byte_
    is symmetric for encryption and decryption (encrypt and decrypt are the same thing). */
 static int s_aes_ctr_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *to_encrypt,
+    const struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_encrypt->len == 0) {
+    if (to_encrypt.len == 0) {
         return AWS_OP_SUCCESS;
     }
 
@@ -766,14 +764,13 @@ static int s_aes_ctr_encrypt(
     AWS_ZERO_STRUCT(working_buffer);
 
     /* prepend overflow to the working buffer and then append to_encrypt to it. */
-    if (cipher_impl->overflow.len && to_encrypt->ptr != cipher_impl->overflow.buffer) {
+    if (cipher_impl->overflow.len && to_encrypt.ptr != cipher_impl->overflow.buffer) {
         struct aws_byte_cursor overflow_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
         aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, overflow_cur);
         aws_byte_buf_reset(&cipher_impl->overflow, true);
-        aws_byte_buf_append_dynamic(&working_buffer, to_encrypt);
+        aws_byte_buf_append_dynamic(&working_buffer, &to_encrypt);
     } else {
-        struct aws_byte_cursor to_encrypt_cpy = *to_encrypt;
-        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_encrypt_cpy);
+        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_encrypt);
     }
 
     /* slice working_buffer into a slice per block. */
@@ -781,7 +778,7 @@ static int s_aes_ctr_encrypt(
     aws_array_list_init_dynamic(
         &sliced_buffers,
         cipher->allocator,
-        (to_encrypt->len / AWS_AES_256_CIPHER_BLOCK_SIZE) + 1,
+        (to_encrypt.len / AWS_AES_256_CIPHER_BLOCK_SIZE) + 1,
         sizeof(struct aws_byte_cursor));
 
     struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
@@ -880,7 +877,7 @@ static int s_aes_ctr_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     /* take the final overflow, and do the final encrypt call for it. */
-    int ret_val = s_aes_ctr_encrypt(cipher, &remaining_cur, out);
+    int ret_val = s_aes_ctr_encrypt(cipher, remaining_cur, out);
     aws_byte_buf_secure_zero(&cipher_impl->overflow);
     aws_byte_buf_secure_zero(&cipher_impl->working_iv);
     return ret_val;
@@ -935,12 +932,12 @@ error:
 /* This is just an encrypted key. Append them to a buffer and on finalize export/import the key using AES keywrap. */
 static int s_key_wrap_encrypt_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *input,
+    const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     (void)out;
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    return aws_byte_buf_append_dynamic(&cipher_impl->overflow, input);
+    return aws_byte_buf_append_dynamic(&cipher_impl->overflow, &input);
 }
 
 /* Import the buffer we've been appending to as an AES key. Then export it using AES Keywrap format. */

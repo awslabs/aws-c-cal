@@ -2,6 +2,7 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
+#include <aws/cal/private/symmetric_cipher_priv.h>
 #include <aws/cal/symmetric_cipher.h>
 #include <aws/common/device_random.h>
 
@@ -11,7 +12,7 @@ void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher) {
 
 int aws_symmetric_cipher_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *to_encrypt,
+    const struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
     if (cipher->good) {
         return cipher->vtable->encrypt(cipher, to_encrypt, out);
@@ -22,7 +23,7 @@ int aws_symmetric_cipher_encrypt(
 
 int aws_symmetric_cipher_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *to_encrypt,
+    const struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
     if (cipher->good) {
         return cipher->vtable->decrypt(cipher, to_encrypt, out);
@@ -72,6 +73,9 @@ int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *
 int aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aws_byte_cursor key_cur = aws_byte_cursor_from_buf(&cipher->key);
     return aws_byte_buf_append_dynamic(out, &key_cur);
+}
+bool aws_symmetric_cipher_is_good(struct aws_symmetric_cipher *cipher) {
+    return cipher->good;
 }
 
 static int s_symmetric_cipher_generate_random_bytes(struct aws_byte_buf *out, size_t len, bool is_counter_mode) {

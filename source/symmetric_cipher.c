@@ -60,20 +60,18 @@ int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher) {
     return ret_val;
 }
 
-int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_buf(&cipher->tag);
-    return aws_byte_buf_append_dynamic(out, &tag_cur);
+struct aws_byte_cursor aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher) {
+    return aws_byte_cursor_from_buf(&cipher->tag);
 }
 
-int aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
-    struct aws_byte_cursor iv_cur = aws_byte_cursor_from_buf(&cipher->iv);
-    return aws_byte_buf_append_dynamic(out, &iv_cur);
+struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher) {
+    return aws_byte_cursor_from_buf(&cipher->iv);
 }
 
-int aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
-    struct aws_byte_cursor key_cur = aws_byte_cursor_from_buf(&cipher->key);
-    return aws_byte_buf_append_dynamic(out, &key_cur);
+struct aws_byte_cursor aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher) {
+    return aws_byte_cursor_from_buf(&cipher->key);
 }
+
 bool aws_symmetric_cipher_is_good(struct aws_symmetric_cipher *cipher) {
     return cipher->good;
 }

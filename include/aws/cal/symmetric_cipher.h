@@ -173,33 +173,42 @@ AWS_CAL_API int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_ci
 AWS_CAL_API int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
 
 /**
- * Gets the current GMAC tag. If not AES GCM, this function will just copy an empty buffer over.
- * You would typically call this function after calling aws_symmetric_cipher_finalize_encryption()
- * to fetch the tag for transmitting it in a cryptographic protocol.
+ * Gets the current GMAC tag. If not AES GCM, this function will just return an empty cursor.
+ * The memory in this cursor is unsafe as it refers to the internal buffer.
+ * This was done because the use case doesn't require fetching these during an
+ * encryption or decryption operation and it dramatically simplifies the API.
+ * Only use this function between other calls to this API as any function call can alter the value of this tag.
  *
- * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
- * AWS_OP_ERR;
+ * If you need to access it in a different pattern, copy the values to your own buffer first.
  */
-AWS_CAL_API int aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher);
 
 /**
- * Gets the original intialization vector.
+ * Gets the original intialization vector as a cursor.
+ * The memory in this cursor is unsafe as it refers to the internal buffer.
+ * This was done because the use case doesn't require fetching these during an
+ * encryption or decryption operation and it dramatically simplifies the API.
  *
- * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
- * AWS_OP_ERR;
+ * Unlike some other fields, this value does not change after the inital construction of the cipher.
  */
-AWS_CAL_API int aws_symmetric_cipher_get_initialization_vector(
-    struct aws_symmetric_cipher *cipher,
-    struct aws_byte_buf *out);
+AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher);
 
 /**
- * Gets the original ke.
+ * Gets the original key.
  *
- * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
- * AWS_OP_ERR;
+ * The memory in this cursor is unsafe as it refers to the internal buffer.
+ * This was done because the use case doesn't require fetching these during an
+ * encryption or decryption operation and it dramatically simplifies the API.
+ *
+ * Unlike some other fields, this value does not change after the inital construction of the cipher.
  */
-AWS_CAL_API int aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
+AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher);
 
+/**
+ * Returns true if the state of the cipher is good, and otherwise returns false.
+ * Most operations, other than aws_symmetric_cipher_reset() will fail if this function is returning false.
+ * aws_symmetric_cipher_reset() will reset the state to a good state if possible.
+ */
 AWS_CAL_API bool aws_symmetric_cipher_is_good(struct aws_symmetric_cipher *cipher);
 
 #endif /* AWS_CAL_SYMMETRIC_CIPHER_H */

@@ -484,12 +484,8 @@ static int s_check_multi_block_gcm(
 
     ASSERT_BIN_ARRAYS_EQUALS(expected.ptr, expected.len, encrypted_buf.buffer, encrypted_buf.len);
 
-    struct aws_byte_buf encryption_tag;
-    aws_byte_buf_init(&encryption_tag, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-    aws_symmetric_cipher_get_tag(cipher, &encryption_tag);
-
-    ASSERT_BIN_ARRAYS_EQUALS(tag.ptr, tag.len, encryption_tag.buffer, encryption_tag.len);
-    aws_byte_buf_clean_up(&encryption_tag);
+    struct aws_byte_cursor encryption_tag = aws_symmetric_cipher_get_tag(cipher);
+    ASSERT_BIN_ARRAYS_EQUALS(tag.ptr, tag.len, encryption_tag.ptr, encryption_tag.len);
 
     struct aws_byte_cursor encrypted_cur = aws_byte_cursor_from_buf(&encrypted_buf);
     struct aws_byte_buf decrypted_buf;

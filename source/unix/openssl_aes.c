@@ -15,9 +15,9 @@ struct openssl_aes_cipher {
 
 static int s_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *input,
+    const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
-    size_t required_buffer_space = input->len + cipher->block_size;
+    size_t required_buffer_space = input.len + cipher->block_size;
     size_t available_write_space = out->capacity - out->len;
 
     if (available_write_space < required_buffer_space) {
@@ -31,7 +31,7 @@ static int s_encrypt(
 
     int len_written = (int)(available_write_space);
     if (!EVP_EncryptUpdate(
-            openssl_cipher->encryptor_ctx, out->buffer + out->len, &len_written, input->ptr, (int)input->len)) {
+            openssl_cipher->encryptor_ctx, out->buffer + out->len, &len_written, input.ptr, (int)input.len)) {
         cipher->good = false;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -64,11 +64,11 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
 
 static int s_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *input,
+    const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
-    size_t required_buffer_space = input->len + cipher->block_size;
+    size_t required_buffer_space = input.len + cipher->block_size;
     size_t available_write_space = out->capacity - out->len;
 
     if (available_write_space < required_buffer_space) {
@@ -81,7 +81,7 @@ static int s_decrypt(
 
     int len_written = (int)available_write_space;
     if (!EVP_DecryptUpdate(
-            openssl_cipher->decryptor_ctx, out->buffer + out->len, &len_written, input->ptr, (int)input->len)) {
+            openssl_cipher->decryptor_ctx, out->buffer + out->len, &len_written, input.ptr, (int)input.len)) {
         cipher->good = false;
 
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -502,12 +502,12 @@ error:
 
 static int s_key_wrap_encrypt_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *input,
+    const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     (void)out;
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
-    return aws_byte_buf_append_dynamic(&openssl_cipher->working_buffer, input);
+    return aws_byte_buf_append_dynamic(&openssl_cipher->working_buffer, &input);
 }
 
 static const size_t MIN_CEK_LENGTH_BYTES = 128 / 8;

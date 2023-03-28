@@ -11,10 +11,10 @@
 
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
-#if defined(__MAC_OS_X_VERSION_MIN_ALLOWED)
-#    if defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MIN_ALLOWED >= __MAC_10_13)
+#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
+#    if defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_13)
 #        define MAC_10_13_AVAILABLE 1
-#    elif defined(__MAC_10_14_4) && (__MAC_OS_X_VERSION_MIN_ALLOWED >= __MAC_10_14_4)
+#    elif defined(__MAC_10_14_4) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_14_4)
 #        define MAC_10_14_4_AVAILABLE 1
 #    endif
 #endif
@@ -32,10 +32,10 @@ struct cc_aes_cipher {
 
 static int s_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *input,
+    const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     /* allow for a padded block by making sure we have at least a block of padding reserved. */
-    size_t required_buffer_space = input->len + cipher->block_size - 1;
+    size_t required_buffer_space = input.len + cipher->block_size - 1;
 
     size_t available_write_space = out->capacity - out->len;
     if (available_write_space < required_buffer_space) {
@@ -49,12 +49,7 @@ static int s_encrypt(
 
     size_t len_written = 0;
     CCStatus status = CCCryptorUpdate(
-        cc_cipher->encryptor_handle,
-        input->ptr,
-        input->len,
-        out->buffer + out->len,
-        available_write_space,
-        &len_written);
+        cc_cipher->encryptor_handle, input.ptr, input.len, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
         cipher->good = false;
@@ -67,10 +62,10 @@ static int s_encrypt(
 
 static int s_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *input,
+    const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     /* allow for a padded block by making sure we have at least a block of padding reserved. */
-    size_t required_buffer_space = input->len + cipher->block_size - 1;
+    size_t required_buffer_space = input.len + cipher->block_size - 1;
 
     size_t available_write_space = out->capacity - out->len;
     if (available_write_space < required_buffer_space) {
@@ -84,12 +79,7 @@ static int s_decrypt(
 
     size_t len_written = 0;
     CCStatus status = CCCryptorUpdate(
-        cc_cipher->decryptor_handle,
-        input->ptr,
-        input->len,
-        out->buffer + out->len,
-        available_write_space,
-        &len_written);
+        cc_cipher->decryptor_handle, input.ptr, input.len, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
         cipher->good = false;
@@ -495,7 +485,7 @@ static int s_initialize_gcm_cipher_materials(
         kCCModeOptionCTR_BE,
         &cc_cipher->encryptor_handle);
 
-#ifdef MAC_13_AVAILABLE
+#ifdef MAC_10_13_AVAILABLE
     status |=
         CCCryptorGCMSetIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 #else
@@ -584,10 +574,10 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
 
 static int s_keywrap_encrypt_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor *input,
+    const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     struct cc_aes_cipher *cc_cipher = cipher->impl;
-    return aws_byte_buf_append_dynamic(&cc_cipher->working_buffer, input);
+    return aws_byte_buf_append_dynamic(&cc_cipher->working_buffer, &input);
 }
 
 static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {

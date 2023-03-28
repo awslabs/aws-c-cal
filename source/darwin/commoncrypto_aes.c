@@ -579,11 +579,9 @@ static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, st
 
     size_t output_buffer_len = cipher->block_size + cc_cipher->working_buffer.len;
 
-    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, output_buffer_len)) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
-
-    size_t available_write_space = out->capacity - out->len;
 
     CCCryptorStatus status = CCSymmetricKeyWrap(
         kCCWRAPAES,
@@ -616,11 +614,9 @@ static int s_finalize_keywrap_decryption(struct aws_symmetric_cipher *cipher, st
 
     size_t output_buffer_len = cipher->block_size + cc_cipher->working_buffer.len;
 
-    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, output_buffer_len)) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
-
-    size_t available_write_space = out->capacity - out->len;
 
     CCCryptorStatus status = CCSymmetricKeyUnwrap(
         kCCWRAPAES,

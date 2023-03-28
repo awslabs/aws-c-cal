@@ -326,10 +326,8 @@ static int s_aes_default_encrypt(
 
     ULONG length_written = (ULONG)(predicted_write_length);
 
-    if (out->capacity - out->len < predicted_write_length) {
-        if (aws_byte_buf_reserve_relative(out, predicted_write_length)) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, predicted_write_length)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     PUCHAR iv = NULL;
@@ -448,13 +446,11 @@ static int s_default_aes_decrypt(
         iv_size = (ULONG)cipher_impl->working_iv.capacity;
     }
 
-    size_t predicted_write_lengths = to_decrypt->len;
-    ULONG length_written = (ULONG)(predicted_write_lengths);
+    size_t predicted_write_length = to_decrypt->len;
+    ULONG length_written = (ULONG)(predicted_write_length);
 
-    if (out->capacity - out->len < predicted_write_lengths) {
-        if (aws_byte_buf_reserve_relative(out, predicted_write_lengths)) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, predicted_write_length)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     /* iv was set on the key itself, so we don't need to pass it here. */
@@ -721,16 +717,15 @@ error:
     return NULL;
 }
 
-/* take a and b, XOR them and store it in dest. Notice the XOR is done up to the length of the smallest input.
+/* Take a and b, XOR them and store it in dest. Notice the XOR is done up to the length of the smallest input.
    If there's a bug in here, it's being hit inside the finalize call when there's an input stream that isn't an even
-   multiple of 16. */
+   multiple of 16.
+ */
 static int s_xor_cursors(const struct aws_byte_cursor *a, const struct aws_byte_cursor *b, struct aws_byte_buf *dest) {
     size_t min_size = aws_min_size(b->len, a->len);
 
-    if (dest->capacity - dest->len < min_size) {
-        if (aws_byte_buf_reserve_relative(dest, min_size)) {
-            return AWS_OP_ERR;
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(dest, min_size)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     /* If the profiler is saying this is slow, SIMD the loop below. */
@@ -961,10 +956,8 @@ static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 
     int ret_val = AWS_OP_ERR;
 
-    if (out->capacity - out->len < output_size) {
-        if (aws_byte_buf_reserve_relative(out, output_size)) {
-            goto clean_up;
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, output_size)) {
+        goto clean_up;
     }
 
     /* now actually export the key */
@@ -1038,10 +1031,8 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
 
         if (NT_SUCCESS(status)) {
 
-            if (out->capacity - out->len < export_size) {
-                if (aws_byte_buf_reserve_relative(out, export_size)) {
-                    goto clean_up;
-                }
+            if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, export_size)) {
+                goto clean_up;
             }
 
             BCRYPT_KEY_DATA_BLOB_HEADER *stream_header = (BCRYPT_KEY_DATA_BLOB_HEADER *)key_data_blob.buffer;

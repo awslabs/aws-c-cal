@@ -37,14 +37,11 @@ static int s_encrypt(
     /* allow for a padded block by making sure we have at least a block of padding reserved. */
     size_t required_buffer_space = input.len + cipher->block_size - 1;
 
-    size_t available_write_space = out->capacity - out->len;
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    available_write_space = out->capacity - out->len;
+    size_t available_write_space = out->capacity - out->len;
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     size_t len_written = 0;
@@ -67,14 +64,11 @@ static int s_decrypt(
     /* allow for a padded block by making sure we have at least a block of padding reserved. */
     size_t required_buffer_space = input.len + cipher->block_size - 1;
 
-    size_t available_write_space = out->capacity - out->len;
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    available_write_space = out->capacity - out->len;
+    size_t available_write_space = out->capacity - out->len;
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     size_t len_written = 0;
@@ -96,14 +90,11 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
     size_t required_buffer_space = cipher->block_size;
     size_t len_written = 0;
 
-    size_t available_write_space = out->capacity - out->len;
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    available_write_space = out->capacity - out->len;
+    size_t available_write_space = out->capacity - out->len;
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     CCStatus status =
@@ -124,13 +115,11 @@ static int s_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws
     size_t required_buffer_space = cipher->block_size;
     size_t len_written = 0;
 
-    size_t available_write_space = out->capacity - out->len;
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
+    size_t available_write_space = out->capacity - out->len;
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     CCStatus status =
@@ -590,12 +579,11 @@ static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, st
 
     size_t output_buffer_len = cipher->block_size + cc_cipher->working_buffer.len;
 
-    size_t available_write_space = out->capacity - out->len;
-    if (available_write_space < output_buffer_len) {
-        if (aws_byte_buf_reserve_relative(out, output_buffer_len) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
+
+    size_t available_write_space = out->capacity - out->len;
 
     CCCryptorStatus status = CCSymmetricKeyWrap(
         kCCWRAPAES,
@@ -628,12 +616,11 @@ static int s_finalize_keywrap_decryption(struct aws_symmetric_cipher *cipher, st
 
     size_t output_buffer_len = cipher->block_size + cc_cipher->working_buffer.len;
 
-    size_t available_write_space = out->capacity - out->len;
-    if (available_write_space < output_buffer_len) {
-        if (aws_byte_buf_reserve_relative(out, output_buffer_len) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
+
+    size_t available_write_space = out->capacity - out->len;
 
     CCCryptorStatus status = CCSymmetricKeyUnwrap(
         kCCWRAPAES,

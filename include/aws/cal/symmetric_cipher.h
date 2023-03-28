@@ -181,7 +181,7 @@ AWS_CAL_API int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
  *
  * If you need to access it in a different pattern, copy the values to your own buffer first.
  */
-AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_tag(struct aws_symmetric_cipher *cipher);
+AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_tag(const struct aws_symmetric_cipher *cipher);
 
 /**
  * Gets the original intialization vector as a cursor.
@@ -191,7 +191,8 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_tag(struct aws_symme
  *
  * Unlike some other fields, this value does not change after the inital construction of the cipher.
  */
-AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vector(struct aws_symmetric_cipher *cipher);
+AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vector(
+    const struct aws_symmetric_cipher *cipher);
 
 /**
  * Gets the original key.
@@ -202,13 +203,13 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vecto
  *
  * Unlike some other fields, this value does not change after the inital construction of the cipher.
  */
-AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(struct aws_symmetric_cipher *cipher);
+AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws_symmetric_cipher *cipher);
 
 /**
  * Returns true if the state of the cipher is good, and otherwise returns false.
  * Most operations, other than aws_symmetric_cipher_reset() will fail if this function is returning false.
  * aws_symmetric_cipher_reset() will reset the state to a good state if possible.
  */
-AWS_CAL_API bool aws_symmetric_cipher_is_good(struct aws_symmetric_cipher *cipher);
+AWS_CAL_API bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher);
 
 #endif /* AWS_CAL_SYMMETRIC_CIPHER_H */

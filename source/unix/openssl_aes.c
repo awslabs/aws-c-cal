@@ -17,13 +17,11 @@ static int s_encrypt(
     struct aws_symmetric_cipher *cipher,
     const struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
-    size_t required_buffer_space = input.len + cipher->block_size;
-    size_t available_write_space = out->capacity - out->len;
 
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    size_t required_buffer_space = input.len + cipher->block_size;
+
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     available_write_space = out->capacity - out->len;
@@ -44,12 +42,9 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
     size_t required_buffer_space = cipher->block_size;
-    size_t available_write_space = out->capacity - out->len;
 
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     int len_written = (int)(out->capacity - out->len);
@@ -69,12 +64,9 @@ static int s_decrypt(
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
     size_t required_buffer_space = input.len + cipher->block_size;
-    size_t available_write_space = out->capacity - out->len;
 
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     available_write_space = out->capacity - out->len;
@@ -95,17 +87,12 @@ static int s_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
     size_t required_buffer_space = cipher->block_size;
-    size_t available_write_space = out->capacity - out->len;
 
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    available_write_space = out->capacity - out->len;
-
-    int len_written = (int)available_write_space;
+    int len_written = (int)out->capacity - out->len;
     if (!EVP_DecryptFinal_ex(openssl_cipher->decryptor_ctx, out->buffer + out->len, &len_written)) {
         cipher->good = false;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -527,14 +514,12 @@ static int s_key_wrap_finalize_encryption(struct aws_symmetric_cipher *cipher, s
        we use one in-place buffer instead of the copy at the end.
        the one letter variable names are meant to directly reflect the variables in the RFC */
     size_t required_buffer_space = openssl_cipher->working_buffer.len + cipher->block_size;
-    size_t available_write_space = out->capacity - out->len;
     size_t starting_len_offset = out->len;
 
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
+
     /* put the integrity check register in the first 8 bytes of the final buffer. */
     aws_byte_buf_write_u8_n(out, INTEGRITY_VALUE, KEYWRAP_BLOCK_SIZE);
     uint8_t *a = out->buffer + starting_len_offset;
@@ -597,13 +582,10 @@ static int s_key_wrap_finalize_decryption(struct aws_symmetric_cipher *cipher, s
        we use one in-place buffer instead of the copy at the end.
        the one letter variable names are meant to directly reflect the variables in the RFC */
     size_t required_buffer_space = openssl_cipher->working_buffer.len - KEYWRAP_BLOCK_SIZE;
-    size_t available_write_space = out->capacity - out->len;
     size_t starting_len_offset = out->len;
 
-    if (available_write_space < required_buffer_space) {
-        if (aws_byte_buf_reserve_relative(out, required_buffer_space) != AWS_OP_SUCCESS) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, required_buffer_space)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     memcpy(

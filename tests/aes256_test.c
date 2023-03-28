@@ -1298,3 +1298,32 @@ static int s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector(struct 
 AWS_TEST_CASE(
     aes_keywrap_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector,
     s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector);
+
+static int s_test_input_too_large_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t iv[AWS_AES_256_CIPHER_BLOCK_SIZE] = {0};
+    uint8_t key[AWS_AES_256_KEY_BYTE_LEN] = {0};
+
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, sizeof(key));
+    struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_cbc_256_new(allocator, &key_cur, &iv_cur);
+    ASSERT_NOT_NULL(cipher);
+
+    struct aws_byte_cursor invalid_cur = {
+        .ptr = key,
+        .len = INT_MAX,
+    };
+
+    ASSERT_ERROR(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM, aws_symmetric_cipher_encrypt(cipher, invalid_cur, NULL));
+    /* should still be good from an invalid input. */
+    ASSERT_TRUE(aws_symmetric_cipher_is_good(cipher));
+    ASSERT_ERROR(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM, aws_symmetric_cipher_decrypt(cipher, invalid_cur, NULL));
+    /* should still be good from an invalid input. */
+    ASSERT_TRUE(aws_symmetric_cipher_is_good(cipher));
+
+    aws_symmetric_cipher_destroy(cipher);
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(aes_test_input_too_large, s_test_input_too_large_fn)

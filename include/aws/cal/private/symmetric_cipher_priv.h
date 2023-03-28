@@ -67,7 +67,11 @@ AWS_CAL_API int aws_symmetric_cipher_generate_initialization_vector(
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
  */
-AWS_CAL_API int aws_symmetric_cipher_generate_key(size_t keyLengthBytes, struct aws_byte_buf *out);
+AWS_CAL_API int aws_symmetric_cipher_generate_key(size_t len_bytes, struct aws_byte_buf *out);
+
 AWS_EXTERN_C_END
+
+/* Don't let this one get exported as it should never be used outside of this library (including tests). */
+int aws_symmetric_cipher_try_ensure_sufficient_buffer_space(struct aws_byte_buf *buf, size_t size);
 
 #endif /* AWS_CAL_SYMMETRIC_CIPHER_PRIV_H */

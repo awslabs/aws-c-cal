@@ -33,7 +33,10 @@ static struct aws_error_info s_errors[] = {
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM,
         "The specified algorithim is unsupported on this platform."),
-};
+    AWS_DEFINE_ERROR_INFO_CAL(
+        AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM,
+        "The input passed to a cipher algorithm was too large for that algorithm. Consider breaking the input into "
+        "smaller chunks.")};
 
 static struct aws_error_info_list s_list = {
     .error_list = s_errors,

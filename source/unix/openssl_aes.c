@@ -24,7 +24,7 @@ static int s_encrypt(
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    available_write_space = out->capacity - out->len;
+    size_t available_write_space = out->capacity - out->len;
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
     int len_written = (int)(available_write_space);
@@ -69,7 +69,7 @@ static int s_decrypt(
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    available_write_space = out->capacity - out->len;
+    size_t available_write_space = out->capacity - out->len;
 
     int len_written = (int)available_write_space;
     if (!EVP_DecryptUpdate(

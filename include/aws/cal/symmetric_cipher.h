@@ -211,5 +211,4 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws
  * aws_symmetric_cipher_reset() will reset the state to a good state if possible.
  */
 AWS_CAL_API bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher);
-
 #endif /* AWS_CAL_SYMMETRIC_CIPHER_H */

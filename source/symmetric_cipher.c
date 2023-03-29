@@ -96,22 +96,11 @@ static int s_symmetric_cipher_generate_random_bytes(struct aws_byte_buf *out, si
     AWS_ASSERT(len > sizeof(uint32_t));
     size_t len_to_generate = is_counter_mode ? len - sizeof(uint32_t) : len;
 
-    if ((out->capacity - out->len) < len) {
-        if (aws_byte_buf_reserve_relative(out, len)) {
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        }
+    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, len)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    struct aws_byte_buf output_cpy = *out;
-    /* the device random function below fills the buffer, so clamp it down to the size we need. */
-    output_cpy.capacity = output_cpy.len + len_to_generate;
-
-    if (aws_device_random_buffer(&output_cpy) != AWS_OP_SUCCESS) {
-        return AWS_OP_ERR;
-    }
-
-    out->len += len_to_generate;
-    return AWS_OP_SUCCESS;
+    return aws_device_random_buffer_append(out, len_to_generate);
 }
 
 int aws_symmetric_cipher_generate_initialization_vector(

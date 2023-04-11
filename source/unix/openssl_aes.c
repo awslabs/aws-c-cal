@@ -13,10 +13,7 @@ struct openssl_aes_cipher {
     struct aws_byte_buf working_buffer;
 };
 
-static int s_encrypt(
-    struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor input,
-    struct aws_byte_buf *out) {
+static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
 
     size_t required_buffer_space = input.len + cipher->block_size;
 
@@ -57,10 +54,7 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
     return AWS_OP_SUCCESS;
 }
 
-static int s_decrypt(
-    struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor input,
-    struct aws_byte_buf *out) {
+static int s_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
     size_t required_buffer_space = input.len + cipher->block_size;
@@ -489,7 +483,7 @@ error:
 
 static int s_key_wrap_encrypt_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor input,
+    struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     (void)out;
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;

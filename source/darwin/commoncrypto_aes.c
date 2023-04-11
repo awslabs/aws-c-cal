@@ -30,10 +30,7 @@ struct cc_aes_cipher {
     struct aws_byte_buf working_buffer;
 };
 
-static int s_encrypt(
-    struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor input,
-    struct aws_byte_buf *out) {
+static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
     /* allow for a padded block by making sure we have at least a block of padding reserved. */
     size_t required_buffer_space = input.len + cipher->block_size - 1;
 
@@ -57,10 +54,7 @@ static int s_encrypt(
     return AWS_OP_SUCCESS;
 }
 
-static int s_decrypt(
-    struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor input,
-    struct aws_byte_buf *out) {
+static int s_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
     /* allow for a padded block by making sure we have at least a block of padding reserved. */
     size_t required_buffer_space = input.len + cipher->block_size - 1;
 
@@ -474,19 +468,32 @@ static int s_initialize_gcm_cipher_materials(
         kCCModeOptionCTR_BE,
         &cc_cipher->encryptor_handle);
 
-#ifdef MAC_10_13_AVAILABLE
-    status |=
-        CCCryptorGCMSetIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
-#else
-    status |=
-        CCCryptorGCMAddIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
-#endif
-    if (cc_cipher->cipher_base.aad.len) {
-        status |= CCCryptorGCMAddAAD(
-            cc_cipher->encryptor_handle, cc_cipher->cipher_base.aad.buffer, cc_cipher->cipher_base.aad.len);
+    if (status != kCCSuccess) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-    status |= CCCryptorCreateWithMode(
+#ifdef MAC_10_13_AVAILABLE
+    status =
+        CCCryptorGCMSetIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
+#else
+    status =
+        CCCryptorGCMAddIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
+#endif
+
+    if (status != kCCSuccess) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    if (cc_cipher->cipher_base.aad.len) {
+        status = CCCryptorGCMAddAAD(
+            cc_cipher->encryptor_handle, cc_cipher->cipher_base.aad.buffer, cc_cipher->cipher_base.aad.len);
+
+        if (status != kCCSuccess) {
+            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        }
+    }
+
+    status = CCCryptorCreateWithMode(
         kCCDecrypt,
         kCCModeGCM,
         kCCAlgorithmAES,
@@ -500,19 +507,32 @@ static int s_initialize_gcm_cipher_materials(
         kCCModeOptionCTR_BE,
         &cc_cipher->decryptor_handle);
 
+    if (status != kCCSuccess) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
 #ifdef MAC_10_13_AVAILABLE
-    status |=
+    status =
         CCCryptorGCMSetIV(cc_cipher->decryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 #else
-    status |=
+    status =
         CCCryptorGCMAddIV(cc_cipher->decryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 #endif
+
+    if (status != kCCSuccess) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
     if (cc_cipher->cipher_base.aad.len) {
-        status |= CCCryptorGCMAddAAD(
+        status = CCCryptorGCMAddAAD(
             cc_cipher->decryptor_handle, cc_cipher->cipher_base.aad.buffer, cc_cipher->cipher_base.aad.len);
     }
 
-    return status == kCCSuccess ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    if (status != kCCSuccess) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    return AWS_OP_SUCCESS;
 }
 
 static int s_gcm_reset(struct aws_symmetric_cipher *cipher) {
@@ -563,7 +583,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
 
 static int s_keywrap_encrypt_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor input,
+    struct aws_byte_cursor input,
     struct aws_byte_buf *out) {
     struct cc_aes_cipher *cc_cipher = cipher->impl;
     return aws_byte_buf_append_dynamic(&cc_cipher->working_buffer, &input);

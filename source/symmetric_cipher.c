@@ -7,6 +7,8 @@
 #include <aws/common/device_random.h>
 
 static bool s_check_input_size_limits(const struct aws_symmetric_cipher *cipher, const struct aws_byte_cursor *input) {
+    /* libcrypto uses int, not size_t, so this is the limit.
+     * For simplicity, enforce the same rules on all platforms. */
     return input->len <= INT_MAX - cipher->block_size;
 }
 
@@ -18,7 +20,7 @@ void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher) {
 
 int aws_symmetric_cipher_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor to_encrypt,
+    struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
 
     if (AWS_UNLIKELY(!s_check_input_size_limits(cipher, &to_encrypt))) {
@@ -34,7 +36,7 @@ int aws_symmetric_cipher_encrypt(
 
 int aws_symmetric_cipher_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor to_encrypt,
+    struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
 
     if (AWS_UNLIKELY(!s_check_input_size_limits(cipher, &to_encrypt))) {
@@ -92,50 +94,24 @@ bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher) {
     return cipher->good;
 }
 
-static int s_symmetric_cipher_generate_random_bytes(struct aws_byte_buf *out, size_t len, bool is_counter_mode) {
-    AWS_ASSERT(len > sizeof(uint32_t));
-    size_t len_to_generate = is_counter_mode ? len - sizeof(uint32_t) : len;
-
-    if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, len)) {
-        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-    }
-
-    return aws_device_random_buffer_append(out, len_to_generate);
-}
-
-int aws_symmetric_cipher_generate_initialization_vector(
+void aws_symmetric_cipher_generate_initialization_vector(
     size_t len_bytes,
     bool is_counter_mode,
     struct aws_byte_buf *out) {
-    size_t buf_start_len = out->len;
-    if (s_symmetric_cipher_generate_random_bytes(out, len_bytes, is_counter_mode) != AWS_OP_SUCCESS) {
-        return AWS_OP_ERR;
-    }
+    size_t counter_len = is_counter_mode ? sizeof(uint32_t) : 0;
+    AWS_ASSERT(len_bytes > counter_len);
+    size_t rand_len = len_bytes - counter_len;
 
-    /* get the length we wrote back out of it */
-    size_t iv_length = len_bytes;
+    AWS_FATAL_ASSERT(aws_device_random_buffer_append(out, rand_len) == AWS_OP_SUCCESS);
 
     if (is_counter_mode) {
-        /* init the counter */
-        /* [nonce 1/4] [ iv 1/2 ] [ctr 1/4] */
-        AWS_ASSERT(iv_length > sizeof(uint32_t));
-        size_t ctr_start = iv_length - sizeof(uint32_t);
-        out->len = buf_start_len + ctr_start;
-        /* initialize it to a 1, but we don't know the iv size. So just write zeros til the last byte) */
-        if (!aws_byte_buf_write_u8_n(out, 0, iv_length - ctr_start - 1) != AWS_OP_SUCCESS) {
-            return AWS_OP_ERR;
-        }
-
-        if (!aws_byte_buf_write_u8(out, 1)) {
-            return AWS_OP_ERR;
-        }
+        /* put counter at the end, initialized to 1 */
+        aws_byte_buf_write_be32(out, 1);
     }
-
-    return AWS_OP_SUCCESS;
 }
 
-int aws_symmetric_cipher_generate_key(size_t key_len_bytes, struct aws_byte_buf *out) {
-    return s_symmetric_cipher_generate_random_bytes(out, key_len_bytes, false);
+void aws_symmetric_cipher_generate_key(size_t key_len_bytes, struct aws_byte_buf *out) {
+    AWS_FATAL_ASSERT(aws_device_random_buffer_append(out, key_len_bytes) == AWS_OP_SUCCESS);
 }
 
 int aws_symmetric_cipher_try_ensure_sufficient_buffer_space(struct aws_byte_buf *buf, size_t size) {

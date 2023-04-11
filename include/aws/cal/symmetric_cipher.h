@@ -114,7 +114,7 @@ AWS_CAL_API void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *ciphe
  */
 AWS_CAL_API int aws_symmetric_cipher_encrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor to_encrypt,
+    struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out);
 
 /**
@@ -129,7 +129,7 @@ AWS_CAL_API int aws_symmetric_cipher_encrypt(
  */
 AWS_CAL_API int aws_symmetric_cipher_decrypt(
     struct aws_symmetric_cipher *cipher,
-    const struct aws_byte_cursor to_decrypt,
+    struct aws_byte_cursor to_decrypt,
     struct aws_byte_buf *out);
 
 /**

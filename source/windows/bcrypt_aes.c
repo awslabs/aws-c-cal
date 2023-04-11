@@ -1012,7 +1012,7 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
         0);
     int ret_val = AWS_OP_ERR;
 
-    if (NT_STATUS(status) && import_key) {
+    if (NT_SUCCESS(status) && import_key) {
         ULONG export_size = 0;
 
         struct aws_byte_buf key_data_blob;

@@ -124,7 +124,14 @@ static void s_aes_default_destroy(struct aws_symmetric_cipher *cipher) {
     aws_byte_buf_clean_up_secure(&cipher->iv);
     aws_byte_buf_clean_up_secure(&cipher->tag);
     aws_byte_buf_clean_up_secure(&cipher->aad);
-    aws_byte_buf_clean_up_secure(&cipher_impl->working_iv);
+
+    /* clean_up_secure exists in versions of aws-c-common that don't check that the
+       buffer has a buffer and an allocator before freeing the memory. Instead,
+       check here. If it's set the buffer was owned and needs to be cleaned up, otherwise
+       it can just be dropped as it was an alias.*/
+    if (cipher_impl->working_iv.allocator) {
+        aws_byte_buf_clean_up_secure(&cipher_impl->working_iv);
+    }
 
     aws_byte_buf_clean_up_secure(&cipher_impl->overflow);
     aws_byte_buf_clean_up_secure(&cipher_impl->working_mac_buffer);

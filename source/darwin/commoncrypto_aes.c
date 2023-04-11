@@ -268,8 +268,7 @@ static int s_initialize_ctr_cipher_materials(
         if (key) {
             aws_byte_buf_init_copy_from_cursor(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, *key);
         } else {
-            aws_byte_buf_init(
-                &cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+            aws_byte_buf_init(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, AWS_AES_256_KEY_BYTE_LEN);
             aws_symmetric_cipher_generate_key(AWS_AES_256_KEY_BYTE_LEN, &cc_cipher->cipher_base.key);
         }
     }
@@ -425,8 +424,7 @@ static int s_initialize_gcm_cipher_materials(
         if (key) {
             aws_byte_buf_init_copy_from_cursor(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, *key);
         } else {
-            aws_byte_buf_init(
-                &cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+            aws_byte_buf_init(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, AWS_AES_256_KEY_BYTE_LEN);
             aws_symmetric_cipher_generate_key(AWS_AES_256_KEY_BYTE_LEN, &cc_cipher->cipher_base.key);
         }
     }
@@ -682,7 +680,7 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
     if (key) {
         aws_byte_buf_init_copy_from_cursor(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, *key);
     } else {
-        aws_byte_buf_init(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+        aws_byte_buf_init(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, AWS_AES_256_KEY_BYTE_LEN);
         aws_symmetric_cipher_generate_key(AWS_AES_256_KEY_BYTE_LEN, &cc_cipher->cipher_base.key);
     }
 

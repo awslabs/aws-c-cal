@@ -36,15 +36,15 @@ int aws_symmetric_cipher_encrypt(
 
 int aws_symmetric_cipher_decrypt(
     struct aws_symmetric_cipher *cipher,
-    struct aws_byte_cursor to_encrypt,
+    struct aws_byte_cursor to_decrypt,
     struct aws_byte_buf *out) {
 
-    if (AWS_UNLIKELY(!s_check_input_size_limits(cipher, &to_encrypt))) {
+    if (AWS_UNLIKELY(!s_check_input_size_limits(cipher, &to_decrypt))) {
         return aws_raise_error(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM);
     }
 
     if (cipher->good) {
-        return cipher->vtable->decrypt(cipher, to_encrypt, out);
+        return cipher->vtable->decrypt(cipher, to_decrypt, out);
     }
 
     return aws_raise_error(AWS_ERROR_INVALID_STATE);

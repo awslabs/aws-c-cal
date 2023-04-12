@@ -190,6 +190,8 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_tag(const struct aws
  * encryption or decryption operation and it dramatically simplifies the API.
  *
  * Unlike some other fields, this value does not change after the inital construction of the cipher.
+ *
+ * For some algorithms, such as AES Keywrap, this will return an empty cursor.
  */
 AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vector(
     const struct aws_symmetric_cipher *cipher);

@@ -16,7 +16,7 @@ struct aws_symmetric_cipher_vtable {
        The original IV, Key, Tag etc... will be restored to the current cipher. */
     int (*reset)(struct aws_symmetric_cipher *cipher);
     int (*encrypt)(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor to_encrypt, struct aws_byte_buf *out);
-    int (*decrypt)(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor to_encrypt, struct aws_byte_buf *out);
+    int (*decrypt)(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor to_decrypt, struct aws_byte_buf *out);
 
     int (*finalize_encryption)(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
     int (*finalize_decryption)(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out);
@@ -40,9 +40,6 @@ AWS_EXTERN_C_BEGIN
 /**
  * Generates a secure random initialization vector of length len_bytes. If is_counter_mode is set, the final 4 bytes
  * will be reserved as a counter and initialized to 1 in big-endian byte-order.
- *
- * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
- * AWS_OP_ERR;
  */
 AWS_CAL_API void aws_symmetric_cipher_generate_initialization_vector(
     size_t len_bytes,
@@ -51,9 +48,6 @@ AWS_CAL_API void aws_symmetric_cipher_generate_initialization_vector(
 
 /**
  * Generates a secure random symmetric key of length len_bytes.
- *
- * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
- * AWS_OP_ERR;
  */
 AWS_CAL_API void aws_symmetric_cipher_generate_key(size_t len_bytes, struct aws_byte_buf *out);
 

@@ -519,7 +519,7 @@ static int s_key_wrap_finalize_encryption(struct aws_symmetric_cipher *cipher, s
     uint8_t *a = out->buffer + starting_len_offset;
 
     struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&openssl_cipher->working_buffer);
-    aws_byte_buf_append_dynamic(out, &working_buf_cur);
+    aws_byte_buf_write_from_whole_cursor(out, working_buf_cur);
 
     /* put the register buffer after the integrity check register */
     uint8_t *r = out->buffer + starting_len_offset + KEYWRAP_BLOCK_SIZE;

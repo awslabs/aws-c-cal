@@ -519,7 +519,7 @@ static struct aws_symmetric_cipher_vtable s_aes_cbc_vtable = {
     .reset = s_reset_cbc_cipher,
 };
 
-struct aws_symmetric_cipher *aws_aes_cbc_256_new(
+struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
@@ -685,7 +685,7 @@ static struct aws_symmetric_cipher_vtable s_aes_gcm_vtable = {
     .reset = s_reset_gcm_cipher,
 };
 
-struct aws_symmetric_cipher *aws_aes_gcm_256_new(
+struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
@@ -896,7 +896,7 @@ static struct aws_symmetric_cipher_vtable s_aes_ctr_vtable = {
     .reset = s_reset_ctr_cipher,
 };
 
-struct aws_symmetric_cipher *aws_aes_ctr_256_new(
+struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
@@ -1088,7 +1088,7 @@ static struct aws_symmetric_cipher_vtable s_aes_keywrap_vtable = {
     .reset = s_reset_keywrap_cipher,
 };
 
-struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
+struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key) {
 

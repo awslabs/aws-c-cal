@@ -183,7 +183,7 @@ static struct aws_symmetric_cipher_vtable s_cbc_vtable = {
     .finalize_encryption = s_finalize_encryption,
 };
 
-struct aws_symmetric_cipher *aws_aes_cbc_256_new(
+struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
@@ -274,7 +274,7 @@ static struct aws_symmetric_cipher_vtable s_ctr_vtable = {
     .finalize_encryption = s_finalize_encryption,
 };
 
-struct aws_symmetric_cipher *aws_aes_ctr_256_new(
+struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
@@ -417,7 +417,7 @@ static struct aws_symmetric_cipher_vtable s_gcm_vtable = {
     .finalize_encryption = s_finalize_gcm_encryption,
 };
 
-struct aws_symmetric_cipher *aws_aes_gcm_256_new(
+struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
@@ -676,7 +676,7 @@ static struct aws_symmetric_cipher_vtable s_keywrap_vtable = {
     .finalize_encryption = s_key_wrap_finalize_encryption,
 };
 
-struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
+struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key) {
     struct openssl_aes_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct openssl_aes_cipher));

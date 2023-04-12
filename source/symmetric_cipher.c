@@ -6,10 +6,112 @@
 #include <aws/cal/symmetric_cipher.h>
 #include <aws/common/device_random.h>
 
+#ifndef BYO_CRYPTO
+
+extern struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv);
+
+extern struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv);
+
+extern struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv,
+    const struct aws_byte_cursor *aad,
+    const struct aws_byte_cursor *decryption_tag);
+
+extern struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key);
+
+#else /* BYO_CRYPTO */
+struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv) {
+    (void)allocator;
+    (void)key;
+    (void)iv;
+    abort();
+}
+
+struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv) {
+    (void)allocator;
+    (void)key;
+    (void)iv;
+    abort();
+}
+
+struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv,
+    const struct aws_byte_cursor *aad,
+    const struct aws_byte_cursor *decryption_tag) {
+    (void)allocator;
+    (void)key;
+    (void)iv;
+    (void)aad;
+    (void)decryption_tag;
+    abort();
+}
+
+struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key) {
+    (void)allocator;
+    (void)key;
+    abort();
+}
+
+#endif /* BYO_CRYPTO */
+
+static aws_aes_cbc_256_new_fn *s_aes_cbc_new_fn = aws_aes_cbc_256_new_impl;
+static aws_aes_ctr_256_new_fn *s_aes_ctr_new_fn = aws_aes_ctr_256_new_impl;
+static aws_aes_gcm_256_new_fn *s_aes_gcm_new_fn = aws_aes_gcm_256_new_impl;
+static aws_aes_keywrap_256_new_fn *s_aes_keywrap_new_fn = aws_aes_keywrap_256_new_impl;
+
 static bool s_check_input_size_limits(const struct aws_symmetric_cipher *cipher, const struct aws_byte_cursor *input) {
     /* libcrypto uses int, not size_t, so this is the limit.
      * For simplicity, enforce the same rules on all platforms. */
     return input->len <= INT_MAX - cipher->block_size;
+}
+
+struct aws_symmetric_cipher *aws_aes_cbc_256_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv) {
+    return s_aes_cbc_new_fn(allocator, key, iv);
+}
+
+struct aws_symmetric_cipher *aws_aes_ctr_256_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv) {
+    return s_aes_ctr_new_fn(allocator, key, iv);
+}
+
+struct aws_symmetric_cipher *aws_aes_gcm_256_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key,
+    const struct aws_byte_cursor *iv,
+    const struct aws_byte_cursor *aad,
+    const struct aws_byte_cursor *decryption_tag) {
+    return s_aes_gcm_new_fn(allocator, key, iv, aad, decryption_tag);
+}
+
+struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *key) {
+    return s_aes_keywrap_new_fn(allocator, key);
 }
 
 void aws_symmetric_cipher_destroy(struct aws_symmetric_cipher *cipher) {

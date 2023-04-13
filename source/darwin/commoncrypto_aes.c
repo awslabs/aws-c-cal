@@ -11,13 +11,8 @@
 
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
-#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
-#    if defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_13)
-#        define MAC_10_13_AVAILABLE 1
-#    elif defined(__MAC_10_14_4) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_14_4)
-#        define MAC_10_14_4_AVAILABLE 1
-#    endif
-#endif
+API_AVAILABLE(macos(10.13), ios(11.0))
+#define MAC_10_13_AVAILABLE 1
 
 /* for OSX < 10.10 compatibility */
 typedef int32_t CCStatus;

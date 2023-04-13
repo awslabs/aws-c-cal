@@ -126,16 +126,8 @@ static void s_destroy(struct aws_symmetric_cipher *cipher) {
 static int s_reset(struct aws_symmetric_cipher *cipher) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
-    if (!EVP_CIPHER_CTX_init(openssl_cipher->encryptor_ctx)) {
-        cipher->good = false;
-        return aws_raise_error(AWS_ERROR_INVALID_STATE);
-    }
-
-    if (!EVP_CIPHER_CTX_init(openssl_cipher->decryptor_ctx)) {
-        cipher->good = false;
-        return aws_raise_error(AWS_ERROR_INVALID_STATE);
-    }
-
+    EVP_CIPHER_CTX_init(openssl_cipher->encryptor_ctx);
+    EVP_CIPHER_CTX_init(openssl_cipher->decryptor_ctx);
     aws_byte_buf_secure_zero(&openssl_cipher->working_buffer);
     cipher->good = true;
     return AWS_OP_SUCCESS;

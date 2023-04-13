@@ -12,7 +12,7 @@
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
 API_AVAILABLE(macos(10.13), ios(11.0))
-#define MAC_10_13_AVAILABLE 1
+#define USE_LATEST_CRYPTO_API 1
 
 /* for OSX < 10.10 compatibility */
 typedef int32_t CCStatus;
@@ -370,7 +370,7 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
     /* Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
      * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
      */
-#ifdef MAC_10_13_AVAILABLE
+#ifdef USE_LATEST_CRYPTO_API
     status = CCCryptorGCMFinalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
 #else
     status = CCCryptorGCMFinal(cc_cipher->encryptor_handle, cipher->tag.buffer, &tag_length);
@@ -395,7 +395,7 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
     /* Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
      * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
      */
-#ifdef MAC_10_13_AVAILABLE
+#ifdef USE_LATEST_CRYPTO_API
     status = CCCryptorGCMFinalize(cc_cipher->decryptor_handle, cipher->tag.buffer, tag_length);
 #else
     status = CCCryptorGCMFinal(cc_cipher->decryptor_handle, cipher->tag.buffer, &tag_length);
@@ -465,7 +465,7 @@ static int s_initialize_gcm_cipher_materials(
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-#ifdef MAC_10_13_AVAILABLE
+#ifdef USE_LATEST_CRYPTO_API
     status =
         CCCryptorGCMSetIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 #else
@@ -504,7 +504,7 @@ static int s_initialize_gcm_cipher_materials(
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-#ifdef MAC_10_13_AVAILABLE
+#ifdef USE_LATEST_CRYPTO_API
     status =
         CCCryptorGCMSetIV(cc_cipher->decryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 #else

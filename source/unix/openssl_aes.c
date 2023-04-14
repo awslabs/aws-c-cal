@@ -123,19 +123,11 @@ static void s_destroy(struct aws_symmetric_cipher *cipher) {
     aws_mem_release(cipher->allocator, openssl_cipher);
 }
 
-static int s_reset(struct aws_symmetric_cipher *cipher) {
+static int s_clear_reusable_state(struct aws_symmetric_cipher *cipher) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
-    if (!EVP_CIPHER_CTX_reset(openssl_cipher->encryptor_ctx)) {
-        cipher->good = false;
-        return aws_raise_error(AWS_ERROR_INVALID_STATE);
-    }
-
-    if (!EVP_CIPHER_CTX_reset(openssl_cipher->decryptor_ctx)) {
-        cipher->good = false;
-        return aws_raise_error(AWS_ERROR_INVALID_STATE);
-    }
-
+    EVP_CIPHER_CTX_cleanup(openssl_cipher->encryptor_ctx);
+    EVP_CIPHER_CTX_cleanup(openssl_cipher->decryptor_ctx);
     aws_byte_buf_secure_zero(&openssl_cipher->working_buffer);
     cipher->good = true;
     return AWS_OP_SUCCESS;
@@ -163,7 +155,7 @@ static int s_init_cbc_cipher_materials(struct aws_symmetric_cipher *cipher) {
 }
 
 static int s_reset_cbc_cipher_materials(struct aws_symmetric_cipher *cipher) {
-    int ret_val = s_reset(cipher);
+    int ret_val = s_clear_reusable_state(cipher);
 
     if (ret_val == AWS_OP_SUCCESS) {
         return s_init_cbc_cipher_materials(cipher);
@@ -254,7 +246,7 @@ static int s_init_ctr_cipher_materials(struct aws_symmetric_cipher *cipher) {
 }
 
 static int s_reset_ctr_cipher_materials(struct aws_symmetric_cipher *cipher) {
-    int ret_val = s_reset(cipher);
+    int ret_val = s_clear_reusable_state(cipher);
 
     if (ret_val == AWS_OP_SUCCESS) {
         return s_init_ctr_cipher_materials(cipher);
@@ -397,7 +389,7 @@ static int s_init_gcm_cipher_materials(struct aws_symmetric_cipher *cipher) {
 }
 
 static int s_reset_gcm_cipher_materials(struct aws_symmetric_cipher *cipher) {
-    int ret_val = s_reset(cipher);
+    int ret_val = s_clear_reusable_state(cipher);
 
     if (ret_val == AWS_OP_SUCCESS) {
         return s_init_gcm_cipher_materials(cipher);
@@ -656,7 +648,7 @@ static int s_init_keywrap_cipher_materials(struct aws_symmetric_cipher *cipher) 
 }
 
 static int s_reset_keywrap_cipher_materials(struct aws_symmetric_cipher *cipher) {
-    int ret_val = s_reset(cipher);
+    int ret_val = s_clear_reusable_state(cipher);
 
     if (ret_val == AWS_OP_SUCCESS) {
         return s_init_keywrap_cipher_materials(cipher);

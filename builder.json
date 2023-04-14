@@ -15,16 +15,14 @@
         "linux": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "v1.6.0", "_comment": "avoid commit 3530140 which breaks manylinux1"
+                    "name": "aws-lc"
                 }
             ]
         },
         "android": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "v1.6.0", "_comment": "avoid commit 3530140 which breaks manylinux1"
+                    "name": "aws-lc"
                 }
             ]
         },
@@ -60,6 +58,6 @@
             "{install_dir}/bin/sha256_profile"
         ],
         "{install_dir}/bin/run_x_platform_fuzz_corpus --corpus-path {source_dir}/ecdsa-fuzz-corpus"
-        
+
     ]
 }

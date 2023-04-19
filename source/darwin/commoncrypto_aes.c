@@ -11,9 +11,8 @@
 
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
-#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_13)
-#    define USE_LATEST_CRYPTO_API 1
-#endif
+API_AVAILABLE(macos(10.13), ios(11.0))
+#define USE_LATEST_CRYPTO_API 1
 
 struct cc_aes_cipher {
     struct aws_symmetric_cipher cipher_base;

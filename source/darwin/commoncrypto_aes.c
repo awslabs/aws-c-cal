@@ -11,12 +11,9 @@
 
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
-API_AVAILABLE(macos(10.13), ios(11.0))
-#define USE_LATEST_CRYPTO_API 1
-
-/* for OSX < 10.10 compatibility */
-typedef int32_t CCStatus;
-typedef int32_t CCCryptorStatus;
+#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_13)
+#    define USE_LATEST_CRYPTO_API 1
+#endif
 
 struct cc_aes_cipher {
     struct aws_symmetric_cipher cipher_base;
@@ -37,7 +34,7 @@ static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     size_t len_written = 0;
-    CCStatus status = CCCryptorUpdate(
+    int32_t status = CCCryptorUpdate(
         cc_cipher->encryptor_handle, input.ptr, input.len, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
@@ -61,7 +58,7 @@ static int s_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     size_t len_written = 0;
-    CCStatus status = CCCryptorUpdate(
+    int32_t status = CCCryptorUpdate(
         cc_cipher->decryptor_handle, input.ptr, input.len, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
@@ -86,7 +83,7 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
     size_t available_write_space = out->capacity - out->len;
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
-    CCStatus status =
+    int32_t status =
         CCCryptorFinal(cc_cipher->encryptor_handle, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
@@ -111,7 +108,7 @@ static int s_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws
     size_t available_write_space = out->capacity - out->len;
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
-    CCStatus status =
+    int32_t status =
         CCCryptorFinal(cc_cipher->decryptor_handle, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
@@ -147,7 +144,7 @@ static int s_initialize_cbc_cipher_materials(
         }
     }
 
-    CCCryptorStatus status = CCCryptorCreateWithMode(
+    int32_t status = CCCryptorCreateWithMode(
         kCCEncrypt,
         kCCModeCBC,
         kCCAlgorithmAES,
@@ -279,7 +276,7 @@ static int s_initialize_ctr_cipher_materials(
         }
     }
 
-    CCCryptorStatus status = CCCryptorCreateWithMode(
+    int32_t status = CCCryptorCreateWithMode(
         kCCEncrypt,
         kCCModeCTR,
         kCCAlgorithmAES,
@@ -355,6 +352,22 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     return &cc_cipher->cipher_base;
 }
 
+/*
+ * Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
+ * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
+ */
+static int32_t s_cc_crypto_gcm_finalize(struct _CCCryptor *encryptor_handle, uint8_t *buffer, size_t tag_length) {
+#ifdef USE_LATEST_CRYPTO_API
+    if (__builtin_available(macOS 10.13, iOS 11.0, *)) {
+        return CCCryptorGCMFinalize(encryptor_handle, buffer, tag_length);
+    } else {
+        return CCCryptorGCMFinal(encryptor_handle, buffer, &tag_length);
+    }
+#else
+    return CCCryptorGCMFinal(encryptor_handle, buffer, &tag_length);
+#endif
+}
+
 static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     (void)out;
 
@@ -365,17 +378,8 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
 
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
-    CCStatus status;
     size_t tag_length = AWS_AES_256_CIPHER_BLOCK_SIZE;
-    /* Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
-     * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
-     */
-#ifdef USE_LATEST_CRYPTO_API
-    status = CCCryptorGCMFinalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
-#else
-    status = CCCryptorGCMFinal(cc_cipher->encryptor_handle, cipher->tag.buffer, &tag_length);
-#endif
-
+    int32_t status = s_cc_crypto_gcm_finalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
     if (status != kCCSuccess) {
         cipher->good = false;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -390,17 +394,8 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
 
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
-    CCStatus status;
     size_t tag_length = AWS_AES_256_CIPHER_BLOCK_SIZE;
-    /* Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
-     * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
-     */
-#ifdef USE_LATEST_CRYPTO_API
-    status = CCCryptorGCMFinalize(cc_cipher->decryptor_handle, cipher->tag.buffer, tag_length);
-#else
-    status = CCCryptorGCMFinal(cc_cipher->decryptor_handle, cipher->tag.buffer, &tag_length);
-#endif
-
+    int32_t status = s_cc_crypto_gcm_finalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
     if (status != kCCSuccess) {
         cipher->good = false;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -409,6 +404,17 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
     return AWS_OP_SUCCESS;
 }
 
+static int32_t s_cc_cryptor_gcm_set_iv(struct _CCCryptor *encryptor_handle, uint8_t *buffer, size_t length) {
+#ifdef USE_LATEST_CRYPTO_API
+    if (__builtin_available(macOS 10.13, iOS 11.0, *)) {
+        return CCCryptorGCMSetIV(encryptor_handle, buffer, length);
+    } else {
+        return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
+    }
+#else
+    return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
+#endif
+}
 static int s_initialize_gcm_cipher_materials(
     struct cc_aes_cipher *cc_cipher,
     const struct aws_byte_cursor *key,
@@ -447,7 +453,7 @@ static int s_initialize_gcm_cipher_materials(
         aws_byte_buf_init_copy_from_cursor(&cc_cipher->cipher_base.tag, cc_cipher->cipher_base.allocator, *tag);
     }
 
-    CCCryptorStatus status = CCCryptorCreateWithMode(
+    int32_t status = CCCryptorCreateWithMode(
         kCCEncrypt,
         kCCModeGCM,
         kCCAlgorithmAES,
@@ -464,14 +470,8 @@ static int s_initialize_gcm_cipher_materials(
     if (status != kCCSuccess) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
-
-#ifdef USE_LATEST_CRYPTO_API
-    status =
-        CCCryptorGCMSetIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
-#else
-    status =
-        CCCryptorGCMAddIV(cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
-#endif
+    status = s_cc_cryptor_gcm_set_iv(
+        cc_cipher->encryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 
     if (status != kCCSuccess) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -503,14 +503,8 @@ static int s_initialize_gcm_cipher_materials(
     if (status != kCCSuccess) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
-
-#ifdef USE_LATEST_CRYPTO_API
-    status =
-        CCCryptorGCMSetIV(cc_cipher->decryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
-#else
-    status =
-        CCCryptorGCMAddIV(cc_cipher->decryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
-#endif
+    status = s_cc_cryptor_gcm_set_iv(
+        cc_cipher->decryptor_handle, cc_cipher->cipher_base.iv.buffer, cc_cipher->cipher_base.iv.len);
 
     if (status != kCCSuccess) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -596,7 +590,7 @@ static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, st
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    CCCryptorStatus status = CCSymmetricKeyWrap(
+    int32_t status = CCSymmetricKeyWrap(
         kCCWRAPAES,
         CCrfc3394_iv,
         CCrfc3394_ivLen,
@@ -631,7 +625,7 @@ static int s_finalize_keywrap_decryption(struct aws_symmetric_cipher *cipher, st
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    CCCryptorStatus status = CCSymmetricKeyUnwrap(
+    int32_t status = CCSymmetricKeyUnwrap(
         kCCWRAPAES,
         CCrfc3394_iv,
         CCrfc3394_ivLen,

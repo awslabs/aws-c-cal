@@ -11,6 +11,9 @@
 
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 #if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_13)
 #    define USE_LATEST_CRYPTO_API 1
 #endif
@@ -679,3 +682,5 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
 
     return &cc_cipher->cipher_base;
 }
+
+#pragma clang diagnostic pop

@@ -11,7 +11,8 @@
 
 #include <aws/cal/private/darwin/common_cryptor_spi.h>
 
-#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && defined(__MAC_10_13) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300)
+#if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300) &&                           \
+    defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000)
 #    define USE_LATEST_CRYPTO_API 1
 #endif
 

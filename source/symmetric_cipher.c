@@ -79,28 +79,27 @@ static aws_aes_ctr_256_new_fn *s_aes_ctr_new_fn = aws_aes_ctr_256_new_impl;
 static aws_aes_gcm_256_new_fn *s_aes_gcm_new_fn = aws_aes_gcm_256_new_impl;
 static aws_aes_keywrap_256_new_fn *s_aes_keywrap_new_fn = aws_aes_keywrap_256_new_impl;
 
-static bool s_check_input_size_limits(const struct aws_symmetric_cipher *cipher, const struct aws_byte_cursor *input) {
+static int s_check_input_size_limits(const struct aws_symmetric_cipher *cipher, const struct aws_byte_cursor *input) {
     /* libcrypto uses int, not size_t, so this is the limit.
      * For simplicity, enforce the same rules on all platforms. */
-    return input->len <= INT_MAX - cipher->block_size;
+    return input->len <= INT_MAX - cipher->block_size ? AWS_OP_SUCCESS
+                                                      : aws_raise_error(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM);
 }
 
-static bool s_validate_key_materials(
+static int s_validate_key_materials(
     const struct aws_byte_cursor *key,
     size_t expected_key_size,
     const struct aws_byte_cursor *iv,
     size_t expected_iv_size) {
     if (key && key->len != expected_key_size) {
-        aws_raise_error(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
-        return false;
+        return aws_raise_error(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
     }
 
     if (iv && iv->len != expected_iv_size) {
-        aws_raise_error(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM);
-        return false;
+        return aws_raise_error(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM);
     }
 
-    return true;
+    return AWS_OP_SUCCESS;
 }
 
 struct aws_symmetric_cipher *aws_aes_cbc_256_new(
@@ -108,7 +107,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
 
-    if (!s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE)) {
+    if (s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE) != AWS_OP_SUCCESS) {
         return NULL;
     }
     return s_aes_cbc_new_fn(allocator, key, iv);
@@ -118,7 +117,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
-    if (!s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE)) {
+    if (s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE) != AWS_OP_SUCCESS) {
         return NULL;
     }
     return s_aes_ctr_new_fn(allocator, key, iv);
@@ -130,8 +129,8 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     const struct aws_byte_cursor *iv,
     const struct aws_byte_cursor *aad,
     const struct aws_byte_cursor *decryption_tag) {
-    if (!s_validate_key_materials(
-            key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE - sizeof(uint32_t))) {
+    if (s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE - sizeof(uint32_t)) !=
+        AWS_OP_SUCCESS) {
         return NULL;
     }
     return s_aes_gcm_new_fn(allocator, key, iv, aad, decryption_tag);
@@ -140,7 +139,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
 struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key) {
-    if (!s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, NULL, 0)) {
+    if (s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, NULL, 0) != AWS_OP_SUCCESS) {
         return NULL;
     }
     return s_aes_keywrap_new_fn(allocator, key);
@@ -157,8 +156,8 @@ int aws_symmetric_cipher_encrypt(
     struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
 
-    if (AWS_UNLIKELY(!s_check_input_size_limits(cipher, &to_encrypt))) {
-        return aws_raise_error(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM);
+    if (AWS_UNLIKELY(s_check_input_size_limits(cipher, &to_encrypt) != AWS_OP_SUCCESS)) {
+        return AWS_OP_ERR;
     }
 
     if (cipher->good) {
@@ -173,8 +172,8 @@ int aws_symmetric_cipher_decrypt(
     struct aws_byte_cursor to_decrypt,
     struct aws_byte_buf *out) {
 
-    if (AWS_UNLIKELY(!s_check_input_size_limits(cipher, &to_decrypt))) {
-        return aws_raise_error(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM);
+    if (AWS_UNLIKELY(s_check_input_size_limits(cipher, &to_decrypt) != AWS_OP_SUCCESS)) {
+        return AWS_OP_ERR;
     }
 
     if (cipher->good) {

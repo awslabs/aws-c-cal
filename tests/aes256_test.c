@@ -258,6 +258,42 @@ static int s_aes_cbc_test_with_generated_key_iv_fn(struct aws_allocator *allocat
 }
 AWS_TEST_CASE(aes_cbc_test_with_generated_key_iv, s_aes_cbc_test_with_generated_key_iv_fn)
 
+static int s_aes_cbc_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t iv_too_small[AWS_AES_256_CIPHER_BLOCK_SIZE - 1] = {0};
+    uint8_t iv_too_large[AWS_AES_256_CIPHER_BLOCK_SIZE + 1] = {0};
+
+    uint8_t key_too_small[AWS_AES_256_KEY_BYTE_LEN - 1] = {0};
+    uint8_t key_too_large[AWS_AES_256_KEY_BYTE_LEN + 1] = {0};
+
+    uint8_t valid_key_size[AWS_AES_256_KEY_BYTE_LEN] = {0};
+    uint8_t valid_iv_size[AWS_AES_256_CIPHER_BLOCK_SIZE] = {0};
+
+    struct aws_byte_cursor key = aws_byte_cursor_from_array(valid_key_size, sizeof(valid_key_size));
+    struct aws_byte_cursor iv = aws_byte_cursor_from_array(iv_too_small, sizeof(iv_too_small));
+    ASSERT_NULL(aws_aes_cbc_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(valid_key_size, sizeof(valid_key_size));
+    iv = aws_byte_cursor_from_array(iv_too_large, sizeof(iv_too_large));
+    ASSERT_NULL(aws_aes_cbc_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(key_too_small, sizeof(key_too_small));
+    iv = aws_byte_cursor_from_array(valid_iv_size, sizeof(valid_iv_size));
+    ASSERT_NULL(aws_aes_cbc_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(key_too_small, sizeof(key_too_small));
+    iv = aws_byte_cursor_from_array(key_too_large, sizeof(key_too_large));
+    ASSERT_NULL(aws_aes_cbc_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(aes_cbc_validate_materials_fails, s_aes_cbc_validate_materials_fails_fn)
+
 static int s_check_single_block_ctr(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor key,
@@ -460,6 +496,42 @@ static int s_aes_ctr_test_with_generated_key_iv_fn(struct aws_allocator *allocat
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_ctr_test_with_generated_key_iv, s_aes_ctr_test_with_generated_key_iv_fn)
+
+static int s_aes_ctr_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t iv_too_small[AWS_AES_256_CIPHER_BLOCK_SIZE - 1] = {0};
+    uint8_t iv_too_large[AWS_AES_256_CIPHER_BLOCK_SIZE + 1] = {0};
+
+    uint8_t key_too_small[AWS_AES_256_KEY_BYTE_LEN - 1] = {0};
+    uint8_t key_too_large[AWS_AES_256_KEY_BYTE_LEN + 1] = {0};
+
+    uint8_t valid_key_size[AWS_AES_256_KEY_BYTE_LEN] = {0};
+    uint8_t valid_iv_size[AWS_AES_256_CIPHER_BLOCK_SIZE] = {0};
+
+    struct aws_byte_cursor key = aws_byte_cursor_from_array(valid_key_size, sizeof(valid_key_size));
+    struct aws_byte_cursor iv = aws_byte_cursor_from_array(iv_too_small, sizeof(iv_too_small));
+    ASSERT_NULL(aws_aes_ctr_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(valid_key_size, sizeof(valid_key_size));
+    iv = aws_byte_cursor_from_array(iv_too_large, sizeof(iv_too_large));
+    ASSERT_NULL(aws_aes_ctr_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(key_too_small, sizeof(key_too_small));
+    iv = aws_byte_cursor_from_array(valid_iv_size, sizeof(valid_iv_size));
+    ASSERT_NULL(aws_aes_ctr_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(key_too_small, sizeof(key_too_small));
+    iv = aws_byte_cursor_from_array(key_too_large, sizeof(key_too_large));
+    ASSERT_NULL(aws_aes_ctr_256_new(allocator, &key, &iv));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(aes_ctr_validate_materials_fails, s_aes_ctr_validate_materials_fails_fn)
 
 static int s_check_multi_block_gcm(
     struct aws_allocator *allocator,
@@ -1011,6 +1083,42 @@ static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocat
 }
 AWS_TEST_CASE(gcm_test_with_generated_key_iv, s_aes_gcm_test_with_generated_key_iv_fn)
 
+static int s_aes_gcm_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t iv_too_small[AWS_AES_256_CIPHER_BLOCK_SIZE - 5] = {0};
+    uint8_t iv_too_large[AWS_AES_256_CIPHER_BLOCK_SIZE - 3] = {0};
+
+    uint8_t key_too_small[AWS_AES_256_KEY_BYTE_LEN - 1] = {0};
+    uint8_t key_too_large[AWS_AES_256_KEY_BYTE_LEN + 1] = {0};
+
+    uint8_t valid_key_size[AWS_AES_256_KEY_BYTE_LEN] = {0};
+    uint8_t valid_iv_size[AWS_AES_256_CIPHER_BLOCK_SIZE] = {0};
+
+    struct aws_byte_cursor key = aws_byte_cursor_from_array(valid_key_size, sizeof(valid_key_size));
+    struct aws_byte_cursor iv = aws_byte_cursor_from_array(iv_too_small, sizeof(iv_too_small));
+    ASSERT_NULL(aws_aes_gcm_256_new(allocator, &key, &iv, NULL, NULL));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(valid_key_size, sizeof(valid_key_size));
+    iv = aws_byte_cursor_from_array(iv_too_large, sizeof(iv_too_large));
+    ASSERT_NULL(aws_aes_gcm_256_new(allocator, &key, &iv, NULL, NULL));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(key_too_small, sizeof(key_too_small));
+    iv = aws_byte_cursor_from_array(valid_iv_size, sizeof(valid_iv_size));
+    ASSERT_NULL(aws_aes_gcm_256_new(allocator, &key, &iv, NULL, NULL));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(key_too_small, sizeof(key_too_small));
+    iv = aws_byte_cursor_from_array(key_too_large, sizeof(key_too_large));
+    ASSERT_NULL(aws_aes_gcm_256_new(allocator, &key, &iv, NULL, NULL));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(aes_gcm_validate_materials_fails, s_aes_gcm_validate_materials_fails_fn)
+
 static int s_test_aes_keywrap_RFC3394_256BitKey256CekTestVector(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
@@ -1298,6 +1406,24 @@ static int s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector(struct 
 AWS_TEST_CASE(
     aes_keywrap_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector,
     s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector);
+
+static int s_aes_keywrap_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t key_too_small[AWS_AES_256_KEY_BYTE_LEN - 1] = {0};
+    uint8_t key_too_large[AWS_AES_256_KEY_BYTE_LEN + 1] = {0};
+
+    struct aws_byte_cursor key = aws_byte_cursor_from_array(key_too_small, sizeof(key_too_small));
+    ASSERT_NULL(aws_aes_keywrap_256_new(allocator, &key));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    key = aws_byte_cursor_from_array(key_too_large, sizeof(key_too_large));
+    ASSERT_NULL(aws_aes_keywrap_256_new(allocator, &key));
+    ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(aes_keywrap_validate_materials_fails, s_aes_keywrap_validate_materials_fails_fn)
 
 static int s_test_input_too_large_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;

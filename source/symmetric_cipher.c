@@ -85,10 +85,32 @@ static bool s_check_input_size_limits(const struct aws_symmetric_cipher *cipher,
     return input->len <= INT_MAX - cipher->block_size;
 }
 
+static bool s_validate_key_materials(
+    const struct aws_byte_cursor *key,
+    size_t expected_key_size,
+    const struct aws_byte_cursor *iv,
+    size_t expected_iv_size) {
+    if (key && key->len != expected_key_size) {
+        aws_raise_error(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM);
+        return false;
+    }
+
+    if (iv && iv->len != expected_iv_size) {
+        aws_raise_error(AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM);
+        return false;
+    }
+
+    return true;
+}
+
 struct aws_symmetric_cipher *aws_aes_cbc_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
+
+    if (!s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE)) {
+        return NULL;
+    }
     return s_aes_cbc_new_fn(allocator, key, iv);
 }
 
@@ -96,6 +118,9 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv) {
+    if (!s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE)) {
+        return NULL;
+    }
     return s_aes_ctr_new_fn(allocator, key, iv);
 }
 
@@ -105,12 +130,19 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     const struct aws_byte_cursor *iv,
     const struct aws_byte_cursor *aad,
     const struct aws_byte_cursor *decryption_tag) {
+    if (!s_validate_key_materials(
+            key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE - sizeof(uint32_t))) {
+        return NULL;
+    }
     return s_aes_gcm_new_fn(allocator, key, iv, aad, decryption_tag);
 }
 
 struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key) {
+    if (!s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, NULL, 0)) {
+        return NULL;
+    }
     return s_aes_keywrap_new_fn(allocator, key);
 }
 

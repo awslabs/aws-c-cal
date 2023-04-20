@@ -353,8 +353,6 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     return &cc_cipher->cipher_base;
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 /*
  * Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
  * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
@@ -364,10 +362,16 @@ static CCStatus s_cc_crypto_gcm_finalize(struct _CCCryptor *encryptor_handle, ui
     if (__builtin_available(macOS 10.13, iOS 11.0, *)) {
         return CCCryptorGCMFinalize(encryptor_handle, buffer, tag_length);
     } else {
+/* We would never hit this branch for newer macOS and iOS versions because of the __builtin_available check, so we can
+ * suppress the compiler warning. */
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wdeprecated-declarations"
         return CCCryptorGCMFinal(encryptor_handle, buffer, &tag_length);
+#    pragma clang diagnostic pop
     }
 #else
     return CCCryptorGCMFinal(encryptor_handle, buffer, &tag_length);
+
 #endif
 }
 
@@ -376,13 +380,17 @@ static CCCryptorStatus s_cc_cryptor_gcm_set_iv(struct _CCCryptor *encryptor_hand
     if (__builtin_available(macOS 10.13, iOS 11.0, *)) {
         return CCCryptorGCMSetIV(encryptor_handle, buffer, length);
     } else {
+/* We would never hit this branch for newer macOS and iOS versions because of the __builtin_available check, so we can
+ * suppress the compiler warning. */
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wdeprecated-declarations"
         return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
+#    pragma clang diagnostic pop
     }
 #else
     return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
 #endif
 }
-#pragma clang diagnostic pop
 
 static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     (void)out;

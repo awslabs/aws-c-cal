@@ -290,7 +290,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     } else {
         aws_byte_buf_init(&cipher->cipher_base.iv, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
         aws_symmetric_cipher_generate_initialization_vector(
-            AWS_AES_256_CIPHER_BLOCK_SIZE, false, &cipher->cipher_base.iv);
+            AWS_AES_256_CIPHER_BLOCK_SIZE, true, &cipher->cipher_base.iv);
     }
 
     /* EVP_CIPHER_CTX_init() will be called inside EVP_CIPHER_CTX_new(). */

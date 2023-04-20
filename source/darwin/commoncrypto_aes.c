@@ -9,7 +9,7 @@
 #include <CommonCrypto/CommonHMAC.h>
 #include <CommonCrypto/CommonSymmetricKeywrap.h>
 
-#include <aws/cal/private/darwin/common_cryptor_spi.h>
+#include "common_cryptor_spi.h"
 
 #if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300)) ||                         \
     (defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000))

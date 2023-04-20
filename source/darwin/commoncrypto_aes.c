@@ -352,6 +352,8 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     return &cc_cipher->cipher_base;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 /*
  * Note that CCCryptorGCMFinal is deprecated in Mac 10.13. It also doesn't compare the tag with expected tag
  * https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60118.1.1/include/CommonCryptorSPI.h.auto.html
@@ -367,6 +369,19 @@ static CCStatus s_cc_crypto_gcm_finalize(struct _CCCryptor *encryptor_handle, ui
     return CCCryptorGCMFinal(encryptor_handle, buffer, &tag_length);
 #endif
 }
+
+static CCCryptorStatus s_cc_cryptor_gcm_set_iv(struct _CCCryptor *encryptor_handle, uint8_t *buffer, size_t length) {
+#ifdef USE_LATEST_CRYPTO_API
+    if (__builtin_available(macOS 10.13, iOS 11.0, *)) {
+        return CCCryptorGCMSetIV(encryptor_handle, buffer, length);
+    } else {
+        return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
+    }
+#else
+    return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
+#endif
+}
+#pragma clang diagnostic pop
 
 static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     (void)out;
@@ -404,17 +419,6 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
     return AWS_OP_SUCCESS;
 }
 
-static CCCryptorStatus s_cc_cryptor_gcm_set_iv(struct _CCCryptor *encryptor_handle, uint8_t *buffer, size_t length) {
-#ifdef USE_LATEST_CRYPTO_API
-    if (__builtin_available(macOS 10.13, iOS 11.0, *)) {
-        return CCCryptorGCMSetIV(encryptor_handle, buffer, length);
-    } else {
-        return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
-    }
-#else
-    return CCCryptorGCMAddIV(encryptor_handle, buffer, length);
-#endif
-}
 static int s_initialize_gcm_cipher_materials(
     struct cc_aes_cipher *cc_cipher,
     const struct aws_byte_cursor *key,

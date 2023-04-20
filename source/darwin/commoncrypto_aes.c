@@ -11,8 +11,8 @@
 
 #include "common_cryptor_spi.h"
 
-#if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300)) ||                         \
-    (defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000))
+#if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300 /* macOS 10.13 */)) ||       \
+    (defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* iOS v11 */))
 #    define USE_LATEST_CRYPTO_API 1
 #endif
 

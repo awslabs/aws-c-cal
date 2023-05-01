@@ -273,7 +273,7 @@ bool s_resolve_hmac_lc(void *module) {
 }
 
 bool s_resolve_hmac_boringssl(void *module) {
-#if !defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_BORINGSSL)
     hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
     hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
     hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;

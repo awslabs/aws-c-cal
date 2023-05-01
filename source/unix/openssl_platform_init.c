@@ -100,7 +100,7 @@ static int s_hmac_ctx_reset_1_0(HMAC_CTX *ctx) {
 static int s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
     
-    int reset_ptr (HMAC_CTX *) = (int(HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+    int (*reset_ptr) (HMAC_CTX *) = (int(*)(HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
 
     return reset_ptr(ctx);
 }
@@ -108,7 +108,7 @@ static int s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
 static int s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
     
-    void reset_ptr (HMAC_CTX *) = g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+    void (*reset_ptr) (HMAC_CTX *) = g_aws_openssl_hmac_ctx_table->impl.reset_fn;
     reset_ptr(ctx);
     return 1;
 }
@@ -116,7 +116,7 @@ static int s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
 static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
     
-    int init_ex_pt(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
+    int (*init_ex_pt) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
         = g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
     return init_ex_pt(ctx, key, key_len, md, impl);
@@ -125,7 +125,7 @@ static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, int key_len, c
 static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
     
-    int init_ex_pt(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)
+    int (*init_ex_pt) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)
         = g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
     return init_ex_pt(ctx, key, key_len, md, impl);

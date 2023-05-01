@@ -75,10 +75,10 @@ static void s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
 static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
     
-    int (*init_ex_pt) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
+    int (*init_ex_ptr) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
         = (int (*) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
-    return init_ex_pt(ctx, key, key_len, md, impl);
+    return init_ex_ptr(ctx, key, key_len, md, impl);
 }
 
 #endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
@@ -214,7 +214,7 @@ bool s_resolve_hmac_111(void *module) {
         hmac_ctx_table.update_fn = update_fn;
         hmac_ctx_table.final_fn = final_fn;
         hmac_ctx_table.init_ex_fn = s_hmac_init_ex_openssl;
-        hmac_ctx_table.impl.init_ex_fn = void (*)(void)init_ex_fn;
+        hmac_ctx_table.impl.init_ex_fn = (void (*)(void))init_ex_fn;
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }

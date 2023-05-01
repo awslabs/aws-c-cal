@@ -23,6 +23,11 @@ struct openssl_hmac_ctx_table {
     hmac_ctx_update update_fn;
     hmac_ctx_final final_fn;
     hmac_ctx_reset reset_fn;
+
+    struct {
+        void (*)() reset_fn;
+        void (*)() init_ex_fn;
+    } impl;
 };
 
 extern struct openssl_hmac_ctx_table *g_aws_openssl_hmac_ctx_table;

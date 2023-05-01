@@ -50,6 +50,8 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
 
 #endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
 
+
+#if !defined(OPENSSL_IS_AWSLC)
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
     (void)ctx;
@@ -82,7 +84,7 @@ static void s_hmac_ctx_free(HMAC_CTX *ctx) {
 }
 
 /* libcrypto 1.0 shim for reset, matches HMAC_CTX_reset semantics */
-static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
+static int s_hmac_ctx_reset_1_0(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
     AWS_PRECONDITION(
         g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
@@ -91,6 +93,42 @@ static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
     g_aws_openssl_hmac_ctx_table->clean_up_fn(ctx);
     g_aws_openssl_hmac_ctx_table->init_fn(ctx);
     return 1;
+}
+
+#endif /* !OPENSSL_IS_AWSLC */
+
+static int s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
+    AWS_PRECONDITION(ctx);
+    
+    int reset_ptr (HMAC_CTX *) = (int(HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+
+    return reset_ptr(ctx);
+}
+
+static int s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
+    AWS_PRECONDITION(ctx);
+    
+    void reset_ptr (HMAC_CTX *) = g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+    reset_ptr(ctx);
+    return 1;
+}
+
+static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md, ENGINE *impl) {
+    AWS_PRECONDITION(ctx);
+    
+    int init_ex_pt(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
+        = g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
+
+    return init_ex_pt(ctx, key, key_len, md, impl);
+}
+
+static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md, ENGINE *impl) {
+    AWS_PRECONDITION(ctx);
+    
+    int init_ex_pt(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)
+        = g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
+
+    return init_ex_pt(ctx, key, key_len, md, impl);
 }
 
 enum aws_libcrypto_version {
@@ -127,7 +165,7 @@ bool s_resolve_hmac_102(void *module) {
 
     if (init_fn) {
         hmac_ctx_table.new_fn = (hmac_ctx_new)s_hmac_ctx_new;
-        hmac_ctx_table.reset_fn = (hmac_ctx_reset)s_hmac_ctx_reset;
+        hmac_ctx_table.reset_fn = (hmac_ctx_reset)s_hmac_ctx_reset_1_0;
         hmac_ctx_table.free_fn = s_hmac_ctx_free;
         hmac_ctx_table.init_fn = init_fn;
         hmac_ctx_table.clean_up_fn = clean_up_fn;
@@ -169,13 +207,15 @@ bool s_resolve_hmac_111(void *module) {
 
     if (new_fn) {
         hmac_ctx_table.new_fn = new_fn;
-        hmac_ctx_table.reset_fn = reset_fn;
+        hmac_ctx_table.reset_fn = s_hmac_ctx_reset_openssl;
+        hmac_ctx_table.impl.reset_fn = reset_fn;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;
         hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
         hmac_ctx_table.update_fn = update_fn;
         hmac_ctx_table.final_fn = final_fn;
-        hmac_ctx_table.init_ex_fn = init_ex_fn;
+        hmac_ctx_table.init_ex_fn = s_hmac_init_ex_openssl;
+        hmac_ctx_table.impl.init_ex_fn = init_ex_fn;
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }
@@ -217,13 +257,15 @@ bool s_resolve_hmac_lc(void *module) {
     if (new_fn) {
         /* Fill out the vtable for the requested version */
         hmac_ctx_table.new_fn = new_fn;
-        hmac_ctx_table.reset_fn = reset_fn;
+        hmac_ctx_table.reset_fn = s_hmac_ctx_reset_bssl;
+        hmac_ctx_table.impl.reset_fn = reset_fn;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = init_fn;
         hmac_ctx_table.clean_up_fn = clean_up_fn;
         hmac_ctx_table.update_fn = update_fn;
         hmac_ctx_table.final_fn = final_fn;
-        hmac_ctx_table.init_ex_fn = init_ex_fn;
+        hmac_ctx_table.init_ex_fn = s_hmac_init_ex_openssl;
+        hmac_ctx_table.impl.init_ex_fn = init_ex_fn;
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }

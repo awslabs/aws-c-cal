@@ -52,6 +52,13 @@
             }
         },
         "boringssl": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "golang-go"
+                    ]
+                }
+            },
             "targets": {
                 "linux": {
                     "!upstream": [

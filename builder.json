@@ -50,6 +50,21 @@
                     ]
                 }
             }
+        },
+        "boringssl": {
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        { 
+                            "name": "aws-c-common" 
+                        },
+                        {
+                            "name": "boringssl",
+                            "commit": "9939e14"
+                        }
+                    ]
+                }
+            }
         }
     },
     "test_steps": [

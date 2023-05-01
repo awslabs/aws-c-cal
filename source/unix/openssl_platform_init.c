@@ -24,7 +24,7 @@ static struct aws_allocator *s_libcrypto_allocator = NULL;
 /* weak refs to libcrypto functions to force them to at least try to link
  * and avoid dead-stripping
  */
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_AWSLC) || defined (OPENSSL_IS_BORINGSSL)
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
 extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
 extern void HMAC_CTX_reset(HMAC_CTX *) __attribute__((weak, used));
@@ -47,6 +47,8 @@ extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak, used));
 extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak, used));
 extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak, used));
+
+#endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
 
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
@@ -91,14 +93,13 @@ static int s_hmac_ctx_reset(HMAC_CTX *ctx) {
     return 1;
 }
 
-#endif /* !OPENSSL_IS_AWSLC */
-
 enum aws_libcrypto_version {
     AWS_LIBCRYPTO_NONE = 0,
     AWS_LIBCRYPTO_1_0_2,
     AWS_LIBCRYPTO_1_1_1,
     AWS_LIBCRYPTO_LC,
-} s_libcrypto_version = AWS_LIBCRYPTO_NONE;
+    AWS_LIBCRYPTO_BORINGSSL
+};
 
 bool s_resolve_hmac_102(void *module) {
 #if !defined(OPENSSL_IS_AWSLC)
@@ -230,6 +231,14 @@ bool s_resolve_hmac_lc(void *module) {
     return false;
 }
 
+bool s_resolve_hmac_boringssl(void *module) {
+#if !defined(OPENSSL_IS_AWSLC)
+    return s_resolve_hmac_111(module);
+#else 
+    return false;
+#endif
+}
+
 static enum aws_libcrypto_version s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
     switch (version) {
         case AWS_LIBCRYPTO_LC:
@@ -238,6 +247,8 @@ static enum aws_libcrypto_version s_resolve_libcrypto_hmac(enum aws_libcrypto_ve
             return s_resolve_hmac_111(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_1_0_2:
             return s_resolve_hmac_102(module) ? version : AWS_LIBCRYPTO_NONE;
+        case AWS_LIBCRYPTO_BORINGSSL:
+            return s_resolve_hmac_boringssl(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_NONE:
             AWS_FATAL_ASSERT(!"Attempted to resolve invalid libcrypto HMAC API version AWS_LIBCRYPTO_NONE");
     }
@@ -386,6 +397,14 @@ bool s_resolve_md_lc(void *module) {
     return false;
 }
 
+bool s_resolve_md_boringssl(void *module) {
+#if !defined(OPENSSL_IS_AWSLC)
+    return s_resolve_md_111(module);
+#else 
+    return false;
+#endif
+}
+
 static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
     switch (version) {
         case AWS_LIBCRYPTO_LC:
@@ -394,6 +413,8 @@ static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_vers
             return s_resolve_md_111(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_1_0_2:
             return s_resolve_md_102(module) ? version : AWS_LIBCRYPTO_NONE;
+        case AWS_LIBCRYPTO_BORINGSSL:
+            return s_resolve_md_boringssl(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_NONE:
             AWS_FATAL_ASSERT(!"Attempted to resolve invalid libcrypto MD API version AWS_LIBCRYPTO_NONE");
     }
@@ -482,10 +503,6 @@ static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
 static void *s_libcrypto_module = NULL;
 
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {
-    if (s_libcrypto_version != AWS_LIBCRYPTO_NONE) {
-        return s_libcrypto_version;
-    }
-
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
     void *process = dlopen(NULL, RTLD_NOW);
@@ -493,6 +510,10 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find aws-lc symbols linked");
+        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_BORINGSSL, process);
+    }
+    if (result == AWS_LIBCRYPTO_NONE) {
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find boringssl symbols linked");
         result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, process);
     }
     if (result == AWS_LIBCRYPTO_NONE) {
@@ -519,7 +540,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
 #endif
 
 /* Openssl 1.0.x requires special handling for its locking callbacks or else it's not thread safe */
-#if !defined(OPENSSL_IS_AWSLC)
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
 static struct aws_mutex *s_libcrypto_locks = NULL;
 
 static void s_locking_fn(int mode, int n, const char *unused0, int unused1) {
@@ -546,7 +567,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 
     s_libcrypto_allocator = allocator;
 
-#if !defined(OPENSSL_IS_AWSLC)
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
     /* Ensure that libcrypto 1.0.2 has working locking mechanisms. This code is macro'ed
      * by libcrypto to be a no-op on 1.1.1 */
     if (!CRYPTO_get_locking_callback()) {
@@ -569,7 +590,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 }
 
 void aws_cal_platform_clean_up(void) {
-#if !defined(OPENSSL_IS_AWSLC)
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
     if (CRYPTO_get_locking_callback() == s_locking_fn) {
         CRYPTO_set_locking_callback(NULL);
         size_t lock_count = (size_t)CRYPTO_num_locks();

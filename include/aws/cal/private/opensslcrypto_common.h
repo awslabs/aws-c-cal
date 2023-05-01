@@ -14,6 +14,8 @@ typedef void (*hmac_ctx_clean_up)(HMAC_CTX *);
 typedef int (*hmac_ctx_update)(HMAC_CTX *, const unsigned char *, size_t);
 typedef int (*hmac_ctx_final)(HMAC_CTX *, unsigned char *, unsigned int *);
 
+typedef void (*crypto_generic_fn_ptr)(void);
+
 struct openssl_hmac_ctx_table {
     hmac_ctx_new new_fn;
     hmac_ctx_free free_fn;
@@ -25,8 +27,8 @@ struct openssl_hmac_ctx_table {
     hmac_ctx_reset reset_fn;
 
     struct {
-        void (*reset_fn)(void);
-        void (*init_ex_fn)(void);
+        crypto_generic_fn_ptr reset_fn;
+        crypto_generic_fn_ptr init_ex_fn;
     } impl;
 };
 

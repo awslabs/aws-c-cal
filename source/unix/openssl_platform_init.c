@@ -21,6 +21,10 @@ struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
 
 static struct aws_allocator *s_libcrypto_allocator = NULL;
 
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+    #define OPENSSL_IS_OPENSSL
+#endif
+
 /* weak refs to libcrypto functions to force them to at least try to link
  * and avoid dead-stripping
  */
@@ -36,14 +40,14 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE
 
 static void s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
-    
+
     void (*reset_ptr) (HMAC_CTX *) = (void (*) (HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
     reset_ptr(ctx);
 }
 
 static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
-    
+
     int (*init_ex_pt) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)
         = (int (*) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
@@ -67,14 +71,14 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
 
 static void s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
-    
+
     int (*reset_ptr) (HMAC_CTX *) = (int(*)(HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
     reset_ptr(ctx);
 }
 
 static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
-    
+
     int (*init_ex_ptr) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
         = (int (*) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
@@ -139,7 +143,7 @@ enum aws_libcrypto_version {
 };
 
 bool s_resolve_hmac_102(void *module) {
-#if !defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_OPENSSL)
     hmac_ctx_init init_fn = (hmac_ctx_init)HMAC_CTX_init;
     hmac_ctx_clean_up clean_up_fn = (hmac_ctx_clean_up)HMAC_CTX_cleanup;
     hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
@@ -179,7 +183,7 @@ bool s_resolve_hmac_102(void *module) {
 }
 
 bool s_resolve_hmac_111(void *module) {
-#if !defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_OPENSSL)
     hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
     hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
     hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;

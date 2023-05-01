@@ -30,9 +30,9 @@ struct openssl_hmac_ctx_table {
     hmac_ctx_reset reset_fn;
 
     /* There is slight variance between the crypto interfaces.
-        Note that function pointer casting is undefined behavior. 
+        Note that function pointer casting is undefined behavior.
         To workaround the issue, use generic pointer for crypto and let delegate
-        function cast it back to correct type. 
+        function cast it back to correct type.
         Do not use following fields manually. */
     struct {
         crypto_generic_fn_ptr reset_fn;

@@ -287,7 +287,7 @@ bool s_resolve_hmac_boringssl(void *module) {
     /* were symbols bound by static linking? */
     bool has_bssl_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
 
-    if (has_111_symbols) {
+    if (has_bssl_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static boringssl HMAC symbols");
     } else {
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");

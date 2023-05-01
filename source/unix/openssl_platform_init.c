@@ -22,13 +22,13 @@ struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
 static struct aws_allocator *s_libcrypto_allocator = NULL;
 
 #if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
-    #define OPENSSL_IS_OPENSSL
+#    define OPENSSL_IS_OPENSSL
 #endif
 
 /* weak refs to libcrypto functions to force them to at least try to link
  * and avoid dead-stripping
  */
-#if defined(OPENSSL_IS_AWSLC) || defined (OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
 extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
 extern void HMAC_CTX_reset(HMAC_CTX *) __attribute__((weak, used));
@@ -41,15 +41,15 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE
 static void s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
 
-    void (*reset_ptr) (HMAC_CTX *) = (void (*) (HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+    void (*reset_ptr)(HMAC_CTX *) = (void (*)(HMAC_CTX *))g_aws_openssl_hmac_ctx_table->impl.reset_fn;
     reset_ptr(ctx);
 }
 
 static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
 
-    int (*init_ex_pt) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)
-        = (int (*) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
+    int (*init_ex_pt)(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *) = (int (*)(
+        HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *))g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
     return init_ex_pt(ctx, key, key_len, md, impl);
 }
@@ -72,21 +72,20 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
 static void s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
     AWS_PRECONDITION(ctx);
 
-    int (*reset_ptr) (HMAC_CTX *) = (int(*)(HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+    int (*reset_ptr)(HMAC_CTX *) = (int (*)(HMAC_CTX *))g_aws_openssl_hmac_ctx_table->impl.reset_fn;
     reset_ptr(ctx);
 }
 
 static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
 
-    int (*init_ex_ptr) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
-        = (int (*) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
+    int (*init_ex_ptr)(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) =
+        (int (*)(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *))g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
     return init_ex_ptr(ctx, key, key_len, md, impl);
 }
 
 #endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
-
 
 #if !defined(OPENSSL_IS_AWSLC)
 /* libcrypto 1.1 stub for init */
@@ -481,7 +480,7 @@ bool s_resolve_md_lc(void *module) {
 bool s_resolve_md_boringssl(void *module) {
 #if !defined(OPENSSL_IS_AWSLC)
     return s_resolve_md_111(module);
-#else 
+#else
     return false;
 #endif
 }

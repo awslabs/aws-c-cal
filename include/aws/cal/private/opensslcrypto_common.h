@@ -14,6 +14,9 @@ typedef void (*hmac_ctx_clean_up)(HMAC_CTX *);
 typedef int (*hmac_ctx_update)(HMAC_CTX *, const unsigned char *, size_t);
 typedef int (*hmac_ctx_final)(HMAC_CTX *, unsigned char *, unsigned int *);
 
+/* C standard does not have concept of generic function pointer, but it does
+guarantee that function pointer casts will roundtrip when casting to any type and
+then back. Use void *(void) as a generic function pointer. */
 typedef void (*crypto_generic_fn_ptr)(void);
 
 struct openssl_hmac_ctx_table {
@@ -26,6 +29,11 @@ struct openssl_hmac_ctx_table {
     hmac_ctx_final final_fn;
     hmac_ctx_reset reset_fn;
 
+    /* There is slight variance between the crypto interfaces.
+        Note that function pointer casting is undefined behavior. 
+        To workaround the issue, use generic pointer for crypto and let delegate
+        function cast it back to correct type. 
+        Do not use following fields manually. */
     struct {
         crypto_generic_fn_ptr reset_fn;
         crypto_generic_fn_ptr init_ex_fn;

@@ -213,7 +213,7 @@ bool s_resolve_hmac_111(void *module) {
         hmac_ctx_table.update_fn = update_fn;
         hmac_ctx_table.final_fn = final_fn;
         hmac_ctx_table.init_ex_fn = s_hmac_init_ex_openssl;
-        hmac_ctx_table.impl.init_ex_fn = init_ex_fn;
+        hmac_ctx_table.impl.init_ex_fn = void (*)(void)init_ex_fn;
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }
@@ -263,7 +263,7 @@ bool s_resolve_hmac_lc(void *module) {
         hmac_ctx_table.update_fn = update_fn;
         hmac_ctx_table.final_fn = final_fn;
         hmac_ctx_table.init_ex_fn = s_hmac_init_ex_bssl;
-        hmac_ctx_table.impl.init_ex_fn = init_ex_fn;
+        hmac_ctx_table.impl.init_ex_fn = (void (*)(void)) init_ex_fn;
         g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
         return true;
     }

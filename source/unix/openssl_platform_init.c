@@ -272,6 +272,50 @@ bool s_resolve_hmac_lc(void *module) {
     return false;
 }
 
+bool s_resolve_hmac_boringssl(void *module) {
+#if !defined(OPENSSL_IS_AWSLC)
+    hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
+    hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
+    hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;
+    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
+    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
+    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
+
+    /* were symbols bound by static linking? */
+    bool has_bssl_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
+
+    if (has_111_symbols) {
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static boringssl HMAC symbols");
+    } else {
+        *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
+        *(void **)(&reset_fn) = dlsym(module, "HMAC_CTX_reset");
+        *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
+        *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
+        *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
+        *(void **)(&init_ex_fn) = dlsym(module, "HMAC_Init_ex");
+        if (new_fn) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found dynamic boringssl HMAC symbols");
+        }
+    }
+
+    if (new_fn) {
+        hmac_ctx_table.new_fn = new_fn;
+        hmac_ctx_table.reset_fn = s_hmac_ctx_reset_bssl;
+        hmac_ctx_table.impl.reset_fn = (crypto_generic_fn_ptr)reset_fn;
+        hmac_ctx_table.free_fn = free_fn;
+        hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;
+        hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
+        hmac_ctx_table.update_fn = update_fn;
+        hmac_ctx_table.final_fn = final_fn;
+        hmac_ctx_table.init_ex_fn = s_hmac_init_ex_bssl;
+        hmac_ctx_table.impl.init_ex_fn = (crypto_generic_fn_ptr)init_ex_fn;
+        g_aws_openssl_hmac_ctx_table = &hmac_ctx_table;
+        return true;
+    }
+#endif
+    return false;
+}
+
 static enum aws_libcrypto_version s_resolve_libcrypto_hmac(enum aws_libcrypto_version version, void *module) {
     switch (version) {
         case AWS_LIBCRYPTO_LC:
@@ -281,7 +325,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto_hmac(enum aws_libcrypto_ve
         case AWS_LIBCRYPTO_1_0_2:
             return s_resolve_hmac_102(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_BORINGSSL:
-            return s_resolve_hmac_111(module) ? version : AWS_LIBCRYPTO_NONE;
+            return s_resolve_hmac_boringssl(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_NONE:
             AWS_FATAL_ASSERT(!"Attempted to resolve invalid libcrypto HMAC API version AWS_LIBCRYPTO_NONE");
     }
@@ -430,6 +474,14 @@ bool s_resolve_md_lc(void *module) {
     return false;
 }
 
+bool s_resolve_md_boringssl(void *module) {
+#if !defined(OPENSSL_IS_AWSLC)
+    return s_resolve_md_111(module);
+#else 
+    return false;
+#endif
+}
+
 static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_version version, void *module) {
     switch (version) {
         case AWS_LIBCRYPTO_LC:
@@ -439,7 +491,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_vers
         case AWS_LIBCRYPTO_1_0_2:
             return s_resolve_md_102(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_BORINGSSL:
-            return s_resolve_md_111(module) ? version : AWS_LIBCRYPTO_NONE;
+            return s_resolve_md_boringssl(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_NONE:
             AWS_FATAL_ASSERT(!"Attempted to resolve invalid libcrypto MD API version AWS_LIBCRYPTO_NONE");
     }

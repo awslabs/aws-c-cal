@@ -25,8 +25,8 @@ struct openssl_hmac_ctx_table {
     hmac_ctx_reset reset_fn;
 
     struct {
-        void (*)() reset_fn;
-        void (*)() init_ex_fn;
+        void *reset_fn;
+        void *init_ex_fn;
     } impl;
 };
 

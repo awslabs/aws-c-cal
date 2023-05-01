@@ -33,6 +33,23 @@ extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak, used));
 extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak, used));
 extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 extern int HMAC_Init_ex(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *) __attribute__((weak, used));
+
+static void s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
+    AWS_PRECONDITION(ctx);
+    
+    void (*reset_ptr) (HMAC_CTX *) = (void (*) (HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+    reset_ptr(ctx);
+}
+
+static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
+    AWS_PRECONDITION(ctx);
+    
+    int (*init_ex_pt) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)
+        = (int (*) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
+
+    return init_ex_pt(ctx, key, key_len, md, impl);
+}
+
 #else
 /* 1.1 */
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
@@ -47,6 +64,22 @@ extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak, used));
 extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak, used));
 extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak, used));
+
+static void s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
+    AWS_PRECONDITION(ctx);
+    
+    int (*reset_ptr) (HMAC_CTX *) = (int(*)(HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
+    reset_ptr(ctx);
+}
+
+static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
+    AWS_PRECONDITION(ctx);
+    
+    int (*init_ex_pt) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
+        = (int (*) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
+
+    return init_ex_pt(ctx, key, key_len, md, impl);
+}
 
 #endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
 
@@ -96,38 +129,6 @@ static int s_hmac_ctx_reset_1_0(HMAC_CTX *ctx) {
 }
 
 #endif /* !OPENSSL_IS_AWSLC */
-
-static void s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
-    AWS_PRECONDITION(ctx);
-    
-    int (*reset_ptr) (HMAC_CTX *) = (int(*)(HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
-    reset_ptr(ctx);
-}
-
-static void s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
-    AWS_PRECONDITION(ctx);
-    
-    void (*reset_ptr) (HMAC_CTX *) = (void (*) (HMAC_CTX *)) g_aws_openssl_hmac_ctx_table->impl.reset_fn;
-    reset_ptr(ctx);
-}
-
-static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
-    AWS_PRECONDITION(ctx);
-    
-    int (*init_ex_pt) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
-        = (int (*) (HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
-
-    return init_ex_pt(ctx, key, key_len, md, impl);
-}
-
-static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
-    AWS_PRECONDITION(ctx);
-    
-    int (*init_ex_pt) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)
-        = (int (*) (HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *)) g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
-
-    return init_ex_pt(ctx, key, key_len, md, impl);
-}
 
 enum aws_libcrypto_version {
     AWS_LIBCRYPTO_NONE = 0,

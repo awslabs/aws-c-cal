@@ -87,7 +87,7 @@ static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len
 
 #endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
 
-#if defined(OPENSSL_IS_OPENSSL)
+#if !defined(OPENSSL_IS_AWSLC)
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
     (void)ctx;
@@ -97,7 +97,9 @@ static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
 static void s_hmac_ctx_clean_up_noop(HMAC_CTX *ctx) {
     (void)ctx;
 }
+#endif
 
+#if defined(OPENSSL_IS_OPENSSL)
 /* libcrypto 1.0 shim for new */
 static HMAC_CTX *s_hmac_ctx_new(void) {
     AWS_PRECONDITION(

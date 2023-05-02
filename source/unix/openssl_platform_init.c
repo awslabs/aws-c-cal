@@ -87,7 +87,7 @@ static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len
 
 #endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
 
-#if !defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_OPENSSL)
 /* libcrypto 1.1 stub for init */
 static void s_hmac_ctx_init_noop(HMAC_CTX *ctx) {
     (void)ctx;

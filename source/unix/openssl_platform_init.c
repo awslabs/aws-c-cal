@@ -63,7 +63,7 @@ extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *)
 static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
     if (key_len > INT_MAX) {
-        return 1;
+        return 0;
     }
 
     /*Note: unlike aws-lc and boringssl, openssl 1.1.1 and 1.0.2 take int as key

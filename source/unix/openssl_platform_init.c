@@ -31,19 +31,11 @@ static struct aws_allocator *s_libcrypto_allocator = NULL;
 #if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
 extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
-extern void HMAC_CTX_reset(HMAC_CTX *) __attribute__((weak, used));
 extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak, used));
 extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak, used));
 extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak, used));
 extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 extern int HMAC_Init_ex(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *) __attribute__((weak, used));
-
-static void s_hmac_ctx_reset_bssl(HMAC_CTX *ctx) {
-    AWS_PRECONDITION(ctx);
-
-    void (*reset_ptr)(HMAC_CTX *) = (void (*)(HMAC_CTX *))g_aws_openssl_hmac_ctx_table->impl.reset_fn;
-    reset_ptr(ctx);
-}
 
 static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
@@ -69,20 +61,18 @@ extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__(
 extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 extern int HMAC_Init_ex(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) __attribute__((weak, used));
 
-static void s_hmac_ctx_reset_openssl(HMAC_CTX *ctx) {
-    AWS_PRECONDITION(ctx);
-
-    int (*reset_ptr)(HMAC_CTX *) = (int (*)(HMAC_CTX *))g_aws_openssl_hmac_ctx_table->impl.reset_fn;
-    reset_ptr(ctx);
-}
-
 static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
     AWS_PRECONDITION(ctx);
+    if (key_len > INT_MAX) {
+        return 1;
+    }
 
+    /*Note: unlike aws-lc and boringssl, openssl 1.1.1 and 1.0.2 take int as key
+    len arg. */
     int (*init_ex_ptr)(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *) =
         (int (*)(HMAC_CTX *, const void *, int, const EVP_MD *, ENGINE *))g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
 
-    return init_ex_ptr(ctx, key, key_len, md, impl);
+    return init_ex_ptr(ctx, key, (int)key_len, md, impl);
 }
 
 #endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
@@ -121,18 +111,6 @@ static void s_hmac_ctx_free(HMAC_CTX *ctx) {
     aws_mem_release(s_libcrypto_allocator, ctx);
 }
 
-/* libcrypto 1.0 shim for reset, matches HMAC_CTX_reset semantics */
-static int s_hmac_ctx_reset_1_0(HMAC_CTX *ctx) {
-    AWS_PRECONDITION(ctx);
-    AWS_PRECONDITION(
-        g_aws_openssl_hmac_ctx_table->init_fn != s_hmac_ctx_init_noop &&
-        g_aws_openssl_hmac_ctx_table->clean_up_fn != s_hmac_ctx_clean_up_noop &&
-        "libcrypto 1.0 reset called on libcrypto 1.1 vtable");
-    g_aws_openssl_hmac_ctx_table->clean_up_fn(ctx);
-    g_aws_openssl_hmac_ctx_table->init_fn(ctx);
-    return 1;
-}
-
 #endif /* !OPENSSL_IS_AWSLC */
 
 enum aws_libcrypto_version {
@@ -147,9 +125,9 @@ bool s_resolve_hmac_102(void *module) {
 #if defined(OPENSSL_IS_OPENSSL)
     hmac_ctx_init init_fn = (hmac_ctx_init)HMAC_CTX_init;
     hmac_ctx_clean_up clean_up_fn = (hmac_ctx_clean_up)HMAC_CTX_cleanup;
-    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
-    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
-    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
+    hmac_update update_fn = (hmac_update)HMAC_Update;
+    hmac_final final_fn = (hmac_final)HMAC_Final;
+    hmac_init_ex init_ex_fn = (hmac_init_ex)HMAC_Init_ex;
 
     /* were symbols bound by static linking? */
     bool has_102_symbols = init_fn && clean_up_fn && update_fn && final_fn && init_ex_fn;
@@ -169,7 +147,6 @@ bool s_resolve_hmac_102(void *module) {
 
     if (init_fn) {
         hmac_ctx_table.new_fn = (hmac_ctx_new)s_hmac_ctx_new;
-        hmac_ctx_table.reset_fn = (hmac_ctx_reset)s_hmac_ctx_reset_1_0;
         hmac_ctx_table.free_fn = s_hmac_ctx_free;
         hmac_ctx_table.init_fn = init_fn;
         hmac_ctx_table.clean_up_fn = clean_up_fn;
@@ -187,19 +164,17 @@ bool s_resolve_hmac_111(void *module) {
 #if defined(OPENSSL_IS_OPENSSL)
     hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
     hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
-    hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;
-    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
-    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
-    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
+    hmac_update update_fn = (hmac_ctx_update)HMAC_Update;
+    hmac_final final_fn = (hmac_final)HMAC_Final;
+    hmac_init_ex init_ex_fn = (hmac_init_ex)HMAC_Init_ex;
 
     /* were symbols bound by static linking? */
-    bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
+    bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn;
 
     if (has_111_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.1.1 HMAC symbols");
     } else {
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
-        *(void **)(&reset_fn) = dlsym(module, "HMAC_CTX_reset");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
         *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
@@ -212,7 +187,6 @@ bool s_resolve_hmac_111(void *module) {
     if (new_fn) {
         hmac_ctx_table.new_fn = new_fn;
         hmac_ctx_table.reset_fn = s_hmac_ctx_reset_openssl;
-        hmac_ctx_table.impl.reset_fn = (crypto_generic_fn_ptr)reset_fn;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;
         hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
@@ -233,13 +207,12 @@ bool s_resolve_hmac_lc(void *module) {
     hmac_ctx_clean_up clean_up_fn = (hmac_ctx_clean_up)HMAC_CTX_cleanup;
     hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
     hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
-    hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;
-    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
-    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
-    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
+    hmac_update update_fn = (hmac_update)HMAC_Update;
+    hmac_final final_fn = (hmac_final)HMAC_Final;
+    hmac_init_ex init_ex_fn = (hmac_init_ex)HMAC_Init_ex;
 
     /* were symbols bound by static linking? */
-    bool has_awslc_symbols = new_fn && free_fn && update_fn && final_fn && init_fn && init_ex_fn && reset_fn;
+    bool has_awslc_symbols = new_fn && free_fn && update_fn && final_fn && init_fn && init_ex_fn;
 
     /* If symbols aren't already found, try to find the requested version */
     /* when built as a shared lib, and multiple versions of libcrypto are possibly
@@ -248,7 +221,6 @@ bool s_resolve_hmac_lc(void *module) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static aws-lc HMAC symbols");
     } else {
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
-        *(void **)(&reset_fn) = dlsym(module, "HMAC_CTX_reset");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
         *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
@@ -261,7 +233,6 @@ bool s_resolve_hmac_lc(void *module) {
     if (new_fn) {
         /* Fill out the vtable for the requested version */
         hmac_ctx_table.new_fn = new_fn;
-        hmac_ctx_table.reset_fn = s_hmac_ctx_reset_bssl;
         hmac_ctx_table.impl.reset_fn = (crypto_generic_fn_ptr)reset_fn;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = init_fn;
@@ -281,19 +252,17 @@ bool s_resolve_hmac_boringssl(void *module) {
 #if defined(OPENSSL_IS_BORINGSSL)
     hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
     hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
-    hmac_ctx_reset reset_fn = (hmac_ctx_reset)HMAC_CTX_reset;
-    hmac_ctx_update update_fn = (hmac_ctx_update)HMAC_Update;
-    hmac_ctx_final final_fn = (hmac_ctx_final)HMAC_Final;
-    hmac_ctx_init_ex init_ex_fn = (hmac_ctx_init_ex)HMAC_Init_ex;
+    hmac_update update_fn = (hmac_update)HMAC_Update;
+    hmac_final final_fn = (hmac_final)HMAC_Final;
+    hmac_init_ex init_ex_fn = (hmac_init_ex)HMAC_Init_ex;
 
     /* were symbols bound by static linking? */
-    bool has_bssl_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn && reset_fn;
+    bool has_bssl_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn;
 
     if (has_bssl_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static boringssl HMAC symbols");
     } else {
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
-        *(void **)(&reset_fn) = dlsym(module, "HMAC_CTX_reset");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
         *(void **)(&final_fn) = dlsym(module, "HMAC_Final");
@@ -305,7 +274,6 @@ bool s_resolve_hmac_boringssl(void *module) {
 
     if (new_fn) {
         hmac_ctx_table.new_fn = new_fn;
-        hmac_ctx_table.reset_fn = s_hmac_ctx_reset_bssl;
         hmac_ctx_table.impl.reset_fn = (crypto_generic_fn_ptr)reset_fn;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;

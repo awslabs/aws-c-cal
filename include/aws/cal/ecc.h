@@ -62,7 +62,7 @@ AWS_CAL_API void aws_ecc_key_pair_acquire(struct aws_ecc_key_pair *key_pair);
 AWS_CAL_API void aws_ecc_key_pair_release(struct aws_ecc_key_pair *key_pair);
 
 /**
- * Creates a Eliptic Curve private key that can be used for signing.
+ * Creates an Elliptic Curve private key that can be used for signing.
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
  * Otherwise returns NULL. Note: priv_key::len must match the appropriate length
  * for the selected curve_name.
@@ -74,7 +74,7 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
 
 #if !defined(AWS_OS_IOS)
 /**
- * Creates a Eliptic Curve public/private key pair that can be used for signing and verifying.
+ * Creates an Elliptic Curve public/private key pair that can be used for signing and verifying.
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
  * Otherwise returns NULL.
  */
@@ -84,7 +84,7 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 #endif /* !AWS_OS_IOS */
 
 /**
- * Creates a Eliptic Curve public key that can be used for verifying.
+ * Creates an Elliptic Curve public key that can be used for verifying.
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
  * Otherwise returns NULL. Note: public_key_x::len and public_key_y::len must
  * match the appropriate length for the selected curve_name.
@@ -96,7 +96,7 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     const struct aws_byte_cursor *public_key_y);
 
 /**
- * Creates a Eliptic Curve public/private key pair from a DER encoded key pair.
+ * Creates an Elliptic Curve public/private key pair from a DER encoded key pair.
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
  * Otherwise returns NULL. Whether or not signing or verification can be perform depends
  * on if encoded_keys is a public/private pair or a public key.

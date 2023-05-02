@@ -50,6 +50,28 @@
                     ]
                 }
             }
+        },
+        "boringssl": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "golang-go"
+                    ]
+                }
+            },
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        { 
+                            "name": "aws-c-common" 
+                        },
+                        {
+                            "name": "boringssl",
+                            "commit": "9939e14"
+                        }
+                    ]
+                }
+            }
         }
     },
     "test_steps": [

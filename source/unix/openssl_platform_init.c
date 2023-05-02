@@ -50,7 +50,6 @@ static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, size_t key_len, c
 /* 1.1 */
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
 extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
-extern int HMAC_CTX_reset(HMAC_CTX *) __attribute__((weak, used));
 
 /* 1.0.2 */
 extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak, used));
@@ -186,7 +185,6 @@ bool s_resolve_hmac_111(void *module) {
 
     if (new_fn) {
         hmac_ctx_table.new_fn = new_fn;
-        hmac_ctx_table.reset_fn = s_hmac_ctx_reset_openssl;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;
         hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;
@@ -233,7 +231,6 @@ bool s_resolve_hmac_lc(void *module) {
     if (new_fn) {
         /* Fill out the vtable for the requested version */
         hmac_ctx_table.new_fn = new_fn;
-        hmac_ctx_table.impl.reset_fn = (crypto_generic_fn_ptr)reset_fn;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = init_fn;
         hmac_ctx_table.clean_up_fn = clean_up_fn;
@@ -274,7 +271,6 @@ bool s_resolve_hmac_boringssl(void *module) {
 
     if (new_fn) {
         hmac_ctx_table.new_fn = new_fn;
-        hmac_ctx_table.impl.reset_fn = (crypto_generic_fn_ptr)reset_fn;
         hmac_ctx_table.free_fn = free_fn;
         hmac_ctx_table.init_fn = s_hmac_ctx_init_noop;
         hmac_ctx_table.clean_up_fn = s_hmac_ctx_clean_up_noop;

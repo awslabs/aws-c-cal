@@ -6,8 +6,8 @@ on:
       - 'main'
 
 env:
-  BUILDER_VERSION: bssl_support
-  BUILDER_SOURCE: channels
+  BUILDER_VERSION: v0.9.41
+  BUILDER_SOURCE: releases
   BUILDER_HOST: https://d19elf31gohf1l.cloudfront.net
   PACKAGE_NAME: aws-c-cal
   LINUX_BASE_IMAGE: ubuntu-18-x64

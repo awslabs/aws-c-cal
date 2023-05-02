@@ -163,7 +163,7 @@ bool s_resolve_hmac_111(void *module) {
 #if defined(OPENSSL_IS_OPENSSL)
     hmac_ctx_new new_fn = (hmac_ctx_new)HMAC_CTX_new;
     hmac_ctx_free free_fn = (hmac_ctx_free)HMAC_CTX_free;
-    hmac_update update_fn = (hmac_ctx_update)HMAC_Update;
+    hmac_update update_fn = (hmac_update)HMAC_Update;
     hmac_final final_fn = (hmac_final)HMAC_Final;
     hmac_init_ex init_ex_fn = (hmac_init_ex)HMAC_Init_ex;
 

@@ -8,6 +8,7 @@
 
 #include <aws/common/byte_buf.h>
 #include <aws/common/common.h>
+AWS_PUSH_SANE_WARNING_LEVEL
 
 #define AWS_SHA256_HMAC_LEN 32
 
@@ -81,4 +82,5 @@ AWS_CAL_API void aws_set_sha256_hmac_new_fn(aws_hmac_new_fn *fn);
 
 AWS_EXTERN_C_END
 
+AWS_POP_SANE_WARNING_LEVEL
 #endif /* AWS_CAL_HASH_H_ */

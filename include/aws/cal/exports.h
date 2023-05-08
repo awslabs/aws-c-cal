@@ -4,6 +4,7 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
+AWS_PUSH_SANE_WARNING_LEVEL
 #if defined(AWS_C_RT_USE_WINDOWS_DLL_SEMANTICS) || defined(WIN32)
 #    ifdef AWS_CAL_USE_IMPORT_EXPORT
 #        ifdef AWS_CAL_EXPORTS
@@ -25,4 +26,5 @@
 
 #endif /* defined (AWS_C_RT_USE_WINDOWS_DLL_SEMANTICS) || defined (WIN32) */
 
+AWS_POP_SANE_WARNING_LEVEL
 #endif /* AWS_CAL_EXPORTS_H */

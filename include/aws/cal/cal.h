@@ -13,6 +13,7 @@
 struct aws_allocator;
 
 #define AWS_C_CAL_PACKAGE_ID 7
+AWS_PUSH_SANE_WARNING_LEVEL
 
 enum aws_cal_errors {
     AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED = AWS_ERROR_ENUM_BEGIN_RANGE(AWS_C_CAL_PACKAGE_ID),
@@ -44,5 +45,6 @@ AWS_CAL_API void aws_cal_library_init(struct aws_allocator *allocator);
 AWS_CAL_API void aws_cal_library_clean_up(void);
 
 AWS_EXTERN_C_END
+AWS_POP_SANE_WARNING_LEVEL
 
 #endif /* AWS_CAL_CAL_H */

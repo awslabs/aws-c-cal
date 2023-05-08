@@ -10,7 +10,6 @@
 #define AWS_AES_256_CIPHER_BLOCK_SIZE 16
 #define AWS_AES_256_KEY_BIT_LEN 256
 #define AWS_AES_256_KEY_BYTE_LEN (AWS_AES_256_KEY_BIT_LEN / 8)
-AWS_PUSH_SANE_WARNING_LEVEL
 
 struct aws_symmetric_cipher;
 
@@ -235,6 +234,5 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws
  */
 AWS_CAL_API bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher);
 
-AWS_POP_SANE_WARNING_LEVEL
 AWS_EXTERN_C_END
 #endif /* AWS_CAL_SYMMETRIC_CIPHER_H */

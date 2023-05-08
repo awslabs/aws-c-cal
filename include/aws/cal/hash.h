@@ -12,7 +12,6 @@
 #define AWS_SHA256_LEN 32
 #define AWS_SHA1_LEN 20
 #define AWS_MD5_LEN 16
-AWS_PUSH_SANE_WARNING_LEVEL
 
 struct aws_hash;
 
@@ -133,6 +132,5 @@ AWS_CAL_API void aws_set_sha256_new_fn(aws_hash_new_fn *fn);
 AWS_CAL_API void aws_set_sha1_new_fn(aws_hash_new_fn *fn);
 
 AWS_EXTERN_C_END
-AWS_POP_SANE_WARNING_LEVEL
 
 #endif /* AWS_CAL_HASH_H_ */

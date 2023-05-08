@@ -9,7 +9,6 @@
 #include <aws/common/logging.h>
 
 #include <aws/cal/exports.h>
-AWS_PUSH_SANE_WARNING_LEVEL
 
 struct aws_allocator;
 
@@ -46,5 +45,4 @@ AWS_CAL_API void aws_cal_library_clean_up(void);
 
 AWS_EXTERN_C_END
 
-AWS_POP_SANE_WARNING_LEVEL
 #endif /* AWS_CAL_CAL_H */

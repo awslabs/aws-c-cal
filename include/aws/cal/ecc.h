@@ -9,7 +9,6 @@
 #include <aws/common/atomics.h>
 #include <aws/common/byte_buf.h>
 #include <aws/common/common.h>
-AWS_PUSH_SANE_WARNING_LEVEL
 
 enum aws_ecc_curve_name {
     AWS_CAL_ECDSA_P256,
@@ -175,5 +174,4 @@ AWS_CAL_API size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc
 
 AWS_EXTERN_C_END
 
-AWS_POP_SANE_WARNING_LEVEL
 #endif /* AWS_CAL_ECC_H */

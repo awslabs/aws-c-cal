@@ -75,6 +75,7 @@ extern void aws_cal_platform_clean_up(void);
 static bool s_cal_library_initialized = false;
 
 void aws_cal_library_init(struct aws_allocator *allocator) {
+    printf("%d", AWS_TEST_CONST);
     if (!s_cal_library_initialized) {
         aws_common_library_init(allocator);
         aws_register_error_info(&s_list);

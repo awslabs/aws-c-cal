@@ -15,21 +15,24 @@
         "linux": {
             "upstream": [
                 {
-                    "name": "aws-lc"
+                    "name": "aws-lc",
+                    "revision": "v1.10.0"
                 }
             ]
         },
         "android": {
             "upstream": [
                 {
-                    "name": "aws-lc"
+                    "name": "aws-lc",
+                    "revision": "v1.10.0"
                 }
             ]
         },
         "openbsd": {
             "upstream": [
                 {
-                    "name": "aws-lc"
+                    "name": "aws-lc",
+                    "revision": "v1.10.0"
                 }
             ]
         }

@@ -651,6 +651,11 @@ void aws_cal_platform_clean_up(void) {
     }
 #endif
 
+#if defined(OPENSSL_IS_AWSLC)
+    AWSLC_thread_local_clear();
+    AWSLC_thread_local_shutdown();
+#endif
+
     if (s_libcrypto_module) {
         dlclose(s_libcrypto_module);
     }

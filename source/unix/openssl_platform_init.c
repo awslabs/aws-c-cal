@@ -13,10 +13,7 @@
 
 #include <aws/cal/private/opensslcrypto_common.h>
 
-#include <openssl/base.h>
-#ifdef OPENSSL_IS_AWSLC
-#    include <openssl/thread.h>
-#endif
+#include <openssl/crypto.h>
 
 static struct openssl_hmac_ctx_table hmac_ctx_table;
 static struct openssl_evp_md_ctx_table evp_md_ctx_table;

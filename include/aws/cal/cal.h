@@ -45,6 +45,11 @@ AWS_EXTERN_C_BEGIN
 AWS_CAL_API void aws_cal_library_init(struct aws_allocator *allocator);
 AWS_CAL_API void aws_cal_library_clean_up(void);
 
+/*
+ * Every CRT thread that might invoke aws-lc functionality should call this as part of the thread at_exit process
+ */
+AWS_CAL_API void aws_cal_thread_clean_up(void);
+
 AWS_EXTERN_C_END
 AWS_POP_SANE_WARNING_LEVEL
 

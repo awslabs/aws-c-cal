@@ -11,4 +11,4 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 
 void aws_cal_platform_clean_up(void) {}
 
-void aws_cal_thread_clean_up(void) {}
+void aws_cal_platform_thread_clean_up(void) {}

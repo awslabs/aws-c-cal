@@ -665,7 +665,7 @@ void aws_cal_platform_clean_up(void) {
     s_libcrypto_allocator = NULL;
 }
 
-void aws_cal_thread_clean_up(void) {
+void aws_cal_platform_thread_clean_up(void) {
 #if defined(OPENSSL_IS_AWSLC)
     AWSLC_thread_local_clear();
 #endif

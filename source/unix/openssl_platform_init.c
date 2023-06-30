@@ -13,6 +13,8 @@
 
 #include <aws/cal/private/opensslcrypto_common.h>
 
+#include <openssl/crypto.h>
+
 static struct openssl_hmac_ctx_table hmac_ctx_table;
 static struct openssl_evp_md_ctx_table evp_md_ctx_table;
 
@@ -651,12 +653,24 @@ void aws_cal_platform_clean_up(void) {
     }
 #endif
 
+#if defined(OPENSSL_IS_AWSLC)
+    AWSLC_thread_local_clear();
+    AWSLC_thread_local_shutdown();
+#endif
+
     if (s_libcrypto_module) {
         dlclose(s_libcrypto_module);
     }
 
     s_libcrypto_allocator = NULL;
 }
+
+void aws_cal_platform_thread_clean_up(void) {
+#if defined(OPENSSL_IS_AWSLC)
+    AWSLC_thread_local_clear();
+#endif
+}
+
 #if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
 #    pragma GCC diagnostic pop
 #endif

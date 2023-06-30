@@ -70,6 +70,7 @@ static struct aws_log_subject_info_list s_cal_log_subject_list = {
 #ifndef BYO_CRYPTO
 extern void aws_cal_platform_init(struct aws_allocator *allocator);
 extern void aws_cal_platform_clean_up(void);
+extern void aws_cal_platform_thread_clean_up(void);
 #endif /* BYO_CRYPTO */
 
 static bool s_cal_library_initialized = false;
@@ -95,4 +96,10 @@ void aws_cal_library_clean_up(void) {
         aws_unregister_error_info(&s_list);
         aws_common_library_clean_up();
     }
+}
+
+void aws_cal_thread_clean_up(void) {
+#ifndef BYO_CRYPTO
+    aws_cal_platform_thread_clean_up();
+#endif /* BYO_CRYPTO */
 }

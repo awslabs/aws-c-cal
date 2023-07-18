@@ -178,8 +178,7 @@ static int s_append_coordinate(
         size_t leading_zero_count = coordinate_size - coordinate->len;
         AWS_FATAL_ASSERT(leading_zero_count + buffer->len <= buffer->capacity);
 
-        memset(buffer->buffer + buffer->len, 0, leading_zero_count);
-        buffer->len += leading_zero_count;
+        aws_byte_buf_write_u8_n(buffer, 0x0, leading_zero_count);
     }
 
     return aws_byte_buf_append(buffer, coordinate);

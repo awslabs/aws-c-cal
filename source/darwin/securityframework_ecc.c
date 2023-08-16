@@ -173,15 +173,13 @@ static struct commoncrypto_ecc_key_pair *s_alloc_pair_and_init_buffers(
         goto error;
     }
 
-    memset(cc_key_pair->key_pair.key_buf.buffer, 0, cc_key_pair->key_pair.key_buf.len);
-
     aws_byte_buf_write_u8(&cc_key_pair->key_pair.key_buf, s_preamble);
 
     if (pub_x.ptr && pub_y.ptr) {
         aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_x);
         aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_y);
     } else {
-        cc_key_pair->key_pair.key_buf.len += s_key_coordinate_size * 2;
+        aws_byte_buf_write_u8_n(&cc_key_pair->key_pair.key_buf, 0x0, s_key_coordinate_size * 2);
     }
 
     if (priv_key.ptr) {
@@ -443,7 +441,6 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
         goto error;
     }
 
-    memset(cc_key_pair->key_pair.key_buf.buffer, 0, cc_key_pair->key_pair.key_buf.len);
     aws_byte_buf_write_u8(&cc_key_pair->key_pair.key_buf, s_preamble);
     aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_x);
     aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_y);

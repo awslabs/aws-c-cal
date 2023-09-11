@@ -58,7 +58,7 @@ int s_rsa_encrypt(
             goto on_error;
         }
 
-        EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
+        const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
         if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md)) {
             aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
             goto on_error;
@@ -111,7 +111,7 @@ int s_rsa_decrypt(
             goto on_error;
         }
 
-        EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
+        const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
         if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md)) {
             aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
             goto on_error;
@@ -268,7 +268,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     key_pair->base.impl = key_pair;
     key_pair->base.allocator = allocator;
 
-    EVP_PKEY_CTX *ctx;
     EVP_PKEY *pkey = NULL;
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
@@ -335,7 +334,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     RSA *rsa = NULL;
 
-    if (d2i_RSAPrivateKey(&rsa, &key.ptr, key.len) == NULL) {
+    if (d2i_RSAPrivateKey(&rsa, (const uint8_t **)&key.ptr, key.len) == NULL) {
         goto on_error;
     }
 
@@ -369,7 +368,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     RSA *rsa = NULL;
 
-    if (d2i_RSAPublicKey(&rsa, &key.ptr, key.len) == NULL) {
+    if (d2i_RSAPublicKey(&rsa, (const uint8_t **)&key.ptr, key.len) == NULL) {
         goto on_error;
     }
 

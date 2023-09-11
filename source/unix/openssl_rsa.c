@@ -291,7 +291,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
         goto on_error;
     }
 
-    RSA *rsa = EVP_PKEY_get0_RSA(pkey);
+    RSA *rsa = EVP_PKEY_get1_RSA(pkey);
 
     int len = i2d_RSAPrivateKey(rsa, NULL);
     aws_byte_buf_init(&key_pair->base.priv, allocator, len);
@@ -311,6 +311,9 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
         goto on_error;
     }
 
+    RSA_free(rsa);
+
+    key_pair->key = pkey;
     key_pair->base.vtable = &s_rsa_key_pair_vtable;
     key_pair->base.key_size_in_bits = key_size_in_bits;
     key_pair->base.good = true;
@@ -339,7 +342,9 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     }
 
     EVP_PKEY *private_key = EVP_PKEY_new();
-    EVP_PKEY_assign_RSA(private_key, rsa);
+    if (!EVP_PKEY_assign_RSA(private_key, rsa)) {
+        goto on_error;
+    }
 
     key_pair_impl->key = private_key;
 
@@ -374,6 +379,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     EVP_PKEY *public_key = EVP_PKEY_new();
     EVP_PKEY_assign_RSA(public_key, rsa);
+
+    key_pair_impl->key = public_key;
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = EVP_PKEY_bits(key_pair_impl->key);

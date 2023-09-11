@@ -100,6 +100,8 @@ size_t aws_rsa_key_pair_max_encrypt_plaintext_size(
         default:
             AWS_FATAL_ASSERT("Unsupported RSA Encryption Algorithm");
     }
+
+    return 0;
 }
 
 int aws_rsa_key_pair_encrypt(

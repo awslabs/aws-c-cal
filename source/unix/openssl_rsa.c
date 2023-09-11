@@ -75,6 +75,8 @@ int s_rsa_encrypt(
     }
     out->len += ct_len;
 
+    EVP_PKEY_CTX_free(ctx);
+
     return AWS_OP_SUCCESS;
 
 on_error:
@@ -127,6 +129,8 @@ int s_rsa_decrypt(
         goto on_error;
     }
     out->len += ct_len;
+
+    EVP_PKEY_CTX_free(ctx);
 
     return AWS_OP_SUCCESS;
 
@@ -183,6 +187,8 @@ int s_rsa_sign(
     }
     out->len += ct_len;
 
+    EVP_PKEY_CTX_free(ctx);
+
     return AWS_OP_SUCCESS;
 
 on_error:
@@ -236,6 +242,8 @@ int s_rsa_verify(
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto on_error;
     }
+
+    EVP_PKEY_CTX_free(ctx);
 
     return ret == 1 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 
@@ -311,16 +319,21 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
         goto on_error;
     }
 
-    RSA_free(rsa);
-
     key_pair->key = pkey;
     key_pair->base.vtable = &s_rsa_key_pair_vtable;
     key_pair->base.key_size_in_bits = key_size_in_bits;
     key_pair->base.good = true;
 
+    RSA_free(rsa);
+    EVP_PKEY_CTX_free(ctx);
+
     return &key_pair->base;
 
 on_error:
+    if (ctx) {
+        EVP_PKEY_CTX_free(ctx); 
+    }
+    
     s_rsa_destroy_key(&key_pair->base);
     return NULL;
 }
@@ -336,12 +349,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.priv, allocator, key);
 
     RSA *rsa = NULL;
+    EVP_PKEY *private_key = NULL;
 
     if (d2i_RSAPrivateKey(&rsa, (const uint8_t **)&key.ptr, key.len) == NULL) {
         goto on_error;
     }
 
-    EVP_PKEY *private_key = EVP_PKEY_new();
+    private_key = EVP_PKEY_new();
     if (!EVP_PKEY_assign_RSA(private_key, rsa)) {
         goto on_error;
     }
@@ -355,6 +369,10 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     return &key_pair_impl->base;
 
 on_error:
+    if (private_key) {
+        EVP_PKEY_free(private_key);
+    }
+
     aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
     aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
@@ -372,12 +390,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.pub, allocator, key);
 
     RSA *rsa = NULL;
+    EVP_PKEY *public_key = NULL;
 
     if (d2i_RSAPublicKey(&rsa, (const uint8_t **)&key.ptr, key.len) == NULL) {
         goto on_error;
     }
 
-    EVP_PKEY *public_key = EVP_PKEY_new();
+    public_key = EVP_PKEY_new();
     EVP_PKEY_assign_RSA(public_key, rsa);
 
     key_pair_impl->key = public_key;
@@ -389,6 +408,9 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     return &key_pair_impl->base;
 
 on_error:
+    if (public_key) {
+        EVP_PKEY_free(public_key);
+    }
     aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
     aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);

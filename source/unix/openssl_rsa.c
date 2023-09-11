@@ -29,8 +29,11 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
     aws_mem_release(key_pair->allocator, rsa_key);
 }
 
-int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-    struct aws_byte_cursor plaintext, struct aws_byte_buf *out) {
+int s_rsa_encrypt(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_encryption_algorithm algorithm,
+    struct aws_byte_cursor plaintext,
+    struct aws_byte_buf *out) {
     struct lc_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
@@ -49,8 +52,7 @@ int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
             goto on_error;
         }
 
-    } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || 
-                algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
+    } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
             aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
             goto on_error;
@@ -77,11 +79,14 @@ int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
 
 on_error:
     EVP_PKEY_CTX_free(ctx);
-    return AWS_OP_ERR;   
+    return AWS_OP_ERR;
 }
 
-int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-    struct aws_byte_cursor ciphertext, struct aws_byte_buf *out) {
+int s_rsa_decrypt(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_encryption_algorithm algorithm,
+    struct aws_byte_cursor ciphertext,
+    struct aws_byte_buf *out) {
     struct lc_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
@@ -100,8 +105,7 @@ int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
             goto on_error;
         }
 
-    } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || 
-                algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
+    } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
             aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
             goto on_error;
@@ -128,11 +132,14 @@ int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
 
 on_error:
     EVP_PKEY_CTX_free(ctx);
-    return AWS_OP_ERR;  
+    return AWS_OP_ERR;
 }
 
-int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor message, struct aws_byte_buf *out) {
+int s_rsa_sign(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_signing_algorithm algorithm,
+    struct aws_byte_cursor digest,
+    struct aws_byte_buf *out) {
     struct lc_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
@@ -170,7 +177,7 @@ int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm
     }
 
     size_t ct_len = out->capacity - out->len;
-    if (EVP_PKEY_sign(ctx, out->buffer, &ct_len, message.ptr, message.len) <= 0) {
+    if (EVP_PKEY_sign(ctx, out->buffer, &ct_len, digest.ptr, digest.len) <= 0) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto on_error;
     }
@@ -180,11 +187,14 @@ int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm
 
 on_error:
     EVP_PKEY_CTX_free(ctx);
-    return AWS_OP_ERR; 
+    return AWS_OP_ERR;
 }
 
-int s_rsa_verify(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor signed_data, struct aws_byte_cursor signature) {
+int s_rsa_verify(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_signing_algorithm algorithm,
+    struct aws_byte_cursor digest,
+    struct aws_byte_cursor signature) {
     struct lc_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
@@ -221,7 +231,7 @@ int s_rsa_verify(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorit
         goto on_error;
     }
 
-    int ret = EVP_PKEY_verify(ctx, signature.ptr, signature.len, signed_data.ptr, signed_data.len);
+    int ret = EVP_PKEY_verify(ctx, signature.ptr, signature.len, digest.ptr, digest.len);
     if (ret < 0) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto on_error;
@@ -231,7 +241,7 @@ int s_rsa_verify(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorit
 
 on_error:
     EVP_PKEY_CTX_free(ctx);
-    return AWS_OP_ERR; 
+    return AWS_OP_ERR;
 }
 
 static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
@@ -242,12 +252,14 @@ static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
     .verify = s_rsa_verify,
 };
 
-struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(struct aws_allocator *allocator, size_t key_size_in_bits) {
-    
+struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
+    struct aws_allocator *allocator,
+    size_t key_size_in_bits) {
+
     if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE ||
         key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE) {
         aws_raise_error(AWS_ERROR_INVALID_STATE);
-        return NULL; 
+        return NULL;
     }
 
     struct lc_rsa_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct lc_rsa_key_pair));
@@ -281,7 +293,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(struct aws_allocat
     }
 
     RSA *rsa = EVP_PKEY_get0_RSA(pkey);
-    
+
     int len = i2d_RSAPrivateKey(rsa, NULL);
     aws_byte_buf_init(&key_pair->base.priv, allocator, len);
 
@@ -312,7 +324,8 @@ on_error:
 }
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
-    struct aws_allocator *allocator, struct aws_byte_cursor key) {
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor key) {
     struct lc_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct lc_rsa_key_pair));
 
     aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
@@ -324,13 +337,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     if (d2i_RSAPrivateKey(&rsa, &key.ptr, key.len) == NULL) {
         goto on_error;
-    } 
+    }
 
     EVP_PKEY *private_key = EVP_PKEY_new();
     EVP_PKEY_assign_RSA(private_key, rsa);
 
     key_pair_impl->key = private_key;
-    
+
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = EVP_PKEY_bits(key_pair_impl->key);
     key_pair_impl->base.good = true;
@@ -358,7 +371,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     if (d2i_RSAPublicKey(&rsa, &key.ptr, key.len) == NULL) {
         goto on_error;
-    } 
+    }
 
     EVP_PKEY *public_key = EVP_PKEY_new();
     EVP_PKEY_assign_RSA(public_key, rsa);

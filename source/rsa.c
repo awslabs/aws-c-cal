@@ -7,13 +7,11 @@
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
 
-typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_public_key_fn)(
-    struct aws_allocator *allocator,
-    struct aws_byte_cursor public_key);
+typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator,
+                                                                           struct aws_byte_cursor public_key);
 
-typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_key_fn)(
-    struct aws_allocator *allocator,
-    struct aws_byte_cursor private_key);
+typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator,
+                                                                            struct aws_byte_cursor private_key);
 
 #ifndef BYO_CRYPTO
 
@@ -25,14 +23,13 @@ extern struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl
     struct aws_allocator *allocator,
     struct aws_byte_cursor private_key);
 
-#else /* BYO_CRYPTO */
+#else  /* BYO_CRYPTO */
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     struct aws_allocator *allocator,
     struct aws_byte_cursor public_key) {
     (void)allocator;
-    (void)public_key
-    abort();
+    (void)public_key abort();
 }
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_pkcs1_impl(
@@ -83,16 +80,17 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_release(struct aws_rsa_key_pair *key_p
     return NULL;
 }
 
-size_t aws_rsa_key_pair_max_encrypt_plaintext_size(struct aws_rsa_key_pair *key_pair,
+size_t aws_rsa_key_pair_max_encrypt_plaintext_size(
+    struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm) {
     /*
-    * Per rfc8017, max size of plaintext for encrypt operation is as follows:
-    * PKCS1-v1_5: (key size in bytes) - 11
-    * OAEP: (key size in bytes) - 2 * (hash bytes) - 2
-    */
+     * Per rfc8017, max size of plaintext for encrypt operation is as follows:
+     * PKCS1-v1_5: (key size in bytes) - 11
+     * OAEP: (key size in bytes) - 2 * (hash bytes) - 2
+     */
 
-   size_t key_size_in_bytes = key_pair->key_size_in_bits / 8;
-   switch (algorithm) {
+    size_t key_size_in_bytes = key_pair->key_size_in_bits / 8;
+    switch (algorithm) {
         case AWS_CAL_RSA_ENCRYPTION_PKCS1_5:
             return key_size_in_bytes - 11;
         case AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256:
@@ -101,7 +99,7 @@ size_t aws_rsa_key_pair_max_encrypt_plaintext_size(struct aws_rsa_key_pair *key_
             return key_size_in_bytes - 2 * (512 / 8) - 2;
         default:
             AWS_FATAL_ASSERT("Unsupported RSA Encryption Algorithm");
-   }
+    }
 }
 
 int aws_rsa_key_pair_encrypt(
@@ -143,11 +141,11 @@ AWS_CAL_API int aws_rsa_key_pair_decrypt(
 int aws_rsa_key_pair_sign_message(
     struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor message,
+    struct aws_byte_cursor digest,
     struct aws_byte_buf *signature) {
 
     if (key_pair->good) {
-        return key_pair->vtable->sign(key_pair, algorithm, message, signature);
+        return key_pair->vtable->sign(key_pair, algorithm, digest, signature);
     }
 
     return aws_raise_error(AWS_ERROR_INVALID_STATE);
@@ -156,11 +154,11 @@ int aws_rsa_key_pair_sign_message(
 int aws_rsa_key_pair_verify_signature(
     struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor message,
+    struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
 
     if (key_pair->good) {
-        return key_pair->vtable->verify(key_pair, algorithm, message, signature);
+        return key_pair->vtable->verify(key_pair, algorithm, digest, signature);
     }
 
     return aws_raise_error(AWS_ERROR_INVALID_STATE);
@@ -178,10 +176,8 @@ size_t aws_rsa_key_pair_signature_length(struct aws_rsa_key_pair *key_pair) {
     return key_pair->key_size_in_bits / 8;
 }
 
-int aws_rsa_key_pair_get_public_key(
-    const struct aws_rsa_key_pair *key_pair,
-    struct aws_byte_cursor *out) {
-    if(key_pair->good) {
+int aws_rsa_key_pair_get_public_key(const struct aws_rsa_key_pair *key_pair, struct aws_byte_cursor *out) {
+    if (key_pair->good) {
         *out = aws_byte_cursor_from_buf(&key_pair->pub);
         return AWS_OP_SUCCESS;
     }
@@ -189,10 +185,8 @@ int aws_rsa_key_pair_get_public_key(
     return aws_raise_error(AWS_ERROR_INVALID_STATE);
 }
 
-int aws_rsa_key_pair_get_private_key(
-    const struct aws_rsa_key_pair *key_pair,
-    struct aws_byte_cursor *out) {
-    if(key_pair->good) {
+int aws_rsa_key_pair_get_private_key(const struct aws_rsa_key_pair *key_pair, struct aws_byte_cursor *out) {
+    if (key_pair->good) {
         *out = aws_byte_cursor_from_buf(&key_pair->priv);
         return AWS_OP_SUCCESS;
     }
@@ -201,7 +195,7 @@ int aws_rsa_key_pair_get_private_key(
 }
 
 int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_private_key_pkcs1 *out) {
-    
+
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }

@@ -40,7 +40,7 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
 }
 
 static SecKeyAlgorithm s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm) {
-    
+
     switch (algorithm) {
         case AWS_CAL_RSA_ENCRYPTION_PKCS1_5:
             return kSecKeyAlgorithmRSAEncryptionPKCS1;
@@ -49,24 +49,27 @@ static SecKeyAlgorithm s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_
         case AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512:
             return kSecKeyAlgorithmRSAEncryptionOAEPSHA512;
         default:
-            AWS_FATAL_ASSERT("Unexpected algo type"); 
+            AWS_FATAL_ASSERT("Unexpected algo type");
     }
 }
 
 static SecKeyAlgorithm s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm) {
-    
+
     switch (algorithm) {
         case AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256:
             return kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
         case AWS_CAL_RSA_SIGNATURE_PSS_SHA256:
             return kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
         default:
-            AWS_FATAL_ASSERT("Unexpected algo type"); 
+            AWS_FATAL_ASSERT("Unexpected algo type");
     }
 }
 
-int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-    struct aws_byte_cursor plaintext, struct aws_byte_buf *out) {
+int s_rsa_encrypt(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_encryption_algorithm algorithm,
+    struct aws_byte_cursor plaintext,
+    struct aws_byte_buf *out) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     if (key_pair_impl->pub_key_ref == NULL) {
@@ -75,14 +78,12 @@ int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
     }
 
     CFDataRef plaintext_ref = CFDataCreateWithBytesNoCopy(NULL, plaintext.ptr, plaintext.len, kCFAllocatorNull);
-    AWS_FATAL_ASSERT(plaintext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
+    AWS_FATAL_ASSERT(
+        plaintext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
     CFDataRef ciphertext_ref = SecKeyCreateEncryptedData(
-        key_pair_impl->pub_key_ref, 
-        s_map_rsa_encryption_algo_to_sec(algorithm),
-        plaintext_ref,
-        &error);
+        key_pair_impl->pub_key_ref, s_map_rsa_encryption_algo_to_sec(algorithm), plaintext_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -109,11 +110,14 @@ on_error:
         CFRelease(ciphertext_ref);
     }
 
-    return AWS_OP_ERR;   
+    return AWS_OP_ERR;
 }
 
-int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-    struct aws_byte_cursor ciphertext, struct aws_byte_buf *out) {
+int s_rsa_decrypt(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_encryption_algorithm algorithm,
+    struct aws_byte_cursor ciphertext,
+    struct aws_byte_buf *out) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     if (key_pair_impl->priv_key_ref == NULL) {
@@ -122,14 +126,12 @@ int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
     }
 
     CFDataRef ciphertext_ref = CFDataCreateWithBytesNoCopy(NULL, ciphertext.ptr, ciphertext.len, kCFAllocatorNull);
-    AWS_FATAL_ASSERT(ciphertext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
+    AWS_FATAL_ASSERT(
+        ciphertext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
     CFDataRef plaintext_ref = SecKeyCreateDecryptedData(
-        key_pair_impl->priv_key_ref, 
-        s_map_rsa_encryption_algo_to_sec(algorithm),
-        ciphertext_ref,
-        &error);
+        key_pair_impl->priv_key_ref, s_map_rsa_encryption_algo_to_sec(algorithm), ciphertext_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -156,11 +158,14 @@ on_error:
         CFRelease(ciphertext_ref);
     }
 
-    return AWS_OP_ERR;  
+    return AWS_OP_ERR;
 }
 
-int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor message, struct aws_byte_buf *out) {
+int s_rsa_sign(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_signing_algorithm algorithm,
+    struct aws_byte_cursor digest,
+    struct aws_byte_buf *out) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     if (key_pair_impl->priv_key_ref == NULL) {
@@ -168,18 +173,19 @@ int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    if (!SecKeyIsAlgorithmSupported(key_pair_impl->priv_key_ref,
-        kSecKeyOperationTypeSign, s_map_rsa_signing_algo_to_sec(algorithm))) {
+    if (!SecKeyIsAlgorithmSupported(
+            key_pair_impl->priv_key_ref, kSecKeyOperationTypeSign, s_map_rsa_signing_algo_to_sec(algorithm))) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    CFDataRef message_ref = CFDataCreateWithBytesNoCopy(NULL, message.ptr, message.len, kCFAllocatorNull);
-    AWS_FATAL_ASSERT(message_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
+    CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(NULL, digest.ptr, digest.len, kCFAllocatorNull);
+    AWS_FATAL_ASSERT(
+        digest_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    CFDataRef signature_ref = SecKeyCreateSignature(key_pair_impl->priv_key_ref,
-        s_map_rsa_signing_algo_to_sec(algorithm), message_ref, &error);
+    CFDataRef signature_ref = SecKeyCreateSignature(
+        key_pair_impl->priv_key_ref, s_map_rsa_signing_algo_to_sec(algorithm), digest_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -195,23 +201,26 @@ int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm
         goto on_error;
     }
 
-    CFRelease(message_ref);
+    CFRelease(digest_ref);
     CFRelease(signature_ref);
 
     return AWS_OP_SUCCESS;
 
 on_error:
-    CFRelease(message_ref);
+    CFRelease(digest_ref);
 
     if (signature_ref != NULL) {
         CFRelease(signature_ref);
     }
 
-    return AWS_OP_ERR; 
+    return AWS_OP_ERR;
 }
 
-int s_rsa_verify(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor signed_data, struct aws_byte_cursor signature) {
+int s_rsa_verify(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_signing_algorithm algorithm,
+    struct aws_byte_cursor digest,
+    struct aws_byte_cursor signature) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     if (key_pair_impl->pub_key_ref == NULL) {
@@ -219,25 +228,23 @@ int s_rsa_verify(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorit
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref,
-        kSecKeyOperationTypeVerify, s_map_rsa_signing_algo_to_sec(algorithm))) {
+    if (!SecKeyIsAlgorithmSupported(
+            key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, s_map_rsa_signing_algo_to_sec(algorithm))) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    CFDataRef signed_data_ref = CFDataCreateWithBytesNoCopy(NULL, signed_data.ptr, signed_data.len, kCFAllocatorNull);
+    CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(NULL, digest.ptr, digest.len, kCFAllocatorNull);
     CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(NULL, signature.ptr, signature.len, kCFAllocatorNull);
-    AWS_FATAL_ASSERT(signed_data_ref && signature_ref &&
+    AWS_FATAL_ASSERT(
+        digest_ref && signature_ref &&
         "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    Boolean result = SecKeyVerifySignature(key_pair_impl->pub_key_ref,
-                                   s_map_rsa_signing_algo_to_sec(algorithm),
-                                   signed_data_ref,
-                                   signature_ref,
-                                   &error);
+    Boolean result = SecKeyVerifySignature(
+        key_pair_impl->pub_key_ref, s_map_rsa_signing_algo_to_sec(algorithm), digest_ref, signature_ref, &error);
 
-    CFRelease(signed_data_ref);
+    CFRelease(digest_ref);
     CFRelease(signature_ref);
 
     if (error != NULL) {
@@ -256,12 +263,14 @@ static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
     .verify = s_rsa_verify,
 };
 
-struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(struct aws_allocator *allocator, size_t key_size_in_bits) {
-    
+struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
+    struct aws_allocator *allocator,
+    size_t key_size_in_bits) {
+
     if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE ||
         key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE) {
         aws_raise_error(AWS_ERROR_INVALID_STATE);
-        return NULL; 
+        return NULL;
     }
 
     struct sec_rsa_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct sec_rsa_key_pair));
@@ -273,7 +282,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(struct aws_allocat
 
     CFDataRef sec_key_export_data = NULL;
     CFStringRef key_size_cf_str = NULL;
-    CFMutableDictionaryRef key_attributes = NULL; 
+    CFMutableDictionaryRef key_attributes = NULL;
 
     if (!key_pair->cf_allocator) {
         goto on_error;
@@ -369,7 +378,8 @@ on_error:
 }
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
-    struct aws_allocator *allocator, struct aws_byte_cursor key) {
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor key) {
     struct sec_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct sec_rsa_key_pair));
 
     CFMutableDictionaryRef key_attributes = NULL;
@@ -396,7 +406,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     CFDictionaryAddValue(key_attributes, kSecClass, kSecClassKey);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeRSA);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
-    
+
     CFErrorRef error = NULL;
     key_pair_impl->priv_key_ref = SecKeyCreateWithData(private_key_data, key_attributes, &error);
 
@@ -460,7 +470,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     CFDictionaryAddValue(key_attributes, kSecClass, kSecClassKey);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeRSA);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPublic);
-    
+
     CFErrorRef error = NULL;
     key_pair_impl->pub_key_ref = SecKeyCreateWithData(public_key_data, key_attributes, &error);
 

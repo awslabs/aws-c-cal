@@ -16,16 +16,28 @@ struct aws_der_decoder;
 struct aws_rsa_key_vtable {
     void (*destroy)(struct aws_rsa_key_pair *key_pair);
 
-    int (*encrypt)(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-        struct aws_byte_cursor plaintext, struct aws_byte_buf *out);
-    int (*decrypt)(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-        struct aws_byte_cursor ciphertext, struct aws_byte_buf *out);
+    int (*encrypt)(
+        struct aws_rsa_key_pair *key_pair,
+        enum aws_rsa_encryption_algorithm algorithm,
+        struct aws_byte_cursor plaintext,
+        struct aws_byte_buf *out);
+    int (*decrypt)(
+        struct aws_rsa_key_pair *key_pair,
+        enum aws_rsa_encryption_algorithm algorithm,
+        struct aws_byte_cursor ciphertext,
+        struct aws_byte_buf *out);
 
-    int (*sign)(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm, 
-        struct aws_byte_cursor message, struct aws_byte_buf *out);
+    int (*sign)(
+        struct aws_rsa_key_pair *key_pair,
+        enum aws_rsa_signing_algorithm algorithm,
+        struct aws_byte_cursor digest,
+        struct aws_byte_buf *out);
 
-    int (*verify)(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm, 
-        struct aws_byte_cursor message, struct aws_byte_cursor signature);
+    int (*verify)(
+        struct aws_rsa_key_pair *key_pair,
+        enum aws_rsa_signing_algorithm algorithm,
+        struct aws_byte_cursor digest,
+        struct aws_byte_cursor signature);
 };
 
 struct aws_rsa_key_pair {
@@ -43,30 +55,29 @@ struct aws_rsa_key_pair {
 
 void aws_rsa_key_pair_destroy(void *key_pair);
 
-
 /*
-* RSAPrivateKey as defined in RFC 8017 (aka PKCS1 format):
-*   version           Version,
-*   modulus           INTEGER,  -- n
-*   publicExponent    INTEGER,  -- e
-*   privateExponent   INTEGER,  -- d
-*   prime1            INTEGER,  -- p
-*   prime2            INTEGER,  -- q
-*   exponent1         INTEGER,  -- d mod (p-1)
-*   exponent2         INTEGER,  -- d mod (q-1)
-*   coefficient       INTEGER,  -- (inverse of q) mod p
-*   otherPrimeInfos   OtherPrimeInfos OPTIONAL
-*   Note: otherPrimeInfos is used for >2 primes RSA cases, which are not very
-*   common and currently not supported by CRT. Version == 0 indicates 2 prime
-*   case and version == 1 indicates >2 prime case, hence in practice it will
-*   always be 0.
-*/
+ * RSAPrivateKey as defined in RFC 8017 (aka PKCS1 format):
+ *   version           Version,
+ *   modulus           INTEGER,  -- n
+ *   publicExponent    INTEGER,  -- e
+ *   privateExponent   INTEGER,  -- d
+ *   prime1            INTEGER,  -- p
+ *   prime2            INTEGER,  -- q
+ *   exponent1         INTEGER,  -- d mod (p-1)
+ *   exponent2         INTEGER,  -- d mod (q-1)
+ *   coefficient       INTEGER,  -- (inverse of q) mod p
+ *   otherPrimeInfos   OtherPrimeInfos OPTIONAL
+ *   Note: otherPrimeInfos is used for >2 primes RSA cases, which are not very
+ *   common and currently not supported by CRT. Version == 0 indicates 2 prime
+ *   case and version == 1 indicates >2 prime case, hence in practice it will
+ *   always be 0.
+ */
 struct s_rsa_private_key_pkcs1 {
     /*
-    * Note: all cursors here point to bignum data for underlying RSA numbers.
-    * Struct itself does not own the data and points to where ever the data was
-    * decoded from. 
-    */
+     * Note: all cursors here point to bignum data for underlying RSA numbers.
+     * Struct itself does not own the data and points to where ever the data was
+     * decoded from.
+     */
     size_t version;
     struct aws_byte_cursor modulus;
     struct aws_byte_cursor publicExponent;
@@ -78,7 +89,9 @@ struct s_rsa_private_key_pkcs1 {
     struct aws_byte_cursor coefficient;
 };
 
-AWS_CAL_API int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_private_key_pkcs1 *out);
+AWS_CAL_API int aws_der_decoder_load_private_rsa_pkcs1(
+    struct aws_der_decoder *decoder,
+    struct s_rsa_private_key_pkcs1 *out);
 
 /*
 * RSAPublicKey as defined in RFC 8017 (aka PKCS1 format):
@@ -87,15 +100,17 @@ AWS_CAL_API int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *d
 */
 struct s_rsa_public_key_pkcs1 {
     /*
-    * Note: all cursors here point to bignum data for underlying RSA numbers.
-    * Struct itself does not own the data and points to where ever the data was
-    * decoded from. 
-    */
+     * Note: all cursors here point to bignum data for underlying RSA numbers.
+     * Struct itself does not own the data and points to where ever the data was
+     * decoded from.
+     */
     struct aws_byte_cursor modulus;
     struct aws_byte_cursor publicExponent;
 };
 
-AWS_CAL_API int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_private_key_pkcs1 *out);
+AWS_CAL_API int aws_der_decoder_load_public_rsa_pkcs1(
+    struct aws_der_decoder *decoder,
+    struct s_rsa_private_key_pkcs1 *out);
 
 AWS_EXTERN_C_BEGIN
 

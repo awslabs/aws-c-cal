@@ -5,8 +5,8 @@
 #include <aws/cal/private/rsa.h>
 
 #include <aws/cal/cal.h>
-#include <aws/common/encoding.h>
 #include <aws/cal/private/der.h>
+#include <aws/common/encoding.h>
 
 #include <windows.h>
 
@@ -19,8 +19,7 @@ static aws_thread_once s_rsa_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
 static void s_load_alg_handle(void *user_data) {
     (void)user_data;
     /* this function is incredibly slow, LET IT LEAK*/
-    NTSTATUS status =
-        BCryptOpenAlgorithmProvider(&s_rsa_alg, BCRYPT_RSA_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
+    NTSTATUS status = BCryptOpenAlgorithmProvider(&s_rsa_alg, BCRYPT_RSA_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
     AWS_FATAL_ASSERT(s_rsa_alg && "BCryptOpenAlgorithmProvider() failed");
     AWS_FATAL_ASSERT(NT_SUCCESS(status));
 }
@@ -43,15 +42,17 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
     }
     aws_byte_buf_clean_up_secure(&rsa_key->key_buf)
 
-    aws_mem_release(key_pair->allocator, rsa_key);
+        aws_mem_release(key_pair->allocator, rsa_key);
 }
 
-int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-    struct aws_byte_cursor plaintext, struct aws_byte_buf *out) {
+int s_rsa_encrypt(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_encryption_algorithm algorithm,
+    struct aws_byte_cursor plaintext,
+    struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1 ||
-        algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || 
+    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1 || algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ||
         algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -61,7 +62,8 @@ int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
     }
 
     BCRYPT_OAEP_PADDING_INFO padding_info_oaep;
-    padding_info_oaep.pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
+    padding_info_oaep.pszAlgId =
+        algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
     padding_info_oaep.pbLabel = NULL;
     padding_info_oaep.cbLabel = 0;
 
@@ -86,12 +88,14 @@ int s_rsa_encrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
     return AWS_OP_SUCCESS;
 }
 
-int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_algorithm algorithm,
-    struct aws_byte_cursor ciphertext, struct aws_byte_buf *out) {
+int s_rsa_decrypt(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_encryption_algorithm algorithm,
+    struct aws_byte_cursor ciphertext,
+    struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1 ||
-        algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || 
+    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1 || algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ||
         algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -101,7 +105,8 @@ int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
     }
 
     BCRYPT_OAEP_PADDING_INFO padding_info_oaep;
-    padding_info_oaep.pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
+    padding_info_oaep.pszAlgId =
+        algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
     padding_info_oaep.pbLabel = NULL;
     padding_info_oaep.cbLabel = 0;
 
@@ -109,7 +114,8 @@ int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
         cipher_impl->key_handle,
         to_decrypt->ptr,
         (ULONG)to_decrypt->len,
-        algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? NULL : &padding_info_oaep,,
+        algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? NULL : &padding_info_oaep,
+        ,
         0,
         NULL,
         out->buffer + out->len,
@@ -126,8 +132,11 @@ int s_rsa_decrypt(struct aws_rsa_key_pair *key_pair, enum aws_rsa_encryption_alg
     return AWS_OP_SUCCESS;
 }
 
-int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor message, struct aws_byte_buf *out) {
+int s_rsa_sign(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_signing_algorithm algorithm,
+    struct aws_byte_cursor digest,
+    struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     void *padding_info_ptr = NULL;
@@ -169,37 +178,17 @@ int s_rsa_sign(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-    temp_signature_buf.len += signature_length;
-    size_t signature_component_len = temp_signature_buf.len / 2;
-
-    struct aws_der_encoder *encoder =
-        aws_der_encoder_new(key_pair->allocator, signature_output->capacity - signature_output->len);
-    if (!encoder) {
-        return AWS_OP_ERR;
-    }
-
-    aws_der_encoder_begin_sequence(encoder);
-    struct aws_byte_cursor integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer, signature_component_len);
-    /* trim off the leading zero padding for DER encoding */
-    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
-    aws_der_encoder_write_integer(encoder, integer_cur);
-    integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer + signature_component_len, signature_component_len);
-    /* trim off the leading zero padding for DER encoding */
-    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
-    aws_der_encoder_write_integer(encoder, integer_cur);
-    aws_der_encoder_end_sequence(encoder);
-
-    struct aws_byte_cursor signature_out_cur;
-    AWS_ZERO_STRUCT(signature_out_cur);
-    aws_der_encoder_get_contents(encoder, &signature_out_cur);
-    aws_byte_buf_append(signature_output, &signature_out_cur);
-    aws_der_encoder_destroy(encoder);
+    struct aws_byte_cursor temp_signature_cur = aws_byte_cursor_from_buf(temp_signature_buf);
+    aws_byte_buf_append(signature_output, &temp_signature_cur);
 
     return AWS_OP_SUCCESS;
 }
 
-int s_rsa_verify(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorithm algorithm,
-    struct aws_byte_cursor signed_data, struct aws_byte_cursor signature) {
+int s_rsa_verify(
+    struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_signing_algorithm algorithm,
+    struct aws_byte_cursor digest,
+    struct aws_byte_cursor signature) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     void *padding_info_ptr = NULL;
@@ -217,50 +206,14 @@ int s_rsa_verify(struct aws_rsa_key_pair *key_pair, enum aws_rsa_signing_algorit
         AWS_FATAL_ASSERT("Unsupported Algorithm");
     }
 
-    struct aws_byte_buf temp_signature_buf;
-    aws_byte_buf_init(&temp_signature, aws_rsa_key_pair_signature_length(key_pair));
-
-    struct aws_der_decoder *decoder = aws_der_decoder_new(key_pair->allocator, der_encoded_signature);
-    if (!decoder) {
-        return AWS_OP_ERR;
-    }
-
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
-        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        goto error;
-    }
-
-    struct aws_byte_cursor component;
-    AWS_ZERO_STRUCT(component);
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &component)) {
-        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        goto error;
-    }
-
-    if (aws_byte_buf_append(buffer, coordinate)(&temp_signature_buf, &component)) {
-        goto error;
-    }
-
-    AWS_ZERO_STRUCT(coordinate);
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &coordinate)) {
-        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        goto error;
-    }
-
-    if (aws_byte_buf_append(buffer, coordinate)(&temp_signature_buf, &component)) {
-        goto error;
-    }
-
-    aws_der_decoder_destroy(decoder);
-
     /* okay, now we've got a windows compatible signature, let's verify it. */
     NTSTATUS status = BCryptVerifySignature(
         key_impl->key_handle,
         padding_info_ptr,
-        message->ptr,
-        (ULONG)message->len,
-        temp_signature_buf.buffer,
-        (ULONG)temp_signature_buf.len,
+        digest->ptr,
+        (ULONG)digest->len,
+        signature.buffer,
+        (ULONG)signature.len,
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
     return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
@@ -280,8 +233,10 @@ static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
     .verify = s_rsa_verify,
 };
 
-struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(struct aws_allocator *allocator, size_t key_size_in_bits) {
-    
+struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
+    struct aws_allocator *allocator,
+    size_t key_size_in_bits) {
+
     aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
 
     struct bcrypt_rsa_key_pair *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_rsa_key_pair));
@@ -318,9 +273,10 @@ on_error:
 }
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
-    struct aws_allocator *allocator, struct aws_byte_cursor key) {
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor key) {
 
-    aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);    
+    aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
     struct bcrypt_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_rsa_key_pair));
 
     aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
@@ -373,19 +329,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     aws_byte_buf_append(&key_impl->key_buf, &private_key_data.privateExponent);
 
     NTSTATUS status = BCryptImportKeyPair(
-        s_rsa_alg,
-        NULL,
-        blob_type,
-        &key_impl->key_handle,
-        key_impl->key_buf,
-        (ULONG)key_impl->key_buf.len,
-        flags);
+        s_rsa_alg, NULL, blob_type, &key_impl->key_handle, key_impl->key_buf, (ULONG)key_impl->key_buf.len, flags);
 
     if (!NT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         goto error;
     }
-    
+
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = private_key_data.modulus * 8;
     key_pair_impl->base.good = true;
@@ -406,7 +356,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     struct aws_allocator *allocator,
     struct aws_byte_cursor key) {
 
-    aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);    
+    aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
     struct bcrypt_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_rsa_key_pair));
 
     aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
@@ -451,19 +401,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     aws_byte_buf_append(&key_impl->key_buf, &private_key_data.modulus);
 
     NTSTATUS status = BCryptImportKeyPair(
-        s_rsa_alg,
-        NULL,
-        blob_type,
-        &key_impl->key_handle,
-        key_impl->key_buf,
-        (ULONG)key_impl->key_buf.len,
-        flags);
+        s_rsa_alg, NULL, blob_type, &key_impl->key_handle, key_impl->key_buf, (ULONG)key_impl->key_buf.len, flags);
 
     if (!NT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         goto error;
     }
-    
+
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = private_key_data.modulus * 8;
     key_pair_impl->base.good = true;
@@ -478,5 +422,4 @@ on_error:
     aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
     return NULL;
-
 }

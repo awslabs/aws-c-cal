@@ -40,8 +40,8 @@ static void s_decode_tlv(struct der_tlv *tlv) {
     if (tlv->tag == AWS_DER_INTEGER) {
         uint8_t first_byte = tlv->value[0];
         /* If the first byte is 0, it just denotes unsigned and should be
-        * removed. Single 0 byte is an exception that represents 0 value and we
-        * keep the leading 0 in that case. */
+         * removed. Single 0 byte is an exception that represents 0 value and we
+         * keep the leading 0 in that case. */
         if (tlv->length > 1 && first_byte == 0x00) {
             tlv->length -= 1;
             tlv->value += 1;
@@ -399,7 +399,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         while (cur.len && *cur.ptr == '\n') {
             aws_byte_cursor_advance(&cur, 1);
         }
-        
+
         if (aws_array_list_push_back(&decoder->tlvs, &tlv)) {
             return aws_raise_error(AWS_ERROR_INVALID_STATE);
         }

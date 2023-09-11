@@ -13,6 +13,21 @@
 struct aws_der_encoder;
 struct aws_der_decoder;
 
+/*
+* Note: encoder/decoder only support positive integer representations and usage
+* of signed integers might lead to unexpected results.
+* Context: DER spec requires ints to be stored in big endian format with MSB
+* representing signedness. To disambiguate between negative number and big
+* positive number, null byte can be added in front of positive number. DER spec
+* requires representation to be the shortest possible one.
+* When encoding the integer, the encoder assumes its always positive number and
+* will add leading null byte if MSB is set. 
+* When decoding the integer, null byte is always stripped.
+* This works fine when using with functions that work with positive ints only
+* (ex. openssl's BN_bin2bn), but will break with functions that look at msb for
+* sign (ex. BN_mpi2bn).
+*/
+
 enum aws_der_type {
     /* Primitives */
     AWS_DER_BOOLEAN = 0x01,

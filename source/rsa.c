@@ -247,7 +247,7 @@ int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, stru
     return AWS_OP_SUCCESS;
 }
 
-int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_private_key_pkcs1 *out) {
+int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_public_key_pkcs1 *out) {
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }

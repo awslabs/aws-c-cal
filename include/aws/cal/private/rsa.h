@@ -110,7 +110,7 @@ struct s_rsa_public_key_pkcs1 {
 
 AWS_CAL_API int aws_der_decoder_load_public_rsa_pkcs1(
     struct aws_der_decoder *decoder,
-    struct s_rsa_private_key_pkcs1 *out);
+    struct s_rsa_public_key_pkcs1 *out);
 
 AWS_EXTERN_C_BEGIN
 

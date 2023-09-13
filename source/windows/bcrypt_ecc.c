@@ -389,12 +389,6 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     enum aws_ecc_curve_name curve_name) { 
     aws_thread_call_once(&s_ecdsa_thread_once, s_load_alg_handle, NULL);
 
-    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE ||
-        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE) {
-        aws_raise_error(AWS_ERROR_INVALID_STATE);
-        return NULL; 
-    }
-
     struct bcrypt_ecc_key_pair *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_ecc_key_pair));
 
     if (!key_impl) {

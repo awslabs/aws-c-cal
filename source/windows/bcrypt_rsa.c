@@ -139,7 +139,7 @@ int s_rsa_decrypt(
 /*
  * Allocates and fills out appropriate padding info for algo. Up to caller to destroy.
  */
-void *s_create_sign_padding_info(aws_allocator *allocator, enum aws_rsa_signing_algorithm algorithm) {
+void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_signing_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
         BCRYPT_PKCS1_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PKCS1_PADDING_INFO));
         padding_info.pszAlgId = BCRYPT_SHA256_ALGORITHM;

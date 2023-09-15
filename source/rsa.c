@@ -7,11 +7,13 @@
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
 
-typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator,
-                                                                           struct aws_byte_cursor public_key);
+typedef struct aws_rsa_key_pair *(
+    aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator,
+                                            struct aws_byte_cursor public_key);
 
-typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator,
-                                                                            struct aws_byte_cursor private_key);
+typedef struct aws_rsa_key_pair *(
+    aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator,
+                                            struct aws_byte_cursor private_key);
 
 #ifndef BYO_CRYPTO
 

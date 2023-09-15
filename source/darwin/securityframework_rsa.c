@@ -43,37 +43,43 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
  * return either pointer to a key algo (global consts) or NULL in case algo is
  * not supported.
  */
-static const SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm) {
+static int s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm, SecKeyAlgorithm *out) {
 
     switch (algorithm) {
         case AWS_CAL_RSA_ENCRYPTION_PKCS1_5:
-            return &kSecKeyAlgorithmRSAEncryptionPKCS1;
+            *out = kSecKeyAlgorithmRSAEncryptionPKCS1;
+            return AWS_OP_SUCCESS;
         case AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256:
-            return &kSecKeyAlgorithmRSAEncryptionOAEPSHA256;
+            *out = kSecKeyAlgorithmRSAEncryptionOAEPSHA256;
+            return AWS_OP_SUCCESS;
         case AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512:
-            return &kSecKeyAlgorithmRSAEncryptionOAEPSHA512;
+            *out = kSecKeyAlgorithmRSAEncryptionOAEPSHA512;
+            return AWS_OP_SUCCESS;
     }
 
-    return NULL;
+    return AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
 }
 
 /*
  * return either pointer to a key algo (global consts) or NULL in case algo is
  * not supported.
  */
-static const SecKeyAlgorithm *s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm) {
+static int s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm, SecKeyAlgorithm *out) {
 
     switch (algorithm) {
         case AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256:
-            return &kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
+            *out = kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
+            return AWS_OP_SUCCESS;
         case AWS_CAL_RSA_SIGNATURE_PSS_SHA256:
             if (__builtin_available(macos 10.13, ios 11.0, tvos 11.0, watchos 4.0, *)) {
-                return &kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
+                *out = kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
+                return AWS_OP_SUCCESS;
             } else {
-                return NULL;
+                return AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
             }
     }
-    return NULL;
+
+    return AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
 }
 
 int s_rsa_encrypt(
@@ -88,12 +94,12 @@ int s_rsa_encrypt(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    const SecKeyAlgorithm *alg = s_map_rsa_encryption_algo_to_sec(algorithm);
-    if (alg == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    SecKeyAlgorithm alg; 
+    if (s_map_rsa_encryption_algo_to_sec(algorithm, &alg)) {
+        return AWS_OP_ERR;
     }
 
-    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeEncrypt, alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -103,7 +109,7 @@ int s_rsa_encrypt(
         plaintext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    CFDataRef ciphertext_ref = SecKeyCreateEncryptedData(key_pair_impl->pub_key_ref, *alg, plaintext_ref, &error);
+    CFDataRef ciphertext_ref = SecKeyCreateEncryptedData(key_pair_impl->pub_key_ref, alg, plaintext_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -145,12 +151,12 @@ int s_rsa_decrypt(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    const SecKeyAlgorithm *alg = s_map_rsa_encryption_algo_to_sec(algorithm);
-    if (alg == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    SecKeyAlgorithm alg; 
+    if (s_map_rsa_encryption_algo_to_sec(algorithm, &alg)) {
+        return AWS_OP_ERR;
     }
 
-    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeDecrypt, alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -160,7 +166,7 @@ int s_rsa_decrypt(
         ciphertext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    CFDataRef plaintext_ref = SecKeyCreateDecryptedData(key_pair_impl->priv_key_ref, *alg, ciphertext_ref, &error);
+    CFDataRef plaintext_ref = SecKeyCreateDecryptedData(key_pair_impl->priv_key_ref, alg, ciphertext_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -202,12 +208,12 @@ int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    const SecKeyAlgorithm *alg = s_map_rsa_signing_algo_to_sec(algorithm);
-    if (alg == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    SecKeyAlgorithm alg; 
+    if (s_map_rsa_signing_algo_to_sec(algorithm, &alg)) {
+        return AWS_OP_ERR;
     }
 
-    if (!SecKeyIsAlgorithmSupported(key_pair_impl->priv_key_ref, kSecKeyOperationTypeSign, *alg)) {
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->priv_key_ref, kSecKeyOperationTypeSign, alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -217,7 +223,7 @@ int s_rsa_sign(
         digest_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    CFDataRef signature_ref = SecKeyCreateSignature(key_pair_impl->priv_key_ref, *alg, digest_ref, &error);
+    CFDataRef signature_ref = SecKeyCreateSignature(key_pair_impl->priv_key_ref, alg, digest_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -260,12 +266,12 @@ int s_rsa_verify(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    const SecKeyAlgorithm *alg = s_map_rsa_signing_algo_to_sec(algorithm);
-    if (alg == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    SecKeyAlgorithm alg; 
+    if (s_map_rsa_signing_algo_to_sec(algorithm, &alg)) {
+        return AWS_OP_ERR;
     }
 
-    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -277,7 +283,7 @@ int s_rsa_verify(
         "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    Boolean result = SecKeyVerifySignature(key_pair_impl->pub_key_ref, *alg, digest_ref, signature_ref, &error);
+    Boolean result = SecKeyVerifySignature(key_pair_impl->pub_key_ref, alg, digest_ref, signature_ref, &error);
 
     CFRelease(digest_ref);
     CFRelease(signature_ref);

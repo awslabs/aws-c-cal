@@ -203,7 +203,7 @@ int s_rsa_sign(
 
     CFErrorRef error = NULL;
     CFDataRef signature_ref = SecKeyCreateSignature(
-        key_pair_impl->priv_key_ref, alg, digest_ref, &error);
+        key_pair_impl->priv_key_ref, *alg, digest_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);

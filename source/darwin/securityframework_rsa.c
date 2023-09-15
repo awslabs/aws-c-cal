@@ -94,7 +94,7 @@ int s_rsa_encrypt(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm alg; 
+    SecKeyAlgorithm alg;
     if (s_map_rsa_encryption_algo_to_sec(algorithm, &alg)) {
         return AWS_OP_ERR;
     }
@@ -151,7 +151,7 @@ int s_rsa_decrypt(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm alg; 
+    SecKeyAlgorithm alg;
     if (s_map_rsa_encryption_algo_to_sec(algorithm, &alg)) {
         return AWS_OP_ERR;
     }
@@ -208,7 +208,7 @@ int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm alg; 
+    SecKeyAlgorithm alg;
     if (s_map_rsa_signing_algo_to_sec(algorithm, &alg)) {
         return AWS_OP_ERR;
     }
@@ -266,7 +266,7 @@ int s_rsa_verify(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm alg; 
+    SecKeyAlgorithm alg;
     if (s_map_rsa_signing_algo_to_sec(algorithm, &alg)) {
         return AWS_OP_ERR;
     }

@@ -187,7 +187,8 @@ int s_rsa_sign(
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
     if (!BCRYPT_SUCCESS(status)) {
-        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto on_error;
     }
 
     temp_signature_buf.len = signature_length;
@@ -196,8 +197,14 @@ int s_rsa_sign(
     aws_byte_buf_append(out, &temp_signature_cur);
 
     aws_byte_buf_clean_up_secure(&temp_signature_buf);
+    aws_mem_release(key_pair->allocator, padding_info);
 
     return AWS_OP_SUCCESS;
+
+on_error:
+    aws_byte_buf_clean_up_secure(&temp_signature_buf);
+    aws_mem_release(key_pair->allocator, padding_info);
+    return AWS_OP_ERR;
 }
 
 int s_rsa_verify(
@@ -222,6 +229,7 @@ int s_rsa_verify(
         (ULONG)signature.len,
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
+    aws_mem_release(key_pair->allocator, padding_info);
     return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 }
 

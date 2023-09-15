@@ -202,7 +202,7 @@ int s_rsa_verify(
         goto on_error;
     }
 
-    if (s_set_enc_ctx_from_algo(ctx, algorithm)) {
+    if (s_set_sign_ctx_from_algo(ctx, algorithm)) {
         goto on_error;
     }
 

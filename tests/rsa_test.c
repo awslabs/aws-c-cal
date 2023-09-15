@@ -266,7 +266,16 @@ static int s_rsa_signing_roundtrip_pss_sha256_from_user(struct aws_allocator *al
 
     aws_cal_library_init(allocator);
 
-    ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
+    #if defined(AWS_OS_MACOS)
+        if (__builtin_available(macOS 10.12, *)) {
+            ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
+        } else {
+            ASSERT_ERROR(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM, 
+                s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
+        }
+    #else
+        ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
+    #endif
 
     aws_cal_library_clean_up();
 

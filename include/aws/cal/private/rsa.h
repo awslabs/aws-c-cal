@@ -78,7 +78,7 @@ struct s_rsa_private_key_pkcs1 {
      * Struct itself does not own the data and points to where ever the data was
      * decoded from.
      */
-    size_t version;
+    int version;
     struct aws_byte_cursor modulus;
     struct aws_byte_cursor publicExponent;
     struct aws_byte_cursor privateExponent;
@@ -111,9 +111,5 @@ struct s_rsa_public_key_pkcs1 {
 AWS_CAL_API int aws_der_decoder_load_public_rsa_pkcs1(
     struct aws_der_decoder *decoder,
     struct s_rsa_public_key_pkcs1 *out);
-
-AWS_EXTERN_C_BEGIN
-
-AWS_EXTERN_C_END
 
 #endif /* AWS_C_CAL_PRIVATE_RSA_H */

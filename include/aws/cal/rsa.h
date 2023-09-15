@@ -14,14 +14,17 @@ struct aws_rsa_key_pair;
 enum aws_rsa_encryption_algorithm {
     AWS_CAL_RSA_ENCRYPTION_PKCS1_5,
     AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256,
-    AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512
+    AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512,
 };
 
-enum aws_rsa_signing_algorithm { AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, AWS_CAL_RSA_SIGNATURE_PSS_SHA256 };
+enum aws_rsa_signing_algorithm { 
+    AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, 
+    AWS_CAL_RSA_SIGNATURE_PSS_SHA256,
+};
 
 /*
  * Note: prefer using standard key sizes - 1024, 2048, 4096.
- * Other key sizes will work, but which key sizes are supported may wary by
+ * Other key sizes will work, but which key sizes are supported may vary by
  * platform. Typically, multiples of 64 should work on all platforms.
  */
 enum {

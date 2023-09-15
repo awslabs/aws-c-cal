@@ -79,8 +79,9 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
  * Creates an Elliptic Curve public/private key pair that can be used for signing and verifying.
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
  * Otherwise returns NULL.
- * Note: Security Framework generates the key pair and we extract the raw data
- * from it. That requires SecItemExport, which is only available on MacOS 10.7+.
+ * Note: This function is only available on MacOs. Security Framework generates the key pair and
+ * we extract the raw data from it using SecItemExport, which is only available
+ * on MacOS 10.7+ (yes, Mac only and no other Apple platforms).
  * There are alternatives for other platforms, but they are rather ugly. Hence
  * for now only support this call on MacOS.
  */

@@ -57,10 +57,10 @@ static SecKeyAlgorithm *s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algor
 
     switch (algorithm) {
         case AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256:
-            return kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
+            return &kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
         case AWS_CAL_RSA_SIGNATURE_PSS_SHA256:
             if (__builtin_available(macos 10.13, ios 11.0, tvos 11.0, watchos 4.0)) {
-                return kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
+                return &kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
             } else {
                 return NULL;
             }

@@ -39,7 +39,7 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
     aws_mem_release(key_pair->allocator, rsa_key);
 }
 
-static SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm) {
+static const SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm) {
 
     switch (algorithm) {
         case AWS_CAL_RSA_ENCRYPTION_PKCS1_5:
@@ -53,13 +53,13 @@ static SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption
     return NULL;
 }
 
-static SecKeyAlgorithm *s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm) {
+static const SecKeyAlgorithm *s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm) {
 
     switch (algorithm) {
         case AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256:
             return &kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
         case AWS_CAL_RSA_SIGNATURE_PSS_SHA256:
-            if (__builtin_available(macos 10.13, ios 11.0, tvos 11.0, watchos 4.0)) {
+            if (__builtin_available(macos 10.13, ios 11.0, tvos 11.0, watchos 4.0, *)) {
                 return &kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
             } else {
                 return NULL;
@@ -80,7 +80,7 @@ int s_rsa_encrypt(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm *alg = s_map_rsa_encryption_algo_to_sec(algorithm);
+    const SecKeyAlgorithm *alg = s_map_rsa_encryption_algo_to_sec(algorithm);
     if (alg == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -133,7 +133,7 @@ int s_rsa_decrypt(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm *alg = s_map_rsa_encryption_algo_to_sec(algorithm);
+    const SecKeyAlgorithm *alg = s_map_rsa_encryption_algo_to_sec(algorithm);
     if (alg == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -186,7 +186,7 @@ int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm *alg = s_map_rsa_signing_algo_to_sec(algorithm);
+    const SecKeyAlgorithm *alg = s_map_rsa_signing_algo_to_sec(algorithm);
     if (alg == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -246,7 +246,7 @@ int s_rsa_verify(
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 
-    SecKeyAlgorithm *alg = s_map_rsa_signing_algo_to_sec(algorithm);
+    const SecKeyAlgorithm *alg = s_map_rsa_signing_algo_to_sec(algorithm);
     if (alg == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }

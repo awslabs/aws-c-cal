@@ -54,7 +54,7 @@ int s_rsa_encrypt(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 || algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ||
+    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
         algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -97,7 +97,7 @@ int s_rsa_decrypt(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 || algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ||
+    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
         algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -164,6 +164,7 @@ int s_rsa_sign(
     struct aws_byte_buf temp_signature_buf;
     aws_byte_buf_init(&temp_signature_buf, key_pair->allocator, aws_rsa_key_pair_signature_length(key_pair));
     size_t signature_length = temp_signature_buf.capacity;
+    AWS_LOGF_DEBUG(0, "foo %p %d", temp_signature_buf.buffer, signature_length);
 
     NTSTATUS status = BCryptSignHash(
         key_pair_impl->key_handle,
@@ -179,8 +180,12 @@ int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
+    temp_signature_buf.len = signature_length;
+
     struct aws_byte_cursor temp_signature_cur = aws_byte_cursor_from_buf(&temp_signature_buf);
     aws_byte_buf_append(out, &temp_signature_cur);
+
+    aws_byte_buf_clean_up_secure(&temp_signature_buf);
 
     return AWS_OP_SUCCESS;
 }

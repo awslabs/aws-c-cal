@@ -46,8 +46,7 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
 }
 
 int s_is_not_supported_enc_algo(enum aws_rsa_encryption_algorithm algorithm) {
-    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && 
-        algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
+    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
         algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -138,8 +137,8 @@ int s_rsa_decrypt(
 }
 
 /*
-* Allocates and fills out appropriate padding info for algo. Up to caller to destroy.
-*/
+ * Allocates and fills out appropriate padding info for algo. Up to caller to destroy.
+ */
 void *s_create_sign_padding_info(aws_allocator *allocator, enum aws_rsa_signing_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
         BCRYPT_PKCS1_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PKCS1_PADDING_INFO));
@@ -150,7 +149,7 @@ void *s_create_sign_padding_info(aws_allocator *allocator, enum aws_rsa_signing_
         padding_info.pszAlgId = BCRYPT_SHA256_ALGORITHM;
         padding_info.cbSalt = 32;
         return padding_info;
-    } 
+    }
 
     return NULL;
 }
@@ -267,13 +266,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
         goto on_error;
     }
 
-    /* 
-    * bcrypt only exports to blob format, which is missing a few of the rsa
-    * numbers needed to reconstruct pkcs1 format. lets not init key buffers for
-    * now. this means we cannot support retrieving underlying key on win.
-    * TODO: bcrypt workarounds to retrieve/compute missing things? old crypt lib
-    * seems to have functionality we need. 
-    */
+    /*
+     * bcrypt only exports to blob format, which is missing a few of the rsa
+     * numbers needed to reconstruct pkcs1 format. lets not init key buffers for
+     * now. this means we cannot support retrieving underlying key on win.
+     * TODO: bcrypt workarounds to retrieve/compute missing things? old crypt lib
+     * seems to have functionality we need.
+     */
     AWS_ZERO_STRUCT(key_impl->base.priv);
     AWS_ZERO_STRUCT(key_impl->base.pub);
 

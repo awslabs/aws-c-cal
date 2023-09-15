@@ -29,7 +29,7 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
     aws_mem_release(key_pair->allocator, rsa_key);
 }
 
-int s_set_enc_ctx_from_algo (EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
+int s_set_enc_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5) {
         if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
             return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -125,7 +125,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_set_sign_ctx_from_algo (EVP_PKEY_CTX *ctx, enum aws_rsa_signing_algorithm algorithm) {
+int s_set_sign_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signing_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
         if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
             return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -308,7 +308,7 @@ on_error:
     if (ctx) {
         EVP_PKEY_CTX_free(ctx);
     }
-    
+
     s_rsa_destroy_key(&key_pair->base);
     return NULL;
 }
@@ -377,7 +377,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto on_error;
     }
-    
+
     key_pair_impl->key = public_key;
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;

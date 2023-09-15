@@ -7,13 +7,11 @@
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
 
-typedef struct aws_rsa_key_pair *
-    (aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator,
-                                            struct aws_byte_cursor public_key);
+typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator,
+                                                                           struct aws_byte_cursor public_key);
 
-typedef struct aws_rsa_key_pair *
-    (aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator,
-                                            struct aws_byte_cursor private_key);
+typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator,
+                                                                            struct aws_byte_cursor private_key);
 
 #ifndef BYO_CRYPTO
 
@@ -167,7 +165,7 @@ int aws_rsa_key_pair_verify_signature(
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
     AWS_PRECONDITION(key_pair);
-    
+
     if (key_pair->good) {
         return key_pair->vtable->verify(key_pair, algorithm, digest, signature);
     }
@@ -187,8 +185,10 @@ size_t aws_rsa_key_pair_signature_length(struct aws_rsa_key_pair *key_pair) {
     return key_pair->key_size_in_bits / 8;
 }
 
-int aws_rsa_key_pair_get_public_key(const struct aws_rsa_key_pair *key_pair, 
-    enum aws_rsa_key_export_format format, struct aws_byte_cursor *out) {
+int aws_rsa_key_pair_get_public_key(
+    const struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_key_export_format format,
+    struct aws_byte_cursor *out) {
     (void)format; /* ignore format for now, since only pkcs1 is supported. */
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
@@ -201,8 +201,10 @@ int aws_rsa_key_pair_get_public_key(const struct aws_rsa_key_pair *key_pair,
     return aws_raise_error(AWS_ERROR_INVALID_STATE);
 }
 
-int aws_rsa_key_pair_get_private_key(const struct aws_rsa_key_pair *key_pair, 
-    enum aws_rsa_key_export_format format, struct aws_byte_cursor *out) {
+int aws_rsa_key_pair_get_private_key(
+    const struct aws_rsa_key_pair *key_pair,
+    enum aws_rsa_key_export_format format,
+    struct aws_byte_cursor *out) {
     (void)format; /* ignore format for now, since only pkcs1 is supported. */
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);

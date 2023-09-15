@@ -40,9 +40,9 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
 }
 
 /*
-* return either pointer to a key algo (global consts) or NULL in case algo is
-* not supported.
-*/
+ * return either pointer to a key algo (global consts) or NULL in case algo is
+ * not supported.
+ */
 static const SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm) {
 
     switch (algorithm) {
@@ -58,9 +58,9 @@ static const SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encr
 }
 
 /*
-* return either pointer to a key algo (global consts) or NULL in case algo is
-* not supported.
-*/
+ * return either pointer to a key algo (global consts) or NULL in case algo is
+ * not supported.
+ */
 static const SecKeyAlgorithm *s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm) {
 
     switch (algorithm) {
@@ -82,7 +82,6 @@ int s_rsa_encrypt(
     struct aws_byte_cursor plaintext,
     struct aws_byte_buf *out) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
-
 
     if (key_pair_impl->pub_key_ref == NULL) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "RSA Key Pair is missing Public Key required for encrypt operation.");
@@ -265,7 +264,7 @@ int s_rsa_verify(
     if (alg == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
- 
+
     if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
@@ -273,7 +272,8 @@ int s_rsa_verify(
 
     CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(NULL, digest.ptr, digest.len, kCFAllocatorNull);
     CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(NULL, signature.ptr, signature.len, kCFAllocatorNull);
-    AWS_FATAL_ASSERT(digest_ref && signature_ref &&
+    AWS_FATAL_ASSERT(
+        digest_ref && signature_ref &&
         "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;

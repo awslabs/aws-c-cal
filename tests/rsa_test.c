@@ -270,7 +270,8 @@ static int s_rsa_signing_roundtrip_pss_sha256_from_user(struct aws_allocator *al
     if (__builtin_available(macOS 10.12, *)) {
         ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
     } else {
-        ASSERT_ERROR(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM, 
+        ASSERT_ERROR(
+            AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM,
             s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
     }
 #else

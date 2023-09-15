@@ -22,11 +22,33 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
 
     struct lc_rsa_key_pair *rsa_key = key_pair->impl;
 
-    if (rsa_key->key) {
+    if (rsa_key->key != NULL) {
         EVP_PKEY_free(rsa_key->key);
     }
 
     aws_mem_release(key_pair->allocator, rsa_key);
+}
+
+int s_set_enc_ctx_from_algo (EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
+    if (algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5) {
+        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+            return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        }
+
+    } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
+        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
+            return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        }
+
+        const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
+        if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md)) {
+            return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        }
+    } else {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    }
+
+    return AWS_OP_SUCCESS;
 }
 
 int s_rsa_encrypt(
@@ -46,25 +68,7 @@ int s_rsa_encrypt(
         goto on_error;
     }
 
-    if (algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-
-    } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-
-        const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
-        if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md)) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-    } else {
-        AWS_FATAL_ASSERT("Unexpected algo type");
+    if (s_set_enc_ctx_from_algo(ctx, algorithm)) {
         goto on_error;
     }
 
@@ -101,25 +105,7 @@ int s_rsa_decrypt(
         goto on_error;
     }
 
-    if (algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-
-    } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-
-        const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
-        if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md)) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-    } else {
-        AWS_FATAL_ASSERT("Unexpected algo type");
+    if (s_set_enc_ctx_from_algo(ctx, algorithm)) {
         goto on_error;
     }
 
@@ -139,6 +125,29 @@ on_error:
     return AWS_OP_ERR;
 }
 
+int s_set_sign_ctx_from_algo (EVP_PKEY_CTX *ctx, enum aws_rsa_signing_algorithm algorithm) {
+    if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
+        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+            return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        }
+        if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
+            return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        }
+    } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
+        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) <= 0) {
+            return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        }
+
+        if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
+            return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        }
+    } else {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
 int s_rsa_sign(
     struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
@@ -156,27 +165,7 @@ int s_rsa_sign(
         goto on_error;
     }
 
-    if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-        if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-    } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-
-        if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-    } else {
-        AWS_FATAL_ASSERT("Unexpected algo type");
+    if (s_set_sign_ctx_from_algo(ctx, algorithm)) {
         goto on_error;
     }
 
@@ -213,27 +202,7 @@ int s_rsa_verify(
         goto on_error;
     }
 
-    if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-        if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-    } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
-        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-
-        if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
-            aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-            goto on_error;
-        }
-    } else {
-        AWS_FATAL_ASSERT("Unexpected algo type");
+    if (s_set_enc_ctx_from_algo(ctx, algorithm)) {
         goto on_error;
     }
 
@@ -302,7 +271,10 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     RSA *rsa = EVP_PKEY_get1_RSA(pkey);
 
     int len = i2d_RSAPrivateKey(rsa, NULL);
-    aws_byte_buf_init(&key_pair->base.priv, allocator, len);
+    if (len < 0 || aws_byte_buf_init(&key_pair->base.priv, allocator, len)) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto on_error;
+    }
 
     uint8_t *p = key_pair->base.priv.buffer;
     if (i2d_RSAPrivateKey(rsa, &p) < 0) {
@@ -311,7 +283,10 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     }
 
     len = i2d_RSAPublicKey(rsa, NULL);
-    aws_byte_buf_init(&key_pair->base.pub, allocator, len);
+    if (len < 0 || aws_byte_buf_init(&key_pair->base.pub, allocator, len)) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto on_error;
+    }
 
     p = key_pair->base.pub.buffer;
     if (i2d_RSAPublicKey(rsa, &p) < 0) {
@@ -331,7 +306,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
 on_error:
     if (ctx) {
-        EVP_PKEY_CTX_free(ctx); 
+        EVP_PKEY_CTX_free(ctx);
     }
     
     s_rsa_destroy_key(&key_pair->base);
@@ -356,7 +331,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     }
 
     private_key = EVP_PKEY_new();
-    if (!EVP_PKEY_assign_RSA(private_key, rsa)) {
+    if (private_key == NULL || !EVP_PKEY_assign_RSA(private_key, rsa)) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto on_error;
     }
 
@@ -397,8 +373,11 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     }
 
     public_key = EVP_PKEY_new();
-    EVP_PKEY_assign_RSA(public_key, rsa);
-
+    if (public_key == NULL || !EVP_PKEY_assign_RSA(public_key, rsa)) {
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        goto on_error;
+    }
+    
     key_pair_impl->key = public_key;
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;

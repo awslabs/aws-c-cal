@@ -40,9 +40,7 @@ static struct aws_error_info s_errors[] = {
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM,
         "A cipher material such as an initialization vector or tag was an incorrect size for the selected algorithm."),
-    AWS_DEFINE_ERROR_INFO_CAL(
-        AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT,
-        "Key format used during loading is not supported")
+    AWS_DEFINE_ERROR_INFO_CAL(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, "Key format used during loading is not supported")
 };
 
 static struct aws_error_info_list s_list = {
@@ -63,7 +61,7 @@ static struct aws_log_subject_info s_cal_log_subject_infos[] = {
         AWS_LS_CAL_LIBCRYPTO_RESOLVE,
         "libcrypto_resolve",
         "Subject for libcrypto symbol resolution logging."),
-    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_RSA, "rsa", "Subject for rsa cryptography specific logging.")
+    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_RSA, "rsa", "Subject for rsa cryptography specific logging."),
 };
 
 static struct aws_log_subject_info_list s_cal_log_subject_list = {

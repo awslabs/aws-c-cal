@@ -266,16 +266,16 @@ static int s_rsa_signing_roundtrip_pss_sha256_from_user(struct aws_allocator *al
 
     aws_cal_library_init(allocator);
 
-    #if defined(AWS_OS_MACOS)
-        if (__builtin_available(macOS 10.12, *)) {
-            ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
-        } else {
-            ASSERT_ERROR(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM, 
-                s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
-        }
-    #else
+#if defined(AWS_OS_MACOS)
+    if (__builtin_available(macOS 10.12, *)) {
         ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
-    #endif
+    } else {
+        ASSERT_ERROR(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM, 
+            s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
+    }
+#else
+    ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PSS_SHA256, NULL));
+#endif
 
     aws_cal_library_clean_up();
 
@@ -299,7 +299,7 @@ static int s_rsa_getters(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(128, aws_rsa_key_pair_signature_length(key_pair_private));
 
     struct aws_byte_cursor priv_key;
-    ASSERT_SUCCESS(aws_rsa_key_pair_get_private_key(key_pair_private, &priv_key));
+    ASSERT_SUCCESS(aws_rsa_key_pair_get_private_key(key_pair_private, AWS_CAL_RSA_KEY_EXPORT_PKCS1, &priv_key));
     ASSERT_TRUE(priv_key.len > 0);
 
     struct aws_byte_buf public_key_buf;
@@ -312,7 +312,7 @@ static int s_rsa_getters(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(128, aws_rsa_key_pair_signature_length(key_pair_public));
 
     struct aws_byte_cursor pub_key;
-    ASSERT_SUCCESS(aws_rsa_key_pair_get_public_key(key_pair_public, &pub_key));
+    ASSERT_SUCCESS(aws_rsa_key_pair_get_public_key(key_pair_public, AWS_CAL_RSA_KEY_EXPORT_PKCS1, &pub_key));
     ASSERT_TRUE(pub_key.len > 0);
 
     aws_rsa_key_pair_release(key_pair_private);

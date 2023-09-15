@@ -386,7 +386,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     struct aws_allocator *allocator,
-    enum aws_ecc_curve_name curve_name) { 
+    enum aws_ecc_curve_name curve_name) {
     aws_thread_call_once(&s_ecdsa_thread_once, s_load_alg_handle, NULL);
 
     struct bcrypt_ecc_key_pair *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_ecc_key_pair));

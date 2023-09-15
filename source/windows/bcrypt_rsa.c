@@ -12,8 +12,6 @@
 
 #include <bcrypt.h>
 
-#define NT_SUCCESS(status) ((NTSTATUS)status >= 0)
-
 static BCRYPT_ALG_HANDLE s_rsa_alg = NULL;
 
 static aws_thread_once s_rsa_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
@@ -23,7 +21,7 @@ static void s_load_alg_handle(void *user_data) {
     /* this function is incredibly slow, LET IT LEAK*/
     NTSTATUS status = BCryptOpenAlgorithmProvider(&s_rsa_alg, BCRYPT_RSA_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
     AWS_FATAL_ASSERT(s_rsa_alg && "BCryptOpenAlgorithmProvider() failed");
-    AWS_FATAL_ASSERT(NT_SUCCESS(status));
+    AWS_FATAL_ASSERT(BCRYPT_SUCCESS(status));
 }
 
 struct bcrypt_rsa_key_pair {
@@ -47,6 +45,14 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
     aws_mem_release(key_pair->allocator, rsa_key);
 }
 
+int s_is_not_supported_enc_algo(enum aws_rsa_encryption_algorithm algorithm) {
+    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && 
+        algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
+        algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    }
+    return AWS_OP_SUCCESS;
+}
 int s_rsa_encrypt(
     struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
@@ -54,13 +60,12 @@ int s_rsa_encrypt(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
-        algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
-        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    if (s_is_not_supported_enc_algo(algorithm)) {
+        return AWS_OP_ERR;
     }
 
     if (out->capacity - out->len < aws_rsa_key_pair_block_length(key_pair)) {
-        return aws_byte_buf_reserve_relative(out, aws_rsa_key_pair_block_length(key_pair));
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     BCRYPT_OAEP_PADDING_INFO padding_info_oaep;
@@ -82,7 +87,7 @@ int s_rsa_encrypt(
         &length_written,
         algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_OAEP);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -97,9 +102,8 @@ int s_rsa_decrypt(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
-        algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
-        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    if (s_is_not_supported_enc_algo(algorithm)) {
+        return AWS_OP_ERR;
     }
 
     if (ciphertext.len == 0) {
@@ -125,12 +129,30 @@ int s_rsa_decrypt(
         &length_written,
         algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_OAEP);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
     out->len += length_written;
     return AWS_OP_SUCCESS;
+}
+
+/*
+* Allocates and fills out appropriate padding info for algo. Up to caller to destroy.
+*/
+void *s_create_sign_padding_info(aws_allocator *allocator, enum aws_rsa_signing_algorithm algorithm) {
+    if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
+        BCRYPT_PKCS1_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PKCS1_PADDING_INFO));
+        padding_info.pszAlgId = BCRYPT_SHA256_ALGORITHM;
+        return padding_info;
+    } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
+        BCRYPT_PSS_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PSS_PADDING_INFO));
+        padding_info.pszAlgId = BCRYPT_SHA256_ALGORITHM;
+        padding_info.cbSalt = 32;
+        return padding_info;
+    } 
+
+    return NULL;
 }
 
 int s_rsa_sign(
@@ -140,19 +162,9 @@ int s_rsa_sign(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    void *padding_info_ptr = NULL;
-    BCRYPT_PKCS1_PADDING_INFO padding_info_pkcs1;
-    BCRYPT_PSS_PADDING_INFO padding_info_pss;
-
-    if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
-        padding_info_pkcs1.pszAlgId = BCRYPT_SHA256_ALGORITHM;
-        padding_info_ptr = &padding_info_pkcs1;
-    } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
-        padding_info_pss.pszAlgId = BCRYPT_SHA256_ALGORITHM;
-        padding_info_pss.cbSalt = 32;
-        padding_info_ptr = &padding_info_pss;
-    } else {
-        AWS_FATAL_ASSERT("Unsupported Algorithm");
+    void *padding_info = s_create_sign_padding_info(key_pair->allocator, algorithm);
+    if (padding_info_ptr == NULL) {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     size_t output_buf_space = out->capacity - out->len;
@@ -176,7 +188,7 @@ int s_rsa_sign(
         (ULONG *)&signature_length,
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -197,19 +209,9 @@ int s_rsa_verify(
     struct aws_byte_cursor signature) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    void *padding_info_ptr = NULL;
-    BCRYPT_PKCS1_PADDING_INFO padding_info_pkcs1;
-    BCRYPT_PSS_PADDING_INFO padding_info_pss;
-
-    if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
-        padding_info_pkcs1.pszAlgId = BCRYPT_SHA256_ALGORITHM;
-        padding_info_ptr = &padding_info_pkcs1;
-    } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
-        padding_info_pss.pszAlgId = BCRYPT_SHA256_ALGORITHM;
-        padding_info_pss.cbSalt = 32;
-        padding_info_ptr = &padding_info_pss;
-    } else {
-        AWS_FATAL_ASSERT("Unsupported Algorithm");
+    void *padding_info = s_create_sign_padding_info(key_pair->allocator, algorithm);
+    if (padding_info_ptr == NULL) {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     /* okay, now we've got a windows compatible signature, let's verify it. */
@@ -253,19 +255,27 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
     NTSTATUS status = BCryptGenerateKeyPair(s_rsa_alg, &key_impl->key_handle, (ULONG)key_size_in_bits, 0);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto on_error;
     }
 
     status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);
 
-    if (status) {
+    if (!BCRYPT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto on_error;
     }
 
-    /* TODO: export pkcs1 from key*/
+    /* 
+    * bcrypt only exports to blob format, which is missing a few of the rsa
+    * numbers needed to reconstruct pkcs1 format. lets not init key buffers for
+    * now. this means we cannot support retrieving underlying key on win.
+    * TODO: bcrypt workarounds to retrieve/compute missing things? old crypt lib
+    * seems to have functionality we need. 
+    */
+    AWS_ZERO_STRUCT(key_impl->base.priv);
+    AWS_ZERO_STRUCT(key_impl->base.pub);
 
     key_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_impl->base.key_size_in_bits = key_size_in_bits;
@@ -343,7 +353,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
         (ULONG)key_pair_impl->key_buf.len,
         flags);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         goto on_error;
     }
@@ -421,7 +431,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
         (ULONG)key_pair_impl->key_buf.len,
         flags);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         goto on_error;
     }

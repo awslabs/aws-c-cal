@@ -39,6 +39,10 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
     aws_mem_release(key_pair->allocator, rsa_key);
 }
 
+/*
+* return either pointer to a key algo (global consts) or NULL in case algo is
+* not supported.
+*/
 static const SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm) {
 
     switch (algorithm) {
@@ -53,6 +57,10 @@ static const SecKeyAlgorithm *s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encr
     return NULL;
 }
 
+/*
+* return either pointer to a key algo (global consts) or NULL in case algo is
+* not supported.
+*/
 static const SecKeyAlgorithm *s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm) {
 
     switch (algorithm) {
@@ -75,6 +83,7 @@ int s_rsa_encrypt(
     struct aws_byte_buf *out) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
 
+
     if (key_pair_impl->pub_key_ref == NULL) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "RSA Key Pair is missing Public Key required for encrypt operation.");
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
@@ -85,13 +94,17 @@ int s_rsa_encrypt(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    }
+
     CFDataRef plaintext_ref = CFDataCreateWithBytesNoCopy(NULL, plaintext.ptr, plaintext.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(
         plaintext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    CFDataRef ciphertext_ref = SecKeyCreateEncryptedData(
-        key_pair_impl->pub_key_ref, *alg, plaintext_ref, &error);
+    CFDataRef ciphertext_ref = SecKeyCreateEncryptedData(key_pair_impl->pub_key_ref, *alg, plaintext_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -138,13 +151,17 @@ int s_rsa_decrypt(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    }
+
     CFDataRef ciphertext_ref = CFDataCreateWithBytesNoCopy(NULL, ciphertext.ptr, ciphertext.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(
         ciphertext_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    CFDataRef plaintext_ref = SecKeyCreateDecryptedData(
-        key_pair_impl->priv_key_ref, *alg, ciphertext_ref, &error);
+    CFDataRef plaintext_ref = SecKeyCreateDecryptedData(key_pair_impl->priv_key_ref, *alg, ciphertext_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -191,8 +208,7 @@ int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    if (!SecKeyIsAlgorithmSupported(
-            key_pair_impl->priv_key_ref, kSecKeyOperationTypeSign, *alg)) {
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->priv_key_ref, kSecKeyOperationTypeSign, *alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -202,8 +218,7 @@ int s_rsa_sign(
         digest_ref && "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    CFDataRef signature_ref = SecKeyCreateSignature(
-        key_pair_impl->priv_key_ref, *alg, digest_ref, &error);
+    CFDataRef signature_ref = SecKeyCreateSignature(key_pair_impl->priv_key_ref, *alg, digest_ref, &error);
 
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
@@ -251,21 +266,18 @@ int s_rsa_verify(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
  
-    if (!SecKeyIsAlgorithmSupported(
-            key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeVerify, *alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(NULL, digest.ptr, digest.len, kCFAllocatorNull);
     CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(NULL, signature.ptr, signature.len, kCFAllocatorNull);
-    AWS_FATAL_ASSERT(
-        digest_ref && signature_ref &&
+    AWS_FATAL_ASSERT(digest_ref && signature_ref &&
         "No allocations should have happened here, this function shouldn't be able to fail.");
 
     CFErrorRef error = NULL;
-    Boolean result = SecKeyVerifySignature(
-        key_pair_impl->pub_key_ref, *alg, digest_ref, signature_ref, &error);
+    Boolean result = SecKeyVerifySignature(key_pair_impl->pub_key_ref, *alg, digest_ref, signature_ref, &error);
 
     CFRelease(digest_ref);
     CFRelease(signature_ref);
@@ -333,7 +345,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
     key_pair->priv_key_ref = SecKeyCreateRandomKey(key_attributes, &error);
 
-    if (error) {
+    if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         CFRelease(error);
         goto on_error;
@@ -347,7 +359,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     }
 
     sec_key_export_data = SecKeyCopyExternalRepresentation(key_pair->priv_key_ref, &error);
-    if (error) {
+    if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         CFRelease(error);
         goto on_error;
@@ -361,7 +373,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     }
 
     sec_key_export_data = SecKeyCopyExternalRepresentation(key_pair->pub_key_ref, &error);
-    if (error) {
+    if (error != NULL) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         CFRelease(error);
         goto on_error;
@@ -433,7 +445,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     CFErrorRef error = NULL;
     key_pair_impl->priv_key_ref = SecKeyCreateWithData(private_key_data, key_attributes, &error);
 
-    if (error) {
+    if (error != NULL) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         CFRelease(error);
         goto on_error;
@@ -497,7 +509,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     CFErrorRef error = NULL;
     key_pair_impl->pub_key_ref = SecKeyCreateWithData(public_key_data, key_attributes, &error);
 
-    if (error) {
+    if (error != NULL) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         CFRelease(error);
         goto on_error;

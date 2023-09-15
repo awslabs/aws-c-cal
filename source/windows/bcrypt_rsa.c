@@ -162,7 +162,7 @@ int s_rsa_sign(
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     void *padding_info = s_create_sign_padding_info(key_pair->allocator, algorithm);
-    if (padding_info_ptr == NULL) {
+    if (padding_info == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
@@ -175,11 +175,10 @@ int s_rsa_sign(
     struct aws_byte_buf temp_signature_buf;
     aws_byte_buf_init(&temp_signature_buf, key_pair->allocator, aws_rsa_key_pair_signature_length(key_pair));
     size_t signature_length = temp_signature_buf.capacity;
-    AWS_LOGF_DEBUG(0, "foo %p %d", temp_signature_buf.buffer, signature_length);
 
     NTSTATUS status = BCryptSignHash(
         key_pair_impl->key_handle,
-        padding_info_ptr,
+        padding_info,
         digest.ptr,
         (ULONG)digest.len,
         temp_signature_buf.buffer,
@@ -209,14 +208,14 @@ int s_rsa_verify(
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     void *padding_info = s_create_sign_padding_info(key_pair->allocator, algorithm);
-    if (padding_info_ptr == NULL) {
+    if (padding_info == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     /* okay, now we've got a windows compatible signature, let's verify it. */
     NTSTATUS status = BCryptVerifySignature(
         key_pair_impl->key_handle,
-        padding_info_ptr,
+        padding_info,
         digest.ptr,
         (ULONG)digest.len,
         signature.ptr,

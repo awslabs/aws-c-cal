@@ -38,6 +38,10 @@ struct der_tlv {
 
 static int s_decode_tlv(struct der_tlv *tlv) {
     if (tlv->tag == AWS_DER_INTEGER) {
+        if (tlv->length == 0) {
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        }
+
         uint8_t first_byte = tlv->value[0];
         if (first_byte & 0x80) {
             return aws_raise_error(AWS_ERROR_CAL_DER_UNSUPPORTED_NEGATIVE_INT);
@@ -96,6 +100,10 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
         }
     } else {
         len = len_bytes;
+    }
+
+    if (len > cur->len) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     tlv->tag = tag;

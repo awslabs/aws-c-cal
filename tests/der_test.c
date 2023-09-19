@@ -561,3 +561,41 @@ static int s_der_decode_zero_int(struct aws_allocator *allocator, void *ctx) {
     return 0;
 }
 AWS_TEST_CASE(der_decode_zero_int, s_der_decode_zero_int)
+
+static int s_der_decode_bad_length(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t negative_der[] = {0x02 /*int*/, 0x09 /*len 9*/, 0x00 /*0*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NOT_NULL(decoder);
+
+    ASSERT_NULL(decoder);
+
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
+    aws_der_decoder_destroy(decoder);
+
+    return 0;
+}
+AWS_TEST_CASE(der_decode_bad_length, s_der_decode_bad_length)
+
+static int s_der_decode_zero_length_int(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t negative_der[] = {0x02 /*int*/, 0x00 /*len 9*/, 0x00 /*0*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NOT_NULL(decoder);
+
+    ASSERT_NULL(decoder);
+
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
+    aws_der_decoder_destroy(decoder);
+
+    return 0;
+}
+AWS_TEST_CASE(der_decode_zero_length_int, s_der_decode_zero_length_int)

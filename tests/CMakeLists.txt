@@ -112,6 +112,8 @@ add_test_case(der_encode_set)
 add_test_case(der_decode_negative_int)
 add_test_case(der_decode_positive_int)
 add_test_case(der_decode_zero_int)
+add_test_case(der_decode_bad_length)
+add_test_case(der_decode_zero_length_int)
 
 add_test_case(der_decode_integer)
 add_test_case(der_decode_boolean)

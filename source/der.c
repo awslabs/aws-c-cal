@@ -44,10 +44,10 @@ static int s_decode_tlv(struct der_tlv *tlv) {
         }
 
         /* if its multibyte int and first byte is 0, strip it since it was added
-        * to indicate to der that it is positive number.
-        * if len is 1 and first byte is 0, then the number is just zero, so
-        * leave it as is.
-        */
+         * to indicate to der that it is positive number.
+         * if len is 1 and first byte is 0, then the number is just zero, so
+         * leave it as is.
+         */
         if (tlv->length > 1 && first_byte == 0x00) {
             tlv->length -= 1;
             tlv->value += 1;

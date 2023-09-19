@@ -15,7 +15,7 @@ struct aws_der_decoder;
 
 /*
  * Note: encoder/decoder only supports unsigned representations of integers and usage
- * of signed integers might lead to unexpected results. 
+ * of signed integers might lead to unexpected results.
  * Context: DER spec requires ints to be stored in big endian format with MSB
  * representing signedness. To disambiguate between negative number and big
  * positive number, null byte can be added in front of positive number. DER spec

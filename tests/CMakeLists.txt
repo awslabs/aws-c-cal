@@ -71,6 +71,8 @@ add_test_case(ecdsa_test_import_asn1_key_pair_public_only)
 add_test_case(ecdsa_test_import_asn1_key_pair_invalid_fails)
 add_test_case(ecdsa_test_signature_format)
 add_test_case(ecdsa_p256_test_small_coordinate_verification)
+#add_test_case(ecdsa_p256_randomize)
+add_test_case(ecdsa_p256_test_uneven_r_s)
 
 add_test_case(aes_cbc_NIST_CBCGFSbox256_case_1)
 add_test_case(aes_cbc_NIST_CBCVarKey256_case_254)

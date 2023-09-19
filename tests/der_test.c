@@ -570,8 +570,6 @@ static int s_der_decode_bad_length(struct aws_allocator *allocator, void *ctx) {
     const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
     struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
     struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
-    ASSERT_NOT_NULL(decoder);
-
     ASSERT_NULL(decoder);
 
     ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
@@ -589,8 +587,6 @@ static int s_der_decode_zero_length_int(struct aws_allocator *allocator, void *c
     const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
     struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
     struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
-    ASSERT_NOT_NULL(decoder);
-
     ASSERT_NULL(decoder);
 
     ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());

@@ -5,9 +5,7 @@
 #include <aws/cal/cal.h>
 #include <aws/cal/ecc.h>
 #include <aws/cal/hash.h>
-#include <aws/cal/private/der.h>
 #include <aws/common/byte_buf.h>
-#include <aws/common/device_random.h>
 #include <aws/common/encoding.h>
 #include <aws/common/string.h>
 #include <aws/testing/aws_test_harness.h>

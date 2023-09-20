@@ -52,7 +52,7 @@ int s_set_enc_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm
 }
 
 int s_rsa_encrypt(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor plaintext,
     struct aws_byte_buf *out) {
@@ -89,7 +89,7 @@ on_error:
 }
 
 int s_rsa_decrypt(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor ciphertext,
     struct aws_byte_buf *out) {
@@ -149,7 +149,7 @@ int s_set_sign_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signing_algorithm a
 }
 
 int s_rsa_sign(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_buf *out) {
@@ -186,7 +186,7 @@ on_error:
 }
 
 int s_rsa_verify(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
@@ -297,7 +297,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     key_pair->key = pkey;
     key_pair->base.vtable = &s_rsa_key_pair_vtable;
     key_pair->base.key_size_in_bits = key_size_in_bits;
-    key_pair->base.good = true;
 
     RSA_free(rsa);
     EVP_PKEY_CTX_free(ctx);
@@ -340,7 +339,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = EVP_PKEY_bits(key_pair_impl->key);
-    key_pair_impl->base.good = true;
 
     return &key_pair_impl->base;
 
@@ -382,7 +380,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = EVP_PKEY_bits(key_pair_impl->key);
-    key_pair_impl->base.good = true;
 
     return &key_pair_impl->base;
 

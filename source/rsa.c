@@ -81,7 +81,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_release(struct aws_rsa_key_pair *key_p
 }
 
 size_t aws_rsa_key_pair_max_encrypt_plaintext_size(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm) {
     /*
      * Per rfc8017, max size of plaintext for encrypt operation is as follows:
@@ -105,7 +105,7 @@ size_t aws_rsa_key_pair_max_encrypt_plaintext_size(
 }
 
 int aws_rsa_key_pair_encrypt(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor plaintext,
     struct aws_byte_buf *out) {
@@ -117,15 +117,11 @@ int aws_rsa_key_pair_encrypt(
         return aws_raise_error(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM);
     }
 
-    if (key_pair->good) {
-        return key_pair->vtable->encrypt(key_pair, algorithm, plaintext, out);
-    }
-
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    return key_pair->vtable->encrypt(key_pair, algorithm, plaintext, out);
 }
 
 AWS_CAL_API int aws_rsa_key_pair_decrypt(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor ciphertext,
     struct aws_byte_buf *out) {
@@ -137,51 +133,37 @@ AWS_CAL_API int aws_rsa_key_pair_decrypt(
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-    if (key_pair->good) {
-        return key_pair->vtable->decrypt(key_pair, algorithm, ciphertext, out);
-    }
-
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    return key_pair->vtable->decrypt(key_pair, algorithm, ciphertext, out);
 }
 
 int aws_rsa_key_pair_sign_message(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_buf *out) {
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
 
-    if (key_pair->good) {
-        return key_pair->vtable->sign(key_pair, algorithm, digest, out);
-    }
-
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    return key_pair->vtable->sign(key_pair, algorithm, digest, out);
 }
 
 int aws_rsa_key_pair_verify_signature(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
     AWS_PRECONDITION(key_pair);
 
-    if (key_pair->good) {
-        return key_pair->vtable->verify(key_pair, algorithm, digest, signature);
-    }
-
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    return key_pair->vtable->verify(key_pair, algorithm, digest, signature);
 }
 
 size_t aws_rsa_key_pair_block_length(struct aws_rsa_key_pair *key_pair) {
     AWS_PRECONDITION(key_pair);
-    AWS_PRECONDITION(key_pair->good);
     return key_pair->key_size_in_bits / 8;
 }
 
-size_t aws_rsa_key_pair_signature_length(struct aws_rsa_key_pair *key_pair) {
+size_t aws_rsa_key_pair_signature_length(const struct aws_rsa_key_pair *key_pair) {
     AWS_PRECONDITION(key_pair);
-    AWS_PRECONDITION(key_pair->good);
     return key_pair->key_size_in_bits / 8;
 }
 
@@ -193,12 +175,8 @@ int aws_rsa_key_pair_get_public_key(
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
 
-    if (key_pair->good) {
-        *out = aws_byte_cursor_from_buf(&key_pair->pub);
-        return AWS_OP_SUCCESS;
-    }
-
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    *out = aws_byte_cursor_from_buf(&key_pair->pub);
+    return AWS_OP_SUCCESS;
 }
 
 int aws_rsa_key_pair_get_private_key(
@@ -209,12 +187,8 @@ int aws_rsa_key_pair_get_private_key(
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
 
-    if (key_pair->good) {
-        *out = aws_byte_cursor_from_buf(&key_pair->priv);
-        return AWS_OP_SUCCESS;
-    }
-
-    return aws_raise_error(AWS_ERROR_INVALID_STATE);
+    *out = aws_byte_cursor_from_buf(&key_pair->priv);
+    return AWS_OP_SUCCESS;
 }
 
 int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_private_key_pkcs1 *out) {

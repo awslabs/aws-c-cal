@@ -53,7 +53,7 @@ int s_is_not_supported_enc_algo(enum aws_rsa_encryption_algorithm algorithm) {
     return AWS_OP_SUCCESS;
 }
 int s_rsa_encrypt(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor plaintext,
     struct aws_byte_buf *out) {
@@ -95,7 +95,7 @@ int s_rsa_encrypt(
 }
 
 int s_rsa_decrypt(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor ciphertext,
     struct aws_byte_buf *out) {
@@ -155,7 +155,7 @@ void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_s
 }
 
 int s_rsa_sign(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_buf *out) {
@@ -208,7 +208,7 @@ on_error:
 }
 
 int s_rsa_verify(
-    struct aws_rsa_key_pair *key_pair,
+    const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signing_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
@@ -285,7 +285,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
     key_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_impl->base.key_size_in_bits = key_size_in_bits;
-    key_impl->base.good = true;
 
     return &key_impl->base;
 
@@ -366,7 +365,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = private_key_data.modulus.len * 8;
-    key_pair_impl->base.good = true;
 
     aws_der_decoder_destroy(decoder);
 
@@ -444,7 +442,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     key_pair_impl->base.key_size_in_bits = public_key_data.modulus.len * 8;
-    key_pair_impl->base.good = true;
 
     aws_der_decoder_destroy(decoder);
 

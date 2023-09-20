@@ -17,24 +17,24 @@ struct aws_rsa_key_vtable {
     void (*destroy)(struct aws_rsa_key_pair *key_pair);
 
     int (*encrypt)(
-        struct aws_rsa_key_pair *key_pair,
+        const struct aws_rsa_key_pair *key_pair,
         enum aws_rsa_encryption_algorithm algorithm,
         struct aws_byte_cursor plaintext,
         struct aws_byte_buf *out);
     int (*decrypt)(
-        struct aws_rsa_key_pair *key_pair,
+        const struct aws_rsa_key_pair *key_pair,
         enum aws_rsa_encryption_algorithm algorithm,
         struct aws_byte_cursor ciphertext,
         struct aws_byte_buf *out);
 
     int (*sign)(
-        struct aws_rsa_key_pair *key_pair,
+        const struct aws_rsa_key_pair *key_pair,
         enum aws_rsa_signing_algorithm algorithm,
         struct aws_byte_cursor digest,
         struct aws_byte_buf *out);
 
     int (*verify)(
-        struct aws_rsa_key_pair *key_pair,
+        const struct aws_rsa_key_pair *key_pair,
         enum aws_rsa_signing_algorithm algorithm,
         struct aws_byte_cursor digest,
         struct aws_byte_cursor signature);
@@ -49,7 +49,6 @@ struct aws_rsa_key_pair {
     struct aws_byte_buf priv;
     struct aws_byte_buf pub;
 
-    bool good;
     void *impl;
 };
 

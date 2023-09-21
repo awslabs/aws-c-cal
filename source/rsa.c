@@ -138,7 +138,7 @@ AWS_CAL_API int aws_rsa_key_pair_decrypt(
 
 int aws_rsa_key_pair_sign_message(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_buf *out) {
     AWS_PRECONDITION(key_pair);
@@ -149,7 +149,7 @@ int aws_rsa_key_pair_sign_message(
 
 int aws_rsa_key_pair_verify_signature(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
     AWS_PRECONDITION(key_pair);
@@ -170,28 +170,36 @@ size_t aws_rsa_key_pair_signature_length(const struct aws_rsa_key_pair *key_pair
 int aws_rsa_key_pair_get_public_key(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_key_export_format format,
-    struct aws_byte_cursor *out) {
+    struct aws_byte_buf *out) {
     (void)format; /* ignore format for now, since only pkcs1 is supported. */
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
 
-    *out = aws_byte_cursor_from_buf(&key_pair->pub);
+    if (key_pair->pub.len == 0) {
+        return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    }
+
+    aws_byte_buf_init_copy(out, key_pair->allocator, &key_pair->priv);
     return AWS_OP_SUCCESS;
 }
 
 int aws_rsa_key_pair_get_private_key(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_key_export_format format,
-    struct aws_byte_cursor *out) {
+    struct aws_byte_buf *out) {
     (void)format; /* ignore format for now, since only pkcs1 is supported. */
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
 
-    *out = aws_byte_cursor_from_buf(&key_pair->priv);
+    if (key_pair->priv.len == 0) {
+        return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    }
+
+    aws_byte_buf_init_copy(out, key_pair->allocator, &key_pair->priv);
     return AWS_OP_SUCCESS;
 }
 
-int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_private_key_pkcs1 *out) {
+int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, struct aws_rsa_private_key_pkcs1 *out) {
 
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
@@ -242,7 +250,7 @@ int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, stru
     return AWS_OP_SUCCESS;
 }
 
-int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struct s_rsa_public_key_pkcs1 *out) {
+int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struct aws_rsa_public_key_pkcs1 *out) {
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }

@@ -184,7 +184,7 @@ static int s_rsa_signing_roundtrip_helper(
     struct aws_allocator *allocator,
     struct aws_rsa_key_pair *key_pair_private,
     struct aws_rsa_key_pair *key_pair_public,
-    enum aws_rsa_signing_algorithm algo,
+    enum aws_rsa_signature_algorithm algo,
     const char *expected_signature) {
     struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
 
@@ -220,7 +220,7 @@ static int s_rsa_signing_roundtrip_helper(
 
 static int s_rsa_signing_roundtrip_from_user(
     struct aws_allocator *allocator,
-    enum aws_rsa_signing_algorithm algo,
+    enum aws_rsa_signature_algorithm algo,
     const char *expected_signature) {
 
     struct aws_byte_buf private_key_buf;
@@ -299,7 +299,7 @@ static int s_rsa_getters(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(128, aws_rsa_key_pair_block_length(key_pair_private));
     ASSERT_INT_EQUALS(128, aws_rsa_key_pair_signature_length(key_pair_private));
 
-    struct aws_byte_cursor priv_key;
+    struct aws_byte_buf priv_key;
     ASSERT_SUCCESS(aws_rsa_key_pair_get_private_key(key_pair_private, AWS_CAL_RSA_KEY_EXPORT_PKCS1, &priv_key));
     ASSERT_TRUE(priv_key.len > 0);
 
@@ -312,7 +312,7 @@ static int s_rsa_getters(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(128, aws_rsa_key_pair_block_length(key_pair_public));
     ASSERT_INT_EQUALS(128, aws_rsa_key_pair_signature_length(key_pair_public));
 
-    struct aws_byte_cursor pub_key;
+    struct aws_byte_buf pub_key;
     ASSERT_SUCCESS(aws_rsa_key_pair_get_public_key(key_pair_public, AWS_CAL_RSA_KEY_EXPORT_PKCS1, &pub_key));
     ASSERT_TRUE(pub_key.len > 0);
 
@@ -390,7 +390,7 @@ static int s_rsa_private_pkcs1_der_parsing(struct aws_allocator *allocator, void
 
     struct aws_byte_cursor private_key_cur = aws_byte_cursor_from_buf(&private_key_buf);
     struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, private_key_cur);
-    struct s_rsa_private_key_pkcs1 private_key_data;
+    struct aws_rsa_private_key_pkcs1 private_key_data;
     AWS_ZERO_STRUCT(private_key_data);
     ASSERT_SUCCESS(aws_der_decoder_load_private_rsa_pkcs1(decoder, &private_key_data));
 
@@ -440,7 +440,7 @@ static int s_rsa_public_pkcs1_der_parsing(struct aws_allocator *allocator, void 
 
     struct aws_byte_cursor public_key_cur = aws_byte_cursor_from_buf(&public_key_buf);
     struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, public_key_cur);
-    struct s_rsa_public_key_pkcs1 public_key_data;
+    struct aws_rsa_public_key_pkcs1 public_key_data;
     AWS_ZERO_STRUCT(public_key_data);
     ASSERT_SUCCESS(aws_der_decoder_load_public_rsa_pkcs1(decoder, &public_key_data));
 

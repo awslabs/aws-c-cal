@@ -40,8 +40,10 @@ static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
 }
 
 /*
- * return either pointer to a key algo (global consts) or NULL in case algo is
- * not supported.
+ * Maps crt encryption algo enum to Security Framework equivalent. 
+ * Fails with AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM if mapping cannot be done for
+ * some reason.
+ * Mapped value is passed back through out variable.
  */
 static int s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm algorithm, SecKeyAlgorithm *out) {
 
@@ -61,22 +63,31 @@ static int s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm al
 }
 
 /*
- * return either pointer to a key algo (global consts) or NULL in case algo is
- * not supported.
+ * Maps crt encryption algo enum to Security Framework equivalent. 
+ * Fails with AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM if mapping cannot be done for
+ * some reason.
+ * Mapped value is passed back through out variable.
  */
-static int s_map_rsa_signing_algo_to_sec(enum aws_rsa_signing_algorithm algorithm, SecKeyAlgorithm *out) {
+static int s_map_rsa_signing_algo_to_sec(enum aws_rsa_signature_algorithm algorithm, SecKeyAlgorithm *out) {
 
     switch (algorithm) {
         case AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256:
             *out = kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
             return AWS_OP_SUCCESS;
         case AWS_CAL_RSA_SIGNATURE_PSS_SHA256:
+#if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300 /* macOS 10.13 */)) || \
+    (defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* iOS v11 */)) || \
+    (defined(__TV_OS_VERSION_MAX_ALLOWED) && (__TV_OS_VERSION_MAX_ALLOWED >= 110000 /* tvos v11 */)) || \
+    (defined(__WATCH_OS_VERSION_MAX_ALLOWED) && (__WATCH_OS_VERSION_MAX_ALLOWED >= 40000 /* watchos v4 */))
             if (__builtin_available(macos 10.13, ios 11.0, tvos 11.0, watchos 4.0, *)) {
                 *out = kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
                 return AWS_OP_SUCCESS;
             } else {
                 return AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
             }
+#else
+            return AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
+#endif
     }
 
     return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
@@ -110,9 +121,8 @@ int s_rsa_encrypt(
 
     CFErrorRef error = NULL;
     CFDataRef ciphertext_ref = SecKeyCreateEncryptedData(key_pair_impl->pub_key_ref, alg, plaintext_ref, &error);
-
     if (error != NULL) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
@@ -167,9 +177,8 @@ int s_rsa_decrypt(
 
     CFErrorRef error = NULL;
     CFDataRef plaintext_ref = SecKeyCreateDecryptedData(key_pair_impl->priv_key_ref, alg, ciphertext_ref, &error);
-
     if (error != NULL) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
@@ -198,7 +207,7 @@ on_error:
 
 int s_rsa_sign(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_buf *out) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
@@ -223,9 +232,8 @@ int s_rsa_sign(
 
     CFErrorRef error = NULL;
     CFDataRef signature_ref = SecKeyCreateSignature(key_pair_impl->priv_key_ref, alg, digest_ref, &error);
-
     if (error != NULL) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
@@ -255,7 +263,7 @@ on_error:
 
 int s_rsa_verify(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
@@ -288,7 +296,7 @@ int s_rsa_verify(
 
     if (error != NULL) {
         CFRelease(error);
-        return aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
     return result == true ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
@@ -306,8 +314,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     size_t key_size_in_bits) {
 
-    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE ||
-        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE || 
+    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS ||
+        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS || 
         key_size_in_bits % 8 != 0) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         return NULL;
@@ -324,47 +332,35 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     CFNumberRef cf_key_size = NULL;
     CFMutableDictionaryRef key_attributes = NULL;
 
-    if (!key_pair->cf_allocator) {
-        goto on_error;
-    }
-
-    key_attributes = CFDictionaryCreateMutable(key_pair->cf_allocator, 6, NULL, NULL);
-
-    if (!key_attributes) {
-        goto on_error;
-    }
+    key_attributes = CFDictionaryCreateMutable(key_pair->cf_allocator, 0, NULL, NULL);
+    AWS_FATAL_ASSERT(key_attributes);
 
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeRSA);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
+    
     int32_t key_size_in_bits_i32 = (int32_t)key_size_in_bits;
     cf_key_size = CFNumberCreate(key_pair->cf_allocator, kCFNumberSInt32Type, &key_size_in_bits_i32);
-
-    if (cf_key_size == NULL) {
-        goto on_error;
-    }
+    AWS_FATAL_ASSERT(cf_key_size);
 
     CFDictionaryAddValue(key_attributes, kSecAttrKeySizeInBits, cf_key_size);
 
     CFErrorRef error = NULL;
-
     key_pair->priv_key_ref = SecKeyCreateRandomKey(key_attributes, &error);
-
     if (error != NULL) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
 
     key_pair->pub_key_ref = SecKeyCopyPublicKey(key_pair->priv_key_ref);
-
     if (key_pair->pub_key_ref == NULL) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
     sec_key_export_data = SecKeyCopyExternalRepresentation(key_pair->priv_key_ref, &error);
     if (error != NULL) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
@@ -372,22 +368,18 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     struct aws_byte_cursor key_cur =
         aws_byte_cursor_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
 
-    if (aws_byte_buf_init_copy_from_cursor(&key_pair->base.priv, allocator, key_cur)) {
-        goto on_error;
-    }
+    aws_byte_buf_init_copy_from_cursor(&key_pair->base.priv, allocator, key_cur);
 
     sec_key_export_data = SecKeyCopyExternalRepresentation(key_pair->pub_key_ref, &error);
     if (error != NULL) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
 
     key_cur = aws_byte_cursor_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
 
-    if (aws_byte_buf_init_copy_from_cursor(&key_pair->base.pub, allocator, key_cur)) {
-        goto on_error;
-    }
+    aws_byte_buf_init_copy_from_cursor(&key_pair->base.pub, allocator, key_cur);
 
     key_pair->base.vtable = &s_rsa_key_pair_vtable;
     key_pair->base.key_size_in_bits = key_size_in_bits;
@@ -430,24 +422,17 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.priv, allocator, key);
 
     private_key_data = CFDataCreate(key_pair_impl->cf_allocator, key.ptr, key.len);
+    AWS_FATAL_ASSERT(private_key_data);
 
-    if (private_key_data == NULL) {
-        goto on_error;
-    }
-
-    key_attributes = CFDictionaryCreateMutable(key_pair_impl->cf_allocator, 6, NULL, NULL);
-
-    if (key_attributes == NULL) {
-        goto on_error;
-    }
-
+    key_attributes = CFDictionaryCreateMutable(key_pair_impl->cf_allocator, 0, NULL, NULL);
+    AWS_FATAL_ASSERT(key_attributes);
+   
     CFDictionaryAddValue(key_attributes, kSecClass, kSecClassKey);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeRSA);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
 
     CFErrorRef error = NULL;
     key_pair_impl->priv_key_ref = SecKeyCreateWithData(private_key_data, key_attributes, &error);
-
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         CFRelease(error);
@@ -455,6 +440,11 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     }
 
     key_pair_impl->pub_key_ref = SecKeyCopyPublicKey(key_pair_impl->priv_key_ref);
+    if (key_pair_impl->pub_key_ref == NULL) {
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        CFRelease(error);
+        goto on_error;
+    }
 
     CFRelease(key_attributes);
     CFRelease(private_key_data);
@@ -493,16 +483,10 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.pub, allocator, key);
 
     public_key_data = CFDataCreate(key_pair_impl->cf_allocator, key.ptr, key.len);
+    AWS_FATAL_ASSERT(public_key_data);
 
-    if (public_key_data == NULL) {
-        goto on_error;
-    }
-
-    key_attributes = CFDictionaryCreateMutable(key_pair_impl->cf_allocator, 10, NULL, NULL);
-
-    if (key_attributes == NULL) {
-        goto on_error;
-    }
+    key_attributes = CFDictionaryCreateMutable(key_pair_impl->cf_allocator, 0, NULL, NULL);
+    AWS_FATAL_ASSERT(key_attributes);
 
     CFDictionaryAddValue(key_attributes, kSecClass, kSecClassKey);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeRSA);
@@ -510,7 +494,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     CFErrorRef error = NULL;
     key_pair_impl->pub_key_ref = SecKeyCreateWithData(public_key_data, key_attributes, &error);
-
     if (error != NULL) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         CFRelease(error);

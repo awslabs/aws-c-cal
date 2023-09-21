@@ -29,13 +29,13 @@ struct aws_rsa_key_vtable {
 
     int (*sign)(
         const struct aws_rsa_key_pair *key_pair,
-        enum aws_rsa_signing_algorithm algorithm,
+        enum aws_rsa_signature_algorithm algorithm,
         struct aws_byte_cursor digest,
         struct aws_byte_buf *out);
 
     int (*verify)(
         const struct aws_rsa_key_pair *key_pair,
-        enum aws_rsa_signing_algorithm algorithm,
+        enum aws_rsa_signature_algorithm algorithm,
         struct aws_byte_cursor digest,
         struct aws_byte_cursor signature);
 };
@@ -71,7 +71,7 @@ void aws_rsa_key_pair_destroy(void *key_pair);
  *   case and version == 1 indicates >2 prime case, hence in practice it will
  *   always be 0.
  */
-struct s_rsa_private_key_pkcs1 {
+struct aws_rsa_private_key_pkcs1 {
     /*
      * Note: all cursors here point to bignum data for underlying RSA numbers.
      * Struct itself does not own the data and points to where ever the data was
@@ -90,14 +90,14 @@ struct s_rsa_private_key_pkcs1 {
 
 AWS_CAL_API int aws_der_decoder_load_private_rsa_pkcs1(
     struct aws_der_decoder *decoder,
-    struct s_rsa_private_key_pkcs1 *out);
+    struct aws_rsa_private_key_pkcs1 *out);
 
 /*
 * RSAPublicKey as defined in RFC 8017 (aka PKCS1 format):
     modulus           INTEGER,  -- n
     publicExponent    INTEGER   -- e
 */
-struct s_rsa_public_key_pkcs1 {
+struct aws_rsa_public_key_pkcs1 {
     /*
      * Note: all cursors here point to bignum data for underlying RSA numbers.
      * Struct itself does not own the data and points to where ever the data was
@@ -109,6 +109,6 @@ struct s_rsa_public_key_pkcs1 {
 
 AWS_CAL_API int aws_der_decoder_load_public_rsa_pkcs1(
     struct aws_der_decoder *decoder,
-    struct s_rsa_public_key_pkcs1 *out);
+    struct aws_rsa_public_key_pkcs1 *out);
 
 #endif /* AWS_C_CAL_PRIVATE_RSA_H */

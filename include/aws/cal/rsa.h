@@ -17,7 +17,7 @@ enum aws_rsa_encryption_algorithm {
     AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512,
 };
 
-enum aws_rsa_signing_algorithm { 
+enum aws_rsa_signature_algorithm { 
     AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, 
     AWS_CAL_RSA_SIGNATURE_PSS_SHA256,
 };
@@ -28,8 +28,8 @@ enum aws_rsa_signing_algorithm {
  * platform. Typically, multiples of 64 should work on all platforms.
  */
 enum {
-    AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE = 1024,
-    AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE = 4096,
+    AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS = 1024,
+    AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS = 4096,
 };
 
 AWS_EXTERN_C_BEGIN
@@ -63,11 +63,13 @@ AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1
 
 /**
  * Adds one to an RSA key pair's ref count.
+ * Returns key_pair pointer. 
  */
 AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_acquire(struct aws_rsa_key_pair *key_pair);
 
 /**
  * Subtracts one from an RSA key pair's ref count. If ref count reaches zero, the key pair is destroyed.
+ * Always returns NULL.
  */
 AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_release(struct aws_rsa_key_pair *key_pair);
 
@@ -115,7 +117,7 @@ AWS_CAL_API size_t aws_rsa_key_pair_block_length(struct aws_rsa_key_pair *key_pa
  */
 AWS_CAL_API int aws_rsa_key_pair_sign_message(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_buf *out);
 
@@ -126,10 +128,11 @@ AWS_CAL_API int aws_rsa_key_pair_sign_message(
  * something like a SHA256.
  *
  * returns AWS_OP_SUCCESS if the signature is valid.
+ * raises AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED if signature validation failed 
  */
 AWS_CAL_API int aws_rsa_key_pair_verify_signature(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature);
 
@@ -138,27 +141,29 @@ AWS_CAL_API int aws_rsa_key_pair_verify_signature(
  */
 AWS_CAL_API size_t aws_rsa_key_pair_signature_length(const struct aws_rsa_key_pair *key_pair);
 
-enum aws_rsa_key_export_format { AWS_CAL_RSA_KEY_EXPORT_PKCS1 };
+enum aws_rsa_key_export_format { 
+    AWS_CAL_RSA_KEY_EXPORT_PKCS1,
+};
 
 /*
- * Get public key for the key pair. Returns bytes of specified format.
+ * Get public key for the key pair. Appends key bytes to out.
  * Any encoding on top of that (ex. b64) is left up to user.
  * Note: this function is currently not supported on windows for generated keys.
  */
 AWS_CAL_API int aws_rsa_key_pair_get_public_key(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_key_export_format format,
-    struct aws_byte_cursor *out);
+    struct aws_byte_buf *out);
 
 /*
- * Get public key for the key pair. Returns bytes of specified format.
+ * Get private key for the key pair. Appends key bytes to out.
  * Any encoding on top of that (ex. b64) is left up to user.
- * Note: this function is currently not supported on windows for generated keys.
+ * Note: this function is currently not supported on Windows for generated keys.
  */
 AWS_CAL_API int aws_rsa_key_pair_get_private_key(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_key_export_format format,
-    struct aws_byte_cursor *out);
+    struct aws_byte_buf *out);
 
 AWS_EXTERN_C_END
 

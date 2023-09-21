@@ -19,7 +19,7 @@ static struct aws_error_info s_errors[] = {
         "sign a message with a public key."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM,
-        "A key length was used for an algorithm that needs a different key length"),
+        "A key length was used for an algorithm that needs a different key length."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER,
         "An ASN.1 OID was encountered that wasn't expected or understood. Most likely, an unsupported algorithm was "
@@ -29,7 +29,7 @@ static struct aws_error_info s_errors[] = {
         "An ASN.1 DER decoding operation failed on malformed input."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_MISMATCHED_DER_TYPE,
-        "An invalid DER type was requested during encoding/decoding"),
+        "An invalid DER type was requested during encoding/decoding."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM,
         "The specified algorithm is unsupported on this platform."),
@@ -40,7 +40,10 @@ static struct aws_error_info s_errors[] = {
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM,
         "A cipher material such as an initialization vector or tag was an incorrect size for the selected algorithm."),
-    AWS_DEFINE_ERROR_INFO_CAL(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, "Key format is not supported")};
+    AWS_DEFINE_ERROR_INFO_CAL(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, "Key format is not supported."),
+    AWS_DEFINE_ERROR_INFO_CAL(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED, "Unknow error when calling underlying Crypto library.")
+    };
+
 
 static struct aws_error_info_list s_list = {
     .error_list = s_errors,

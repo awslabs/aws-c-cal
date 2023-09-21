@@ -87,7 +87,7 @@ int s_rsa_encrypt(
         algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_OAEP);
 
     if (!BCRYPT_SUCCESS(status)) {
-        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
     out->len += length_written;
@@ -129,7 +129,7 @@ int s_rsa_decrypt(
         algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_OAEP);
 
     if (!BCRYPT_SUCCESS(status)) {
-        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
     out->len += length_written;
@@ -139,7 +139,7 @@ int s_rsa_decrypt(
 /*
  * Allocates and fills out appropriate padding info for algo. Up to caller to destroy.
  */
-void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_signing_algorithm algorithm) {
+void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_signature_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
         BCRYPT_PKCS1_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PKCS1_PADDING_INFO));
         padding_info->pszAlgId = BCRYPT_SHA256_ALGORITHM;
@@ -156,7 +156,7 @@ void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_s
 
 int s_rsa_sign(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
@@ -187,7 +187,7 @@ int s_rsa_sign(
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
     if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
@@ -209,7 +209,7 @@ on_error:
 
 int s_rsa_verify(
     const struct aws_rsa_key_pair *key_pair,
-    enum aws_rsa_signing_algorithm algorithm,
+    enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
     struct aws_byte_cursor signature) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
@@ -247,8 +247,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
     aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
 
-    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE ||
-        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE) {
+    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS ||
+        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS) {
         aws_raise_error(AWS_ERROR_INVALID_STATE);
         return NULL;
     }
@@ -262,14 +262,14 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     NTSTATUS status = BCryptGenerateKeyPair(s_rsa_alg, &key_impl->key_handle, (ULONG)key_size_in_bits, 0);
 
     if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
-    status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);
+    status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);``
 
     if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
@@ -311,7 +311,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
         goto on_error;
     }
 
-    struct s_rsa_private_key_pkcs1 private_key_data = {0};
+    struct aws_rsa_private_key_pkcs1 private_key_data;
+    AWS_ZERO_STRUCT(private_key_data);
     if (aws_der_decoder_load_private_rsa_pkcs1(decoder, &private_key_data)) {
         goto on_error;
     }
@@ -359,7 +360,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
         flags);
 
     if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
@@ -396,7 +397,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
         goto on_error;
     }
 
-    struct s_rsa_public_key_pkcs1 public_key_data = {0};
+    struct aws_rsa_public_key_pkcs1 public_key_data;
+    AWS_ZERO_STRUCT(public_key_data);
     if (aws_der_decoder_load_public_rsa_pkcs1(decoder, &public_key_data)) {
         goto on_error;
     }
@@ -436,7 +438,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
         flags);
 
     if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 

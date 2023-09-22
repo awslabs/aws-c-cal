@@ -38,14 +38,14 @@ static void s_rsa_destroy_key(void *key_pair) {
     struct aws_rsa_key_pair *base = key_pair;
     struct bcrypt_rsa_key_pair *impl = base->impl;
 
-    if (rsa_key->key_handle) {
-        BCryptDestroyKey(rsa_key->key_handle);
+    if (impl->key_handle) {
+        BCryptDestroyKey(impl->key_handle);
     }
-    aws_byte_buf_clean_up_secure(&rsa_key->key_buf);
+    aws_byte_buf_clean_up_secure(&impl->key_buf);
 
     aws_rsa_key_pair_base_clean_up(base);
 
-    aws_mem_release(key_pair->allocator, rsa_key);
+    aws_mem_release(base->allocator, impl);
 }
 
 int s_is_not_supported_enc_algo(enum aws_rsa_encryption_algorithm algorithm) {
@@ -320,7 +320,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     /* Hard to predict final blob size, so use pkcs1 key size as upper bound. */
     size_t total_buffer_size = key.len + sizeof(BCRYPT_RSAKEY_BLOB);
 
-    aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size));
+    aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size);
 
     aws_byte_buf_secure_zero(&key_pair_impl->key_buf);
 

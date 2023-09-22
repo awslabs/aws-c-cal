@@ -152,7 +152,7 @@ int aws_rsa_key_pair_verify_signature(
     return key_pair->vtable->verify(key_pair, algorithm, digest, signature);
 }
 
-size_t aws_rsa_key_pair_block_length(struct aws_rsa_key_pair *key_pair) {
+size_t aws_rsa_key_pair_block_length(const struct aws_rsa_key_pair *key_pair) {
     AWS_PRECONDITION(key_pair);
     return key_pair->key_size_in_bits / 8;
 }

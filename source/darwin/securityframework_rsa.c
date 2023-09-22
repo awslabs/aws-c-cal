@@ -17,26 +17,29 @@ struct sec_rsa_key_pair {
     SecKeyRef pub_key_ref;
 };
 
-static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
+static void s_rsa_destroy_key(void *key_pair) {
     if (key_pair == NULL) {
         return;
     }
 
-    struct sec_rsa_key_pair *rsa_key = key_pair->impl;
+    struct aws_rsa_key_pair *base = key_pair;
+    struct sec_rsa_key_pair *impl = base->impl;
 
-    if (rsa_key->pub_key_ref) {
-        CFRelease(rsa_key->pub_key_ref);
+    if (impl->pub_key_ref) {
+        CFRelease(impl->pub_key_ref);
     }
 
-    if (rsa_key->priv_key_ref) {
-        CFRelease(rsa_key->priv_key_ref);
+    if (impl->priv_key_ref) {
+        CFRelease(impl->priv_key_ref);
     }
 
-    if (rsa_key->cf_allocator) {
-        aws_wrapped_cf_allocator_destroy(rsa_key->cf_allocator);
+    if (impl->cf_allocator) {
+        aws_wrapped_cf_allocator_destroy(impl->cf_allocator);
     }
 
-    aws_mem_release(key_pair->allocator, rsa_key);
+    aws_rsa_key_pair_base_clean_up(base);
+
+    aws_mem_release(base->allocator, impl);
 }
 
 /*
@@ -135,6 +138,8 @@ int s_rsa_encrypt(
         goto on_error;
     }
 
+    CFRelease(plaintext_ref);
+    CFRelease(ciphertext_ref);
     return AWS_OP_SUCCESS;
 
 on_error:
@@ -166,7 +171,7 @@ int s_rsa_decrypt(
         return AWS_OP_ERR;
     }
 
-    if (!SecKeyIsAlgorithmSupported(key_pair_impl->pub_key_ref, kSecKeyOperationTypeDecrypt, alg)) {
+    if (!SecKeyIsAlgorithmSupported(key_pair_impl->priv_key_ref, kSecKeyOperationTypeDecrypt, alg)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Algo is not supported for this operation");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
@@ -191,6 +196,8 @@ int s_rsa_decrypt(
         goto on_error;
     }
 
+    CFRelease(plaintext_ref);
+    CFRelease(ciphertext_ref);
     return AWS_OP_SUCCESS;
 
 on_error:
@@ -284,7 +291,7 @@ int s_rsa_verify(
     }
 
     CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, digest.ptr, digest.len, kCFAllocatorNull);
-    CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator,
+    CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(NULL,
         signature.ptr, signature.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(digest_ref && signature_ref);
 
@@ -294,16 +301,10 @@ int s_rsa_verify(
     CFRelease(digest_ref);
     CFRelease(signature_ref);
 
-    if (error != NULL) {
-        CFRelease(error);
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-    }
-
     return result == true ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 }
 
 static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
-    .destroy = s_rsa_destroy_key,
     .encrypt = s_rsa_encrypt,
     .decrypt = s_rsa_decrypt,
     .sign = s_rsa_sign,
@@ -314,16 +315,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     size_t key_size_in_bits) {
 
-    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS ||
-        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS || 
-        key_size_in_bits % 8 != 0) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    if (is_valid_rsa_key_size(key_size_in_bits)) {
         return NULL;
     }
 
     struct sec_rsa_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct sec_rsa_key_pair));
 
-    aws_ref_count_init(&key_pair->base.ref_count, &key_pair->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair->base.ref_count, &key_pair->base, s_rsa_destroy_key);
     key_pair->base.impl = key_pair;
     key_pair->base.allocator = allocator;
     key_pair->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
@@ -359,11 +357,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     }
 
     sec_key_export_data = SecKeyCopyExternalRepresentation(key_pair->priv_key_ref, &error);
-    if (error != NULL) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-        CFRelease(error);
-        goto on_error;
-    }
+    AWS_FATAL_ASSERT(error == NULL && "This function should not fail on a key we just generated");
 
     struct aws_byte_cursor key_cur =
         aws_byte_cursor_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
@@ -371,11 +365,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     aws_byte_buf_init_copy_from_cursor(&key_pair->base.priv, allocator, key_cur);
 
     sec_key_export_data = SecKeyCopyExternalRepresentation(key_pair->pub_key_ref, &error);
-    if (error != NULL) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-        CFRelease(error);
-        goto on_error;
-    }
+    AWS_FATAL_ASSERT(error == NULL && "This function should not fail on a key we just generated");
 
     key_cur = aws_byte_cursor_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
 
@@ -415,7 +405,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     CFMutableDictionaryRef key_attributes = NULL;
     CFDataRef private_key_data = NULL;
 
-    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, s_rsa_destroy_key);
     key_pair_impl->base.impl = key_pair_impl;
     key_pair_impl->base.allocator = allocator;
     key_pair_impl->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
@@ -450,7 +440,10 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     CFRelease(private_key_data);
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
-    key_pair_impl->base.key_size_in_bits = SecKeyGetBlockSize(key_pair_impl->priv_key_ref) * 8;
+    size_t block_size = SecKeyGetBlockSize(key_pair_impl->priv_key_ref);
+    AWS_FATAL_ASSERT(block_size >= (AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS / 8) && 
+                    block_size <= (AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS / 8));
+    key_pair_impl->base.key_size_in_bits = block_size * 8;
 
     return &key_pair_impl->base;
 
@@ -462,8 +455,6 @@ on_error:
     if (key_attributes) {
         CFRelease(key_attributes);
     }
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
     return NULL;
 }
@@ -476,7 +467,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     CFMutableDictionaryRef key_attributes = NULL;
     CFDataRef public_key_data = NULL;
 
-    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, s_rsa_destroy_key);
     key_pair_impl->base.impl = key_pair_impl;
     key_pair_impl->base.allocator = allocator;
     key_pair_impl->cf_allocator = aws_wrapped_cf_allocator_new(allocator);
@@ -516,8 +507,6 @@ on_error:
     if (key_attributes) {
         CFRelease(key_attributes);
     }
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
     return NULL;
 }

@@ -134,7 +134,7 @@ static int s_rsa_encryption_roundtrip_oaep_sha256_from_user(struct aws_allocator
 
     aws_cal_library_init(allocator);
 
-    ASSERT_SUCCESS(s_rsa_encryption_roundtrip_from_user(allocator, AWS_CAL_RSA_ENCRYPTION_PKCS1_5));
+    ASSERT_SUCCESS(s_rsa_encryption_roundtrip_from_user(allocator, AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256));
 
     aws_cal_library_clean_up();
 
@@ -147,7 +147,7 @@ static int s_rsa_encryption_roundtrip_oaep_sha512_from_user(struct aws_allocator
 
     aws_cal_library_init(allocator);
 
-    ASSERT_SUCCESS(s_rsa_encryption_roundtrip_from_user(allocator, AWS_CAL_RSA_ENCRYPTION_PKCS1_5));
+    ASSERT_SUCCESS(s_rsa_encryption_roundtrip_from_user(allocator, AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512));
 
     aws_cal_library_clean_up();
 
@@ -179,6 +179,216 @@ static const char *TEST_PKCS1_RSA_PUBLIC_KEY_1024 = "MIGJAoGBAJUYb1zq4Eim/jBAwHg
 static const char *TEST_RSA_SIGNATURE_PKCS1 = "Gqu9pLlPvSFIW+5ZFo9ZCxMmPR8LnAeiuYir5CfNTyraF2VPksRnCKtS6i98nwPUqzlPr"
                                               "TYJ45P3c94lQIQD3SVJ3XMSAyAEWTE2pcj0F/oPzzxLcXK9cyv2Iphe4XuBjWCOVdHgFg"
                                               "rD/yAA8b+B94AqE9U/B2+k9/C3Bz2YApo=";
+
+static const char *TEST_RSA_SIGNATURE_PSS = "j//04sVoqQVSmUgH+Id0oad7OgW+hGnIqx6hjr28VnVk75Obig+n3tJGWd0r+3S4ARxf2fK"
+                                            "7taVvJXISQ5aWJAYx6QRgR+25rcE96eOfi6L7ShIZIUYFzGxhc9wpUMGbqHEIhm+8QP7uNo4D"
+                                            "FmaPzJMgGDKL2qhedxnjtg3p8E4=";
+
+static const char *TEST_RSA_ENCRYPTED_PKCS1 = "Ng97Q53hLqC0sCNMTG6poSxXeTLVWFQJS746y1VLnDD0/IYWk/gyzhNEF0M16loaBswNLnEgL"
+                                            "OsTVHmBaglCiEobyWBYO16HO+hrJeXK76p1GfIQ+62hSwpnxx4abqS9N2rX59ahMNSnjXZmFiQn"
+                                            "yPDbvp2UYwUydSu6ArOM/H8=";
+
+static const char *TEST_RSA_ENCRYPTED_OAEP256 = "YB9CDU8z+ViRSQRvE6z3i3mFMh1NFOgKuhcYGIhZu0wqTzVV4c6Rl+x9gMQiURkLG0q1/nAF"
+                                            "upW5g1uo5wotJKb5GCGF8oYuMu7IemY45jBIZ3tXSz1XeZ8VHVCpBNGJBP//Pp461HI9qzaPA+mFu"
+                                            "jBppHZTE0GLpbZeryHRgK4qPR4J+EzojiE2JrzCST8Y1xrCwvwS6QjboeorVSr8ssO8oC3HJ89klg"
+                                            "uEq19eLTp0JP8WWnREJtGfbeIW6nGeu3KEjwnXD+A//Qk5fIxPFBV4+1kTDkLyO22ZOzCevXUAv9j"
+                                            "97f1GRuJfS2W2KL/YXQudwX1xo5ULf1UIgpeqSQ==";
+
+static const char *TEST_RSA_ENCRYPTED_OAEP512 = "Wx5SdwnG1Fc0rEIZZRibRL9iUt16NydVC4Mbok50UKWf7DnhWen4H+KZW9K6bAvXHKKZx1Sog4"
+                                                "RAONa/rrPTWYipFgvNWEQmCHb0erEemjabx3QTu5HqJpbnU5HKAA2l7JGrV26AvyVpezJWHa3h"
+                                                "2xWLnw5JWhqL49vaZeMwtEopr2Dz0+wsH9QZaedQmRcEwO1f2QRrVbnbYFB6wjo3VF1IY7k8Dk"
+                                                "XiLg0m9Ivb0Gwx61gRTx0DKq3zr7CNm35E+c9ujYPdGtX0MjAJfXOHeuaspzsLVAI9gdvyZ3Ca/"
+                                                "vdEkky9ESL7Bw4tLysuqlvc2tnVuk3LXuB3QElDC3JU+A==";
+
+static int s_rsa_verify_signing_pkcs1_sha256(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
+
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_buf public_key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PUBLIC_KEY_1024), &public_key_buf));
+    struct aws_rsa_key_pair *key_pair_public =
+        aws_rsa_key_pair_new_from_public_key_pkcs1(allocator, aws_byte_cursor_from_buf(&public_key_buf));
+    ASSERT_NOT_NULL(key_pair_public);
+
+    uint8_t hash[AWS_SHA256_LEN];
+    AWS_ZERO_ARRAY(hash);
+    struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
+    aws_sha256_compute(allocator, &message, &hash_value, 0);
+    struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
+
+    struct aws_byte_buf signature_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_RSA_SIGNATURE_PKCS1), &signature_buf));
+    struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
+
+    ASSERT_SUCCESS(aws_rsa_key_pair_verify_signature(key_pair_public, 
+        AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, hash_cur, signature_cur));
+
+    aws_byte_buf_clean_up(&hash_value);
+    aws_byte_buf_clean_up(&signature_buf);
+    aws_byte_buf_clean_up(&public_key_buf);
+    aws_rsa_key_pair_release(key_pair_public);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_verify_signing_pkcs1_sha256, s_rsa_verify_signing_pkcs1_sha256);
+
+static int s_rsa_verify_signing_pss_sha256(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
+
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_buf public_key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PUBLIC_KEY_1024), &public_key_buf));
+    struct aws_rsa_key_pair *key_pair_public =
+        aws_rsa_key_pair_new_from_public_key_pkcs1(allocator, aws_byte_cursor_from_buf(&public_key_buf));
+    ASSERT_NOT_NULL(key_pair_public);
+
+    uint8_t hash[AWS_SHA256_LEN];
+    AWS_ZERO_ARRAY(hash);
+    struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
+    aws_sha256_compute(allocator, &message, &hash_value, 0);
+    struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
+
+    struct aws_byte_buf signature_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_RSA_SIGNATURE_PSS), &signature_buf));
+    struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
+
+    ASSERT_SUCCESS(aws_rsa_key_pair_verify_signature(key_pair_public, 
+        AWS_CAL_RSA_SIGNATURE_PSS_SHA256, hash_cur, signature_cur));
+
+    aws_byte_buf_clean_up(&hash_value);
+    aws_byte_buf_clean_up(&signature_buf);
+    aws_byte_buf_clean_up(&public_key_buf);
+    aws_rsa_key_pair_release(key_pair_public);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_verify_signing_pss_sha256, s_rsa_verify_signing_pss_sha256);
+
+static int s_rsa_decrypt_pkcs1(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_buf private_key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PRIVATE_KEY_1024), &private_key_buf));
+    struct aws_rsa_key_pair *key_pair_private =
+        aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, aws_byte_cursor_from_buf(&private_key_buf));
+    ASSERT_NOT_NULL(key_pair_private);
+
+    struct aws_byte_buf encrypted;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_RSA_ENCRYPTED_PKCS1), &encrypted));
+    struct aws_byte_cursor encrypted_cur = aws_byte_cursor_from_buf(&encrypted);
+
+    struct aws_byte_buf decrypted;
+    aws_byte_buf_init(&decrypted, allocator, aws_rsa_key_pair_block_length(key_pair_private));
+
+    ASSERT_SUCCESS(aws_rsa_key_pair_decrypt(key_pair_private, 
+        AWS_CAL_RSA_ENCRYPTION_PKCS1_5, encrypted_cur, &decrypted));
+
+    struct aws_byte_cursor decrypted_cur = aws_byte_cursor_from_buf(&decrypted);
+
+    ASSERT_CURSOR_VALUE_CSTRING_EQUALS(decrypted_cur, TEST_ENCRYPTION_STRING);
+
+    aws_byte_buf_clean_up(&private_key_buf);
+    aws_byte_buf_clean_up(&decrypted);
+    aws_byte_buf_clean_up(&encrypted);
+    aws_rsa_key_pair_release(key_pair_private);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_decrypt_pkcs1, s_rsa_decrypt_pkcs1);
+
+static int s_rsa_decrypt_oaep256(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_buf private_key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PRIVATE_KEY_2048), &private_key_buf));
+    struct aws_rsa_key_pair *key_pair_private =
+        aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, aws_byte_cursor_from_buf(&private_key_buf));
+    ASSERT_NOT_NULL(key_pair_private);
+
+    struct aws_byte_buf encrypted;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_RSA_ENCRYPTED_OAEP256), &encrypted));
+    struct aws_byte_cursor encrypted_cur = aws_byte_cursor_from_buf(&encrypted);
+
+    struct aws_byte_buf decrypted;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted, allocator, aws_rsa_key_pair_block_length(key_pair_private)));
+
+    ASSERT_SUCCESS(aws_rsa_key_pair_decrypt(key_pair_private, 
+        AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256, encrypted_cur, &decrypted));
+
+    struct aws_byte_cursor decrypted_cur = aws_byte_cursor_from_buf(&decrypted);
+
+    ASSERT_CURSOR_VALUE_CSTRING_EQUALS(decrypted_cur, TEST_ENCRYPTION_STRING);
+
+    aws_byte_buf_clean_up(&private_key_buf);
+    aws_byte_buf_clean_up(&decrypted);
+    aws_byte_buf_clean_up(&encrypted);
+    aws_rsa_key_pair_release(key_pair_private);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_decrypt_oaep256, s_rsa_decrypt_oaep256);
+
+static int s_rsa_decrypt_oaep512(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_buf private_key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PRIVATE_KEY_2048), &private_key_buf));
+    struct aws_rsa_key_pair *key_pair_private =
+        aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, aws_byte_cursor_from_buf(&private_key_buf));
+    ASSERT_NOT_NULL(key_pair_private);
+
+    struct aws_byte_buf encrypted;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_RSA_ENCRYPTED_OAEP512), &encrypted));
+    struct aws_byte_cursor encrypted_cur = aws_byte_cursor_from_buf(&encrypted);
+
+    struct aws_byte_buf decrypted;
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted, allocator, aws_rsa_key_pair_block_length(key_pair_private)));
+
+    ASSERT_SUCCESS(aws_rsa_key_pair_decrypt(key_pair_private, 
+        AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512, encrypted_cur, &decrypted));
+
+    struct aws_byte_cursor decrypted_cur = aws_byte_cursor_from_buf(&decrypted);
+
+    ASSERT_CURSOR_VALUE_CSTRING_EQUALS(decrypted_cur, TEST_ENCRYPTION_STRING);
+
+    aws_byte_buf_clean_up(&private_key_buf);
+    aws_byte_buf_clean_up(&decrypted);
+    aws_byte_buf_clean_up(&encrypted);
+    aws_rsa_key_pair_release(key_pair_private);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_decrypt_oaep512, s_rsa_decrypt_oaep512);
 
 static int s_rsa_signing_roundtrip_helper(
     struct aws_allocator *allocator,
@@ -320,6 +530,8 @@ static int s_rsa_getters(struct aws_allocator *allocator, void *ctx) {
     aws_rsa_key_pair_release(key_pair_public);
     aws_byte_buf_clean_up_secure(&private_key_buf);
     aws_byte_buf_clean_up_secure(&public_key_buf);
+    aws_byte_buf_clean_up_secure(&priv_key);
+    aws_byte_buf_clean_up_secure(&pub_key);
 
     aws_cal_library_clean_up();
 

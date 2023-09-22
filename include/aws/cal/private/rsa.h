@@ -14,8 +14,6 @@ struct aws_rsa_key_pair;
 struct aws_der_decoder;
 
 struct aws_rsa_key_vtable {
-    void (*destroy)(struct aws_rsa_key_pair *key_pair);
-
     int (*encrypt)(
         const struct aws_rsa_key_pair *key_pair,
         enum aws_rsa_encryption_algorithm algorithm,
@@ -52,7 +50,7 @@ struct aws_rsa_key_pair {
     void *impl;
 };
 
-void aws_rsa_key_pair_destroy(void *key_pair);
+void aws_rsa_key_pair_base_clean_up(struct aws_rsa_key_pair *key_pair);
 
 /*
  * RSAPrivateKey as defined in RFC 8017 (aka PKCS1 format):
@@ -110,5 +108,11 @@ struct aws_rsa_public_key_pkcs1 {
 AWS_CAL_API int aws_der_decoder_load_public_rsa_pkcs1(
     struct aws_der_decoder *decoder,
     struct aws_rsa_public_key_pkcs1 *out);
+
+/*
+* Returns AWS_OP_SUCCESS if key size is supported and raises
+* AWS_ERROR_INVALID_ARGUMENT otherwise.
+*/
+int is_valid_rsa_key_size(size_t key_size_in_bits);
 
 #endif /* AWS_C_CAL_PRIVATE_RSA_H */

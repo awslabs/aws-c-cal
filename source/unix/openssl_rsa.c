@@ -15,18 +15,21 @@ struct lc_rsa_key_pair {
     EVP_PKEY *key;
 };
 
-static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
+static void s_rsa_destroy_key(void *key_pair) {
     if (key_pair == NULL) {
         return;
     }
 
-    struct lc_rsa_key_pair *rsa_key = key_pair->impl;
+    struct aws_rsa_key_pair *base = key_pair;
+    struct lc_rsa_key_pair *impl = base->impl;
 
-    if (rsa_key->key != NULL) {
-        EVP_PKEY_free(rsa_key->key);
+    if (impl->key != NULL) {
+        EVP_PKEY_free(impl->key);
     }
 
-    aws_mem_release(key_pair->allocator, rsa_key);
+    aws_rsa_key_pair_base_clean_up(base);
+
+    aws_mem_release(base->allocator, impl);
 }
 
 int s_set_enc_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
@@ -222,7 +225,6 @@ on_error:
 }
 
 static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
-    .destroy = s_rsa_destroy_key,
     .encrypt = s_rsa_encrypt,
     .decrypt = s_rsa_decrypt,
     .sign = s_rsa_sign,
@@ -233,15 +235,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     size_t key_size_in_bits) {
 
-    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS ||
-        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS) {
-        aws_raise_error(AWS_ERROR_INVALID_STATE);
+    if (is_valid_rsa_key_size(key_size_in_bits)) {
         return NULL;
     }
 
     struct lc_rsa_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct lc_rsa_key_pair));
 
-    aws_ref_count_init(&key_pair->base.ref_count, &key_pair->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair->base.ref_count, &key_pair->base, s_rsa_destroy_key);
     key_pair->base.impl = key_pair;
     key_pair->base.allocator = allocator;
 
@@ -317,7 +317,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     struct aws_byte_cursor key) {
     struct lc_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct lc_rsa_key_pair));
 
-    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, s_rsa_destroy_key);
     key_pair_impl->base.impl = key_pair_impl;
     key_pair_impl->base.allocator = allocator;
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.priv, allocator, key);
@@ -347,8 +347,6 @@ on_error:
         EVP_PKEY_free(private_key);
     }
 
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
     return NULL;
 }
@@ -358,7 +356,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     struct aws_byte_cursor key) {
     struct lc_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct lc_rsa_key_pair));
 
-    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, s_rsa_destroy_key);
     key_pair_impl->base.impl = key_pair_impl;
     key_pair_impl->base.allocator = allocator;
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.pub, allocator, key);
@@ -387,8 +385,6 @@ on_error:
     if (public_key) {
         EVP_PKEY_free(public_key);
     }
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
     return NULL;
 }

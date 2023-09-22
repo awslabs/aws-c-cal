@@ -59,14 +59,9 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1(
     return s_rsa_key_pair_new_from_private_key_pkcs1_fn(allocator, private_key);
 }
 
-void aws_rsa_key_pair_destroy(void *key_pair) {
-    struct aws_rsa_key_pair *base = key_pair;
-
-    aws_byte_buf_clean_up_secure(&base->priv);
-    aws_byte_buf_clean_up_secure(&base->pub);
-
-    AWS_FATAL_ASSERT(base->vtable->destroy && "RSA KEY PAIR destroy function must be included on the vtable");
-    base->vtable->destroy(key_pair);
+void aws_rsa_key_pair_base_clean_up(struct aws_rsa_key_pair *key_pair) {
+    aws_byte_buf_clean_up_secure(&key_pair->priv);
+    aws_byte_buf_clean_up_secure(&key_pair->pub);
 }
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_acquire(struct aws_rsa_key_pair *key_pair) {
@@ -179,7 +174,7 @@ int aws_rsa_key_pair_get_public_key(
         return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
     }
 
-    aws_byte_buf_init_copy(out, key_pair->allocator, &key_pair->priv);
+    aws_byte_buf_init_copy(out, key_pair->allocator, &key_pair->pub);
     return AWS_OP_SUCCESS;
 }
 
@@ -265,3 +260,14 @@ int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struc
 
     return AWS_OP_SUCCESS;
 }
+
+int is_valid_rsa_key_size(size_t key_size_in_bits) {
+    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS ||
+        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS || 
+        key_size_in_bits % 8 != 0) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    return AWS_OP_SUCCESS;
+}
+

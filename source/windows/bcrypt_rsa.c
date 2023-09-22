@@ -30,17 +30,20 @@ struct bcrypt_rsa_key_pair {
     struct aws_byte_buf key_buf;
 };
 
-static void s_rsa_destroy_key(struct aws_rsa_key_pair *key_pair) {
+static void s_rsa_destroy_key(void *key_pair) {
     if (key_pair == NULL) {
         return;
     }
 
-    struct bcrypt_rsa_key_pair *rsa_key = key_pair->impl;
+    struct aws_rsa_key_pair *base = key_pair;
+    struct bcrypt_rsa_key_pair *impl = base->impl;
 
     if (rsa_key->key_handle) {
         BCryptDestroyKey(rsa_key->key_handle);
     }
     aws_byte_buf_clean_up_secure(&rsa_key->key_buf);
+
+    aws_rsa_key_pair_base_clean_up(base);
 
     aws_mem_release(key_pair->allocator, rsa_key);
 }
@@ -234,7 +237,6 @@ int s_rsa_verify(
 }
 
 static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
-    .destroy = s_rsa_destroy_key,
     .encrypt = s_rsa_encrypt,
     .decrypt = s_rsa_decrypt,
     .sign = s_rsa_sign,
@@ -247,15 +249,13 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
     aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
 
-    if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS ||
-        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS) {
-        aws_raise_error(AWS_ERROR_INVALID_STATE);
+    if (is_valid_rsa_key_size(key_size_in_bits)) {
         return NULL;
     }
 
     struct bcrypt_rsa_key_pair *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_rsa_key_pair));
 
-    aws_ref_count_init(&key_impl->base.ref_count, &key_impl->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_impl->base.ref_count, &key_impl->base, s_rsa_destroy_key);
     key_impl->base.impl = key_impl;
     key_impl->base.allocator = allocator;
 
@@ -266,7 +266,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
         goto on_error;
     }
 
-    status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);``
+    status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);
 
     if (!BCRYPT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
@@ -300,7 +300,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
     struct bcrypt_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_rsa_key_pair));
 
-    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, s_rsa_destroy_key);
     key_pair_impl->base.impl = key_pair_impl;
     key_pair_impl->base.allocator = allocator;
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.priv, allocator, key);
@@ -320,9 +320,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     /* Hard to predict final blob size, so use pkcs1 key size as upper bound. */
     size_t total_buffer_size = key.len + sizeof(BCRYPT_RSAKEY_BLOB);
 
-    if (aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size)) {
-        goto on_error;
-    }
+    aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size));
 
     aws_byte_buf_secure_zero(&key_pair_impl->key_buf);
 
@@ -373,8 +371,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
 on_error:
     aws_der_decoder_destroy(decoder);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
     return NULL;
 }
@@ -386,7 +382,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
     struct bcrypt_rsa_key_pair *key_pair_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_rsa_key_pair));
 
-    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, aws_rsa_key_pair_destroy);
+    aws_ref_count_init(&key_pair_impl->base.ref_count, &key_pair_impl->base, s_rsa_destroy_key);
     key_pair_impl->base.impl = key_pair_impl;
     key_pair_impl->base.allocator = allocator;
     aws_byte_buf_init_copy_from_cursor(&key_pair_impl->base.pub, allocator, key);
@@ -406,10 +402,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     /* Hard to predict final blob size, so use pkcs1 key size as upper bound. */
     size_t total_buffer_size = key.len + sizeof(BCRYPT_RSAKEY_BLOB);
 
-    if (aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size)) {
-        goto on_error;
-    }
-
+    aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size);
     aws_byte_buf_secure_zero(&key_pair_impl->key_buf);
 
     BCRYPT_RSAKEY_BLOB key_blob;
@@ -451,8 +444,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
 on_error:
     aws_der_decoder_destroy(decoder);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.priv);
-    aws_byte_buf_clean_up_secure(&key_pair_impl->base.pub);
     s_rsa_destroy_key(&key_pair_impl->base);
     return NULL;
 }

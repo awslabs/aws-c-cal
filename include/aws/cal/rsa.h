@@ -106,7 +106,7 @@ AWS_CAL_API int aws_rsa_key_pair_decrypt(
 /*
  * Max size for a block supported by a given key pair.
  */
-AWS_CAL_API size_t aws_rsa_key_pair_block_length(struct aws_rsa_key_pair *key_pair);
+AWS_CAL_API size_t aws_rsa_key_pair_block_length(const struct aws_rsa_key_pair *key_pair);
 
 /**
  * Uses the key_pair's private key to sign message. The output will be in out. out must be large enough

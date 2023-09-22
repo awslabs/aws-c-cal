@@ -44,7 +44,7 @@ int s_set_enc_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm
         }
 
         const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
-        if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md)) {
+        if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) <= 0) {
             return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         }
     } else {

@@ -9,6 +9,7 @@
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/evp_errors.h>
 #include <openssl/rsa.h>
 
 struct lc_rsa_key_pair {
@@ -49,8 +50,8 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
             return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
         }
 
-        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %d and extended error %zu",
-            function_name, evp_error, error);
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %d and extended error %lu",
+            function_name, evp_error, (unsigned long)error);
 
         if (ERR_GET_LIB(error) == ERR_LIB_EVP) {
             switch (ERR_GET_REASON(error)) {

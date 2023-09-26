@@ -11,9 +11,9 @@
 #include <openssl/evp.h>
 
 #if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
-#include <openssl/evp_errors.h>
-#else
 #include <openssl/evperr.h>
+#else
+#include <openssl/evp_errors.h>
 #endif
 
 #include <openssl/rsa.h>

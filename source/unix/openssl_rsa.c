@@ -9,7 +9,13 @@
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
+
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
 #include <openssl/evp_errors.h>
+#else
+#include <openssl/evperr.h>
+#endif
+
 #include <openssl/rsa.h>
 
 struct lc_rsa_key_pair {
@@ -57,7 +63,6 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
             switch (ERR_GET_REASON(error)) {
                 case EVP_R_BUFFER_TOO_SMALL:
                     return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-                case EVP_R_ILLEGAL_OR_UNSUPPORTED_PADDING_MODE:
                 case EVP_R_UNSUPPORTED_ALGORITHM:
                     return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
             }

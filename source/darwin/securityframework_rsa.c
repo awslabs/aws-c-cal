@@ -321,11 +321,12 @@ static int s_rsa_verify(
     
     CFRelease(digest_ref);
     CFRelease(signature_ref);
-    if (s_reinterpret_sec_error_as_crt(error, "SecKeyVerifySignature") || result == false) {
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyVerifySignature")) {
+        CFRelease(error);
         return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
     }
 
-    return AWS_OP_SUCCESS;
+    return result ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
 }
 
 static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {

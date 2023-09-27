@@ -258,14 +258,30 @@ static int s_rsa_verify(
         goto on_error;
     }
 
-    if (s_reinterpret_evp_error_as_crt(
-        EVP_PKEY_verify(ctx, signature.ptr, signature.len, digest.ptr, digest.len), "EVP_PKEY_verify")) {
-        aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
-        goto on_error;
-    }
-
+    int error_code = EVP_PKEY_verify(ctx, signature.ptr, signature.len, digest.ptr, digest.len);
     EVP_PKEY_CTX_free(ctx);
-    return AWS_OP_SUCCESS;
+
+    /*
+    * Verify errors slightly differently from the rest of evp functions. 0
+    * indicates signature does not pass verification, and negative indicates
+    * that something went wrong. Manually handle error instead of using helper.
+    */
+    if (error_code > 0) {
+        return AWS_OP_SUCCESS;
+    } else { 
+
+        uint32_t error = ERR_peek_error();
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %d and extended error %lu",
+            "EVP_PKEY_verify", error_code, (unsigned long)error);
+
+        if (error == 0) {
+            return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+        } else if (error == -2) {
+            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+        } else {
+            return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        }
+    }
 
 on_error:
     EVP_PKEY_CTX_free(ctx);

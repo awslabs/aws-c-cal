@@ -234,9 +234,14 @@ static int s_rsa_verify(
 
     aws_mem_release(key_pair->allocator, padding_info);
 
-    if (s_reinterpret_bc_error_as_crt(status, "BCryptVerifySignature")) {
-       return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+    if (status == STATUS_INVALID_SIGNATURE) {
+        return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
     }
+
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptVerifySignature")) {
+       return AWS_OP_ERR;
+    }
+    
     return AWS_OP_SUCCESS;
 }
 

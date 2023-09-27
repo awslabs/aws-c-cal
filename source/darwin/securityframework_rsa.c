@@ -110,17 +110,17 @@ static int s_map_rsa_signing_algo_to_sec(enum aws_rsa_signature_algorithm algori
                 *out = kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
                 return AWS_OP_SUCCESS;
             } else {
-                return AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
+                return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
             }
 #else
-            return AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
+            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 #endif
     }
 
     return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 }
 
-int s_rsa_encrypt(
+static int s_rsa_encrypt(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor plaintext,
@@ -177,7 +177,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_rsa_decrypt(
+static int s_rsa_decrypt(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor ciphertext,
@@ -206,7 +206,6 @@ int s_rsa_decrypt(
     CFErrorRef error = NULL;
     CFDataRef plaintext_ref = SecKeyCreateDecryptedData(key_pair_impl->priv_key_ref, alg, ciphertext_ref, &error);
     if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateDecryptedData")) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
@@ -235,7 +234,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_rsa_sign(
+static int s_rsa_sign(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
@@ -263,7 +262,6 @@ int s_rsa_sign(
     CFErrorRef error = NULL;
     CFDataRef signature_ref = SecKeyCreateSignature(key_pair_impl->priv_key_ref, alg, digest_ref, &error);
     if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateSignature")) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
@@ -291,7 +289,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_rsa_verify(
+static int s_rsa_verify(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
@@ -314,7 +312,7 @@ int s_rsa_verify(
     }
 
     CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, digest.ptr, digest.len, kCFAllocatorNull);
-    CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(NULL,
+    CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator,
         signature.ptr, signature.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(digest_ref && signature_ref);
 
@@ -454,19 +452,21 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     }
 
     key_pair_impl->pub_key_ref = SecKeyCopyPublicKey(key_pair_impl->priv_key_ref);
-    if (key_pair_impl->pub_key_ref == NULL) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-        CFRelease(error);
-        goto on_error;
-    }
+    AWS_FATAL_ASSERT(key_pair_impl->pub_key_ref);
 
     CFRelease(key_attributes);
     CFRelease(private_key_data);
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     size_t block_size = SecKeyGetBlockSize(key_pair_impl->priv_key_ref);
-    AWS_FATAL_ASSERT(block_size >= (AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS / 8) && 
-                    block_size <= (AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS / 8));
+    
+    if (block_size < (AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS / 8) ||
+        block_size > (AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS / 8)) {
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unsupported key size: %zu", block_size);
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto on_error;
+    }
+
     key_pair_impl->base.key_size_in_bits = block_size * 8;
 
     return &key_pair_impl->base;
@@ -518,7 +518,14 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     CFRelease(public_key_data);
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
-    key_pair_impl->base.key_size_in_bits = SecKeyGetBlockSize(key_pair_impl->pub_key_ref) * 8;
+    size_t block_size = SecKeyGetBlockSize(key_pair_impl->priv_key_ref);
+    if (block_size < (AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS / 8) ||
+        block_size > (AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS / 8)) {
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unsupported key size: %zu", block_size);
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        goto on_error;
+    }
+    key_pair_impl->base.key_size_in_bits = block_size * 8;
 
     return &key_pair_impl->base;
 

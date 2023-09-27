@@ -174,7 +174,7 @@ int aws_rsa_key_pair_get_public_key(
         return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
     }
 
-    aws_byte_buf_init_copy(out, key_pair->allocator, &key_pair->pub);
+    aws_byte_buf_append(out, &key_pair->pub);
     return AWS_OP_SUCCESS;
 }
 
@@ -190,7 +190,7 @@ int aws_rsa_key_pair_get_private_key(
         return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
     }
 
-    aws_byte_buf_init_copy(out, key_pair->allocator, &key_pair->priv);
+    aws_byte_buf_append(out, &key_pair->priv);
     return AWS_OP_SUCCESS;
 }
 

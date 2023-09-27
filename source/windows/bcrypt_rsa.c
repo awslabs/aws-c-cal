@@ -71,14 +71,15 @@ static int s_reinterpret_bc_error_as_crt(NTSTATUS error, const char *function_na
     return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
 }
 
-int s_check_encryption_algorithm(enum aws_rsa_encryption_algorithm algorithm) {
+static int s_check_encryption_algorithm(enum aws_rsa_encryption_algorithm algorithm) {
     if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
         algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
     return AWS_OP_SUCCESS;
 }
-int s_rsa_encrypt(
+
+static int s_rsa_encrypt(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor plaintext,
@@ -116,7 +117,7 @@ int s_rsa_encrypt(
     return AWS_OP_SUCCESS;
 }
 
-int s_rsa_decrypt(
+static int s_rsa_decrypt(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor ciphertext,
@@ -157,7 +158,7 @@ int s_rsa_decrypt(
 /*
  * Allocates and fills out appropriate padding info for algo. Up to caller to destroy.
  */
-void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_signature_algorithm algorithm) {
+static void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_signature_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
         BCRYPT_PKCS1_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PKCS1_PADDING_INFO));
         padding_info->pszAlgId = BCRYPT_SHA256_ALGORITHM;
@@ -172,7 +173,7 @@ void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_s
     return NULL;
 }
 
-int s_rsa_sign(
+static int s_rsa_sign(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
@@ -209,7 +210,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_rsa_verify(
+static int s_rsa_verify(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,

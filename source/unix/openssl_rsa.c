@@ -72,7 +72,7 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
 }
 
-int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
+static int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5) {
         if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
@@ -97,7 +97,7 @@ int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_al
     return AWS_OP_SUCCESS;
 }
 
-int s_rsa_encrypt(
+static int s_rsa_encrypt(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor plaintext,
@@ -133,7 +133,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_rsa_decrypt(
+static int s_rsa_decrypt(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algorithm,
     struct aws_byte_cursor ciphertext,
@@ -169,7 +169,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signature_algorithm algorithm) {
+static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signature_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
         if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
@@ -201,7 +201,7 @@ int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signature_algo
     return AWS_OP_SUCCESS;
 }
 
-int s_rsa_sign(
+static int s_rsa_sign(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
@@ -237,7 +237,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_rsa_verify(
+static int s_rsa_verify(
     const struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_signature_algorithm algorithm,
     struct aws_byte_cursor digest,
@@ -366,6 +366,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     EVP_PKEY *private_key = NULL;
 
     if (d2i_RSAPrivateKey(&rsa, (const uint8_t **)&key.ptr, key.len) == NULL) {
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
@@ -405,6 +406,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     EVP_PKEY *public_key = NULL;
 
     if (d2i_RSAPublicKey(&rsa, (const uint8_t **)&key.ptr, key.len) == NULL) {
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 

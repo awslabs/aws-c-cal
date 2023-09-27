@@ -160,15 +160,15 @@ union sign_padding_info {
     BCRYPT_PSS_PADDING_INFO pss;
 };
 
-static int s_create_sign_padding_info(union sign_padding_info *info,, enum aws_rsa_signature_algorithm algorithm) {
+static int s_sign_padding_info_init(union sign_padding_info *info, enum aws_rsa_signature_algorithm algorithm) {
     memset(info, 0, sizeof(union sign_padding_info));
 
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
         info->pkcs1.pszAlgId = BCRYPT_SHA256_ALGORITHM;
         return AWS_OP_SUCCESS;
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
-        info->pkcs1.pszAlgId = BCRYPT_SHA256_ALGORITHM;
-        info->pkcs1.cbSalt = 32;
+        info->pss.pszAlgId = BCRYPT_SHA256_ALGORITHM;
+        info->pss.cbSalt = 32;
         return AWS_OP_SUCCESS;
     }
 
@@ -203,12 +203,10 @@ static int s_rsa_sign(
     }
 
     out->len += length_written;
-    aws_mem_release(key_pair->allocator, padding_info);
 
     return AWS_OP_SUCCESS;
 
 on_error:
-    aws_mem_release(key_pair->allocator, padding_info);
     return AWS_OP_ERR;
 }
 
@@ -219,22 +217,19 @@ static int s_rsa_verify(
     struct aws_byte_cursor signature) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    void *padding_info = s_create_sign_padding_info(key_pair->allocator, algorithm);
-    if (padding_info == NULL) {
+    union sign_padding_info padding_info;
+    if (s_sign_padding_info_init(&padding_info, algorithm)) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
-
     /* okay, now we've got a windows compatible signature, let's verify it. */
     NTSTATUS status = BCryptVerifySignature(
         key_pair_impl->key_handle,
-        padding_info,
+        &padding_info,
         digest.ptr,
         (ULONG)digest.len,
         signature.ptr,
         (ULONG)signature.len,
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
-
-    aws_mem_release(key_pair->allocator, padding_info);
 
     if (status == STATUS_INVALID_SIGNATURE) {
         return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);

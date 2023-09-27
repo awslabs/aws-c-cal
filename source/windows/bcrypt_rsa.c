@@ -276,11 +276,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
     }
 
     /*
-     * bcrypt only exports to blob format, which is missing a few of the rsa
-     * numbers needed to reconstruct pkcs1 format. lets not init key buffers for
-     * now. this means we cannot support retrieving underlying key on win.
-     * TODO: bcrypt workarounds to retrieve/compute missing things? old crypt lib
-     * seems to have functionality we need.
+     * TODO: do BCryptExportKey with BCRYPT_RSAFULLPRIVATE_BLOB to get back the blob
+     * and reconstruct der.
      */
     AWS_ZERO_STRUCT(key_impl->base.priv);
     AWS_ZERO_STRUCT(key_impl->base.pub);

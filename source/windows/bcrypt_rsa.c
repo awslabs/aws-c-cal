@@ -247,52 +247,6 @@ static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
     .verify = s_rsa_verify,
 };
 
-struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
-    struct aws_allocator *allocator,
-    size_t key_size_in_bits) {
-
-    aws_thread_call_once(&s_rsa_thread_once, s_load_alg_handle, NULL);
-
-    if (is_valid_rsa_key_size(key_size_in_bits)) {
-        return NULL;
-    }
-
-    struct bcrypt_rsa_key_pair *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct bcrypt_rsa_key_pair));
-
-    aws_ref_count_init(&key_impl->base.ref_count, &key_impl->base, s_rsa_destroy_key);
-    key_impl->base.impl = key_impl;
-    key_impl->base.allocator = allocator;
-
-    NTSTATUS status = BCryptGenerateKeyPair(s_rsa_alg, &key_impl->key_handle, (ULONG)key_size_in_bits, 0);
-
-    if (s_reinterpret_bc_error_as_crt(status, "BCryptGenerateKeyPair")) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-        goto on_error;
-    }
-
-    status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);
-
-    if (s_reinterpret_bc_error_as_crt(status, "BCryptFinalizeKeyPair")) {
-        goto on_error;
-    }
-
-    /*
-     * TODO: do BCryptExportKey with BCRYPT_RSAFULLPRIVATE_BLOB to get back the blob
-     * and reconstruct der.
-     */
-    AWS_ZERO_STRUCT(key_impl->base.priv);
-    AWS_ZERO_STRUCT(key_impl->base.pub);
-
-    key_impl->base.vtable = &s_rsa_key_pair_vtable;
-    key_impl->base.key_size_in_bits = key_size_in_bits;
-
-    return &key_impl->base;
-
-on_error:
-    s_rsa_destroy_key(&key_impl->base);
-    return NULL;
-}
-
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     struct aws_allocator *allocator,
     struct aws_byte_cursor key) {

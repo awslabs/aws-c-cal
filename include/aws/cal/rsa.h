@@ -35,15 +35,6 @@ enum {
 AWS_EXTERN_C_BEGIN
 
 /**
- * Creates an RSA public/private key pair that can be used for signing and verifying.
- * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
- * Otherwise returns NULL.
- */
-AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
-    struct aws_allocator *allocator,
-    size_t key_size_in_bits);
-
-/**
  * Creates an RSA public key from RSAPublicKey as defined in rfc 8017 (aka PKCS1).
  * Returns a new instance of aws_rsa_key_pair if the key was successfully built.
  * Otherwise returns NULL.

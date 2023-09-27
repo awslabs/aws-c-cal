@@ -52,24 +52,6 @@ static int s_rsa_encryption_roundtrip_helper(
     return AWS_OP_SUCCESS;
 }
 
-static int s_rsa_encryption_roundtrip_pkcs1_generated(struct aws_allocator *allocator, void *ctx) {
-    (void)ctx;
-
-    aws_cal_library_init(allocator);
-
-    struct aws_rsa_key_pair *key_pair = aws_rsa_key_pair_new_generate_random(allocator, 4096);
-    ASSERT_NOT_NULL(key_pair);
-
-    s_rsa_encryption_roundtrip_helper(allocator, key_pair, AWS_CAL_RSA_ENCRYPTION_PKCS1_5);
-
-    aws_rsa_key_pair_release(key_pair);
-
-    aws_cal_library_clean_up();
-
-    return AWS_OP_SUCCESS;
-}
-AWS_TEST_CASE(rsa_encryption_roundtrip_pkcs1_generated, s_rsa_encryption_roundtrip_pkcs1_generated);
-
 static const char *TEST_PKCS1_RSA_PRIVATE_KEY_2048 = "MIIEpQIBAAKCAQEAnt/K3mvMgPQcplTgDHrItQPvXiYpUFMt5nIJbZV820Zj4n4G"
                                                      "7iB3Y9h5HzfBYga2Olr8Irv3OuKkIH0ydrdz2oBZuf7SOBQVpro3m1+oMKhcCtrI"
                                                      "GYA2MDOowaVkx6ho8pQ6K2d76pYj7GWfo0fm2p1O2jcw3JWXAPqq8dmTCMRxOw/2"

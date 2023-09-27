@@ -68,7 +68,6 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
     AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %ld and extended error" PRInSTR,
         function_name, error_code, AWS_BYTE_CURSOR_PRI(error_cur));
 
-    CFRelease(error_code);
     CFRelease(error_message);
 
     return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   

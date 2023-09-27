@@ -11,6 +11,7 @@
 #include <windows.h>
 
 #include <bcrypt.h>
+#include <ntstatus.h>
 
 static BCRYPT_ALG_HANDLE s_rsa_alg = NULL;
 
@@ -56,7 +57,7 @@ static int s_reinterpret_bc_error_as_crt(NTSTATUS error, const char *function_na
         return AWS_OP_SUCCESS;
     }
 
-    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %X", function_name, evp_error);
+    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %X", function_name, error);
 
     switch (error) {
         case STATUS_BUFFER_TOO_SMALL:

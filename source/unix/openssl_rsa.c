@@ -50,26 +50,26 @@ static void s_rsa_destroy_key(void *key_pair) {
 static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_name) {
     if (evp_error > 0) {
         return AWS_OP_SUCCESS;
-    } else {
-        uint32_t error = ERR_peek_error();
-        if (evp_error == -2) {
-            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-        }
+    } 
 
-        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %d and extended error %lu",
-            function_name, evp_error, (unsigned long)error);
-
-        if (ERR_GET_LIB(error) == ERR_LIB_EVP) {
-            switch (ERR_GET_REASON(error)) {
-                case EVP_R_BUFFER_TOO_SMALL:
-                    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-                case EVP_R_UNSUPPORTED_ALGORITHM:
-                    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-            }
-        }
-
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
+    uint32_t error = ERR_peek_error();
+    if (evp_error == -2) {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
+
+    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %d and extended error %lu",
+        function_name, evp_error, (unsigned long)error);
+
+    if (ERR_GET_LIB(error) == ERR_LIB_EVP) {
+        switch (ERR_GET_REASON(error)) {
+            case EVP_R_BUFFER_TOO_SMALL:
+                return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+            case EVP_R_UNSUPPORTED_ALGORITHM:
+                return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+        }
+    }
+
+    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
 }
 
 int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {

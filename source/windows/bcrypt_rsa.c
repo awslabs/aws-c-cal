@@ -48,7 +48,27 @@ static void s_rsa_destroy_key(void *key_pair) {
     aws_mem_release(base->allocator, impl);
 }
 
-int s_is_not_supported_enc_algo(enum aws_rsa_encryption_algorithm algorithm) {
+/*
+* Transforms bcrypt error code into crt error code and raises it as necessary.
+*/
+static int s_reinterpret_bc_error_as_crt(NTSTATUS error, const char *function_name) {
+    if (BCRYPT_SUCCESS(error)) {
+        return AWS_OP_SUCCESS;
+    }
+
+    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %X", function_name, evp_error);
+
+    switch (error) {
+        case STATUS_BUFFER_TOO_SMALL:
+            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        case STATUS_NOT_SUPPORTED:
+            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    }
+
+    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
+}
+
+int s_check_encryption_algorithm(enum aws_rsa_encryption_algorithm algorithm) {
     if (algorithm != AWS_CAL_RSA_ENCRYPTION_PKCS1_5 && algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 &&
         algorithm != AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
@@ -62,19 +82,15 @@ int s_rsa_encrypt(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (s_is_not_supported_enc_algo(algorithm)) {
+    if (s_check_encryption_algorithm(algorithm)) {
         return AWS_OP_ERR;
     }
 
-    if (out->capacity - out->len < aws_rsa_key_pair_block_length(key_pair)) {
-        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-    }
-
-    BCRYPT_OAEP_PADDING_INFO padding_info_oaep;
-    padding_info_oaep.pszAlgId =
-        algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
-    padding_info_oaep.pbLabel = NULL;
-    padding_info_oaep.cbLabel = 0;
+    BCRYPT_OAEP_PADDING_INFO padding_info_oaep = {
+        .pszAlgId =  algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM,
+        .padding_info_oaep.pbLabel = NULL,
+        .padding_info_oaep.cbLabel = 0
+    };
 
     ULONG length_written = 0;
     NTSTATUS status = BCryptEncrypt(
@@ -89,8 +105,8 @@ int s_rsa_encrypt(
         &length_written,
         algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_OAEP);
 
-    if (!BCRYPT_SUCCESS(status)) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptEncrypt")) {
+        return AWS_OP_ERROR;
     }
 
     out->len += length_written;
@@ -104,19 +120,15 @@ int s_rsa_decrypt(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    if (s_is_not_supported_enc_algo(algorithm)) {
+    if (s_check_encryption_algorithm(algorithm)) {
         return AWS_OP_ERR;
     }
 
-    if (ciphertext.len == 0) {
-        return AWS_OP_SUCCESS;
-    }
-
-    BCRYPT_OAEP_PADDING_INFO padding_info_oaep;
-    padding_info_oaep.pszAlgId =
-        algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
-    padding_info_oaep.pbLabel = NULL;
-    padding_info_oaep.cbLabel = 0;
+    BCRYPT_OAEP_PADDING_INFO padding_info_oaep = {
+        .pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
+        .pbLabel = NULL;
+        .cbLabel = 0;
+    };
 
     ULONG length_written = 0;
     NTSTATUS status = BCryptDecrypt(
@@ -131,8 +143,8 @@ int s_rsa_decrypt(
         &length_written,
         algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_OAEP);
 
-    if (!BCRYPT_SUCCESS(status)) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptDecrypt")) {
+        return AWS_OP_ERR;
     }
 
     out->len += length_written;
@@ -169,43 +181,27 @@ int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    size_t output_buf_space = out->capacity - out->len;
-
-    if (output_buf_space < aws_rsa_key_pair_signature_length(key_pair)) {
-        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-    }
-
-    struct aws_byte_buf temp_signature_buf;
-    aws_byte_buf_init(&temp_signature_buf, key_pair->allocator, aws_rsa_key_pair_signature_length(key_pair));
-    size_t signature_length = temp_signature_buf.capacity;
-
+    ULONG length_written = 0;
     NTSTATUS status = BCryptSignHash(
         key_pair_impl->key_handle,
         padding_info,
         digest.ptr,
         (ULONG)digest.len,
-        temp_signature_buf.buffer,
-        (ULONG)signature_length,
-        (ULONG *)&signature_length,
+        out->buffer + out->len,
+        (ULONG)(out->capacity - out->len),
+        (ULONG *)&length_written,
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
-    if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-        goto on_error;
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptSignHash")) {
+       goto on_error;
     }
 
-    temp_signature_buf.len = signature_length;
-
-    struct aws_byte_cursor temp_signature_cur = aws_byte_cursor_from_buf(&temp_signature_buf);
-    aws_byte_buf_append(out, &temp_signature_cur);
-
-    aws_byte_buf_clean_up_secure(&temp_signature_buf);
+    out->len += length_written;
     aws_mem_release(key_pair->allocator, padding_info);
 
     return AWS_OP_SUCCESS;
 
 on_error:
-    aws_byte_buf_clean_up_secure(&temp_signature_buf);
     aws_mem_release(key_pair->allocator, padding_info);
     return AWS_OP_ERR;
 }
@@ -233,7 +229,11 @@ int s_rsa_verify(
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
     aws_mem_release(key_pair->allocator, padding_info);
-    return status == 0 ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptVerifySignature")) {
+       return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+    }
+    return AWS_OP_SUCCESS;
 }
 
 static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
@@ -261,15 +261,14 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
     NTSTATUS status = BCryptGenerateKeyPair(s_rsa_alg, &key_impl->key_handle, (ULONG)key_size_in_bits, 0);
 
-    if (!BCRYPT_SUCCESS(status)) {
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptGenerateKeyPair")) {
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
     status = BCryptFinalizeKeyPair(key_impl->key_handle, 0);
 
-    if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptFinalizeKeyPair")) {
         goto on_error;
     }
 
@@ -357,8 +356,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
         (ULONG)key_pair_impl->key_buf.len,
         flags);
 
-    if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptImportKeyPair")) {
         goto on_error;
     }
 
@@ -430,8 +428,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
         (ULONG)key_pair_impl->key_buf.len,
         flags);
 
-    if (!BCRYPT_SUCCESS(status)) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    if (s_reinterpret_bc_error_as_crt(status, "BCryptImportKeyPair")) {
         goto on_error;
     }
 

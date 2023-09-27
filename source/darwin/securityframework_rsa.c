@@ -43,6 +43,39 @@ static void s_rsa_destroy_key(void *key_pair) {
 }
 
 /*
+* Transforms security error code into crt error code and raises it as necessary.
+* Docs on what security apis can throw are fairly sparse and so far in testing
+* it only threw generic -50 error. So just log for now and we can add additional
+* error translation later.
+*/
+static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function_name) {
+    if (error == NULL) {
+        return AWS_OP_SUCCESS;
+    } 
+     
+    CFIndex error_code = CFErrorGetCode(error);
+    CFStringRef error_message = CFErrorCopyDescription(error);
+
+    struct aws_byte_cursor error_cur;
+    AWS_ZERO_STRUCT(error_cur);
+    if (error_message != NULL) {
+       const char* error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
+        if (error_cstr != NULL) {
+            error_cur = aws_byte_cursor_from_c_str(error_cstr);
+        }
+    }
+     
+    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %ld and extended error" PRInSTR,
+        function_name, error_code, AWS_BYTE_CURSOR_PRI(error_cur));
+
+    CFRelease(error_code);
+    CFRelease(error_message);
+
+    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
+
+}
+
+/*
  * Maps crt encryption algo enum to Security Framework equivalent. 
  * Fails with AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM if mapping cannot be done for
  * some reason.
@@ -124,8 +157,7 @@ int s_rsa_encrypt(
 
     CFErrorRef error = NULL;
     CFDataRef ciphertext_ref = SecKeyCreateEncryptedData(key_pair_impl->pub_key_ref, alg, plaintext_ref, &error);
-    if (error != NULL) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateEncryptedData")) {
         CFRelease(error);
         goto on_error;
     }
@@ -182,7 +214,7 @@ int s_rsa_decrypt(
 
     CFErrorRef error = NULL;
     CFDataRef plaintext_ref = SecKeyCreateDecryptedData(key_pair_impl->priv_key_ref, alg, ciphertext_ref, &error);
-    if (error != NULL) {
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateDecryptedData")) {
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
@@ -239,7 +271,7 @@ int s_rsa_sign(
 
     CFErrorRef error = NULL;
     CFDataRef signature_ref = SecKeyCreateSignature(key_pair_impl->priv_key_ref, alg, digest_ref, &error);
-    if (error != NULL) {
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateSignature")) {
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
@@ -297,11 +329,14 @@ int s_rsa_verify(
 
     CFErrorRef error = NULL;
     Boolean result = SecKeyVerifySignature(key_pair_impl->pub_key_ref, alg, digest_ref, signature_ref, &error);
-
+    
     CFRelease(digest_ref);
     CFRelease(signature_ref);
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyVerifySignature") || result == false) {
+        return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+    }
 
-    return result == true ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+    return AWS_OP_SUCCESS;
 }
 
 static struct aws_rsa_key_vtable s_rsa_key_pair_vtable = {
@@ -344,9 +379,8 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_generate_random(
 
     CFErrorRef error = NULL;
     key_pair->priv_key_ref = SecKeyCreateRandomKey(key_attributes, &error);
-    if (error != NULL) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-        CFRelease(error);
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateRandomKey")) {
+         CFRelease(error);
         goto on_error;
     }
 
@@ -423,15 +457,14 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     CFErrorRef error = NULL;
     key_pair_impl->priv_key_ref = SecKeyCreateWithData(private_key_data, key_attributes, &error);
-    if (error != NULL) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateWithData"))  {
         CFRelease(error);
         goto on_error;
     }
 
     key_pair_impl->pub_key_ref = SecKeyCopyPublicKey(key_pair_impl->priv_key_ref);
     if (key_pair_impl->pub_key_ref == NULL) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         CFRelease(error);
         goto on_error;
     }
@@ -485,8 +518,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     CFErrorRef error = NULL;
     key_pair_impl->pub_key_ref = SecKeyCreateWithData(public_key_data, key_attributes, &error);
-    if (error != NULL) {
-        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateWithData")) {
         CFRelease(error);
         goto on_error;
     }

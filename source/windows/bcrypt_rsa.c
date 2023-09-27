@@ -8,7 +8,9 @@
 #include <aws/cal/private/der.h>
 #include <aws/common/encoding.h>
 
+#define WIN32_NO_STATUS
 #include <windows.h>
+#undef WIN32_NO_STATUS
 
 #include <ntstatus.h>
 #include <bcrypt.h>

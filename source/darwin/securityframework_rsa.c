@@ -54,7 +54,7 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
     } 
      
     CFIndex error_code = CFErrorGetCode(error);
-    CFStringRef error_message = CFErrorCopyDescription(error);
+    CFStringRef error_message = CFErrorCopyDescription(error); /* This function never returns NULL */
 
     const char* error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
      

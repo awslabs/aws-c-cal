@@ -175,7 +175,7 @@ int aws_rsa_key_pair_get_public_key(
     }
 
     struct aws_byte_cursor pub_cur = aws_byte_cursor_from_buf(&key_pair->pub);
-    aws_byte_buf_(out, &pub_cur);
+    aws_byte_buf_append(out, &pub_cur);
     return AWS_OP_SUCCESS;
 }
 

@@ -157,6 +157,7 @@ AWS_CAL_API int aws_rsa_key_pair_get_public_key(
 
 /*
  * Get private key for the key pair. Appends key bytes to out.
+ * out must be large enough to hold the key.
  * Any encoding on top of that (ex. b64) is left up to user.
  * Note: this function is currently not supported on Windows for generated keys.
  */

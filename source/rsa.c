@@ -108,7 +108,7 @@ int aws_rsa_key_pair_encrypt(
     AWS_PRECONDITION(out);
 
     if (AWS_UNLIKELY(aws_rsa_key_pair_max_encrypt_plaintext_size(key_pair, algorithm) < plaintext.len)) {
-        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unexpected buffer size. For RSA, ciphertext  is expected to match block size");
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unexpected buffer size. For RSA, ciphertext must not exceed block size");
         return aws_raise_error(AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM);
     }
 

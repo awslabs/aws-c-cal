@@ -10,8 +10,8 @@
 
 #include <windows.h>
 
-#include <bcrypt.h>
 #include <ntstatus.h>
+#include <bcrypt.h>
 
 static BCRYPT_ALG_HANDLE s_rsa_alg = NULL;
 
@@ -88,9 +88,9 @@ int s_rsa_encrypt(
     }
 
     BCRYPT_OAEP_PADDING_INFO padding_info_oaep = {
-        .pszAlgId =  algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM,
-        .padding_info_oaep.pbLabel = NULL,
-        .padding_info_oaep.cbLabel = 0
+        .pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM,
+        .pbLabel = NULL,
+        .cbLabel = 0
     };
 
     ULONG length_written = 0;
@@ -107,7 +107,7 @@ int s_rsa_encrypt(
         algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_OAEP);
 
     if (s_reinterpret_bc_error_as_crt(status, "BCryptEncrypt")) {
-        return AWS_OP_ERROR;
+        return AWS_OP_ERR;
     }
 
     out->len += length_written;
@@ -126,9 +126,9 @@ int s_rsa_decrypt(
     }
 
     BCRYPT_OAEP_PADDING_INFO padding_info_oaep = {
-        .pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM;
-        .pbLabel = NULL;
-        .cbLabel = 0;
+        .pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM,
+        .pbLabel = NULL,
+        .cbLabel = 0
     };
 
     ULONG length_written = 0;

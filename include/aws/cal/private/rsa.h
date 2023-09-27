@@ -110,9 +110,9 @@ AWS_CAL_API int aws_der_decoder_load_public_rsa_pkcs1(
     struct aws_rsa_public_key_pkcs1 *out);
 
 /*
-* Returns AWS_OP_SUCCESS if key size is supported and raises
-* AWS_ERROR_INVALID_ARGUMENT otherwise.
-*/
+ * Returns AWS_OP_SUCCESS if key size is supported and raises
+ * AWS_ERROR_INVALID_ARGUMENT otherwise.
+ */
 int is_valid_rsa_key_size(size_t key_size_in_bits);
 
 #endif /* AWS_C_CAL_PRIVATE_RSA_H */

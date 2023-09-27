@@ -12,8 +12,8 @@
 #include <windows.h>
 #undef WIN32_NO_STATUS
 
-#include <ntstatus.h>
 #include <bcrypt.h>
+#include <ntstatus.h>
 
 static BCRYPT_ALG_HANDLE s_rsa_alg = NULL;
 
@@ -52,8 +52,8 @@ static void s_rsa_destroy_key(void *key_pair) {
 }
 
 /*
-* Transforms bcrypt error code into crt error code and raises it as necessary.
-*/
+ * Transforms bcrypt error code into crt error code and raises it as necessary.
+ */
 static int s_reinterpret_bc_error_as_crt(NTSTATUS error, const char *function_name) {
     if (BCRYPT_SUCCESS(error)) {
         return AWS_OP_SUCCESS;
@@ -68,7 +68,7 @@ static int s_reinterpret_bc_error_as_crt(NTSTATUS error, const char *function_na
             return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
+    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
 }
 
 static int s_check_encryption_algorithm(enum aws_rsa_encryption_algorithm algorithm) {
@@ -93,8 +93,7 @@ static int s_rsa_encrypt(
     BCRYPT_OAEP_PADDING_INFO padding_info_oaep = {
         .pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM,
         .pbLabel = NULL,
-        .cbLabel = 0
-    };
+        .cbLabel = 0};
 
     ULONG length_written = 0;
     NTSTATUS status = BCryptEncrypt(
@@ -131,8 +130,7 @@ static int s_rsa_decrypt(
     BCRYPT_OAEP_PADDING_INFO padding_info_oaep = {
         .pszAlgId = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? BCRYPT_SHA256_ALGORITHM : BCRYPT_SHA512_ALGORITHM,
         .pbLabel = NULL,
-        .cbLabel = 0
-    };
+        .cbLabel = 0};
 
     ULONG length_written = 0;
     NTSTATUS status = BCryptDecrypt(
@@ -199,7 +197,7 @@ static int s_rsa_sign(
         algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 ? BCRYPT_PAD_PKCS1 : BCRYPT_PAD_PSS);
 
     if (s_reinterpret_bc_error_as_crt(status, "BCryptSignHash")) {
-       goto on_error;
+        goto on_error;
     }
 
     out->len += length_written;
@@ -236,7 +234,7 @@ static int s_rsa_verify(
     }
 
     if (s_reinterpret_bc_error_as_crt(status, "BCryptVerifySignature")) {
-       return AWS_OP_ERR;
+        return AWS_OP_ERR;
     }
 
     return AWS_OP_SUCCESS;

@@ -80,7 +80,7 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
  * Otherwise returns NULL.
  * Note: On Apple platforms this function is only supported on MacOS. This is
- * due to usage of SecItemExport, which is only available on MacOS 10.7+ 
+ * due to usage of SecItemExport, which is only available on MacOS 10.7+
  * (yes, MacOS only and no other Apple platforms). There are alternatives for
  * ios and other platforms, but they are ugly to use. Hence for now it only
  * supports this call on MacOS.

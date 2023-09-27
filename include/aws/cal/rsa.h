@@ -17,8 +17,8 @@ enum aws_rsa_encryption_algorithm {
     AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512,
 };
 
-enum aws_rsa_signature_algorithm { 
-    AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, 
+enum aws_rsa_signature_algorithm {
+    AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256,
     AWS_CAL_RSA_SIGNATURE_PSS_SHA256,
 };
 
@@ -54,7 +54,7 @@ AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1
 
 /**
  * Adds one to an RSA key pair's ref count.
- * Returns key_pair pointer. 
+ * Returns key_pair pointer.
  */
 AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_acquire(struct aws_rsa_key_pair *key_pair);
 
@@ -119,7 +119,7 @@ AWS_CAL_API int aws_rsa_key_pair_sign_message(
  * something like a SHA256.
  *
  * returns AWS_OP_SUCCESS if the signature is valid.
- * raises AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED if signature validation failed 
+ * raises AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED if signature validation failed
  */
 AWS_CAL_API int aws_rsa_key_pair_verify_signature(
     const struct aws_rsa_key_pair *key_pair,
@@ -132,7 +132,7 @@ AWS_CAL_API int aws_rsa_key_pair_verify_signature(
  */
 AWS_CAL_API size_t aws_rsa_key_pair_signature_length(const struct aws_rsa_key_pair *key_pair);
 
-enum aws_rsa_key_export_format { 
+enum aws_rsa_key_export_format {
     AWS_CAL_RSA_KEY_EXPORT_PKCS1,
 };
 

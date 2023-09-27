@@ -43,31 +43,31 @@ static void s_rsa_destroy_key(void *key_pair) {
 }
 
 /*
-* Transforms security error code into crt error code and raises it as necessary.
-* Docs on what security apis can throw are fairly sparse and so far in testing
-* it only threw generic -50 error. So just log for now and we can add additional
-* error translation later.
-*/
+ * Transforms security error code into crt error code and raises it as necessary.
+ * Docs on what security apis can throw are fairly sparse and so far in testing
+ * it only threw generic -50 error. So just log for now and we can add additional
+ * error translation later.
+ */
 static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function_name) {
     if (error == NULL) {
         return AWS_OP_SUCCESS;
-    } 
-     
+    }
+
     CFIndex error_code = CFErrorGetCode(error);
     CFStringRef error_message = CFErrorCopyDescription(error); /* This function never returns NULL */
 
-    const char* error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
-     
-    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "%s() failed. CFError:%ld(%s)", function_name, error_code, error_cstr ? error_cstr : "");
+    const char *error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
+
+    AWS_LOGF_ERROR(
+        AWS_LS_CAL_RSA, "%s() failed. CFError:%ld(%s)", function_name, error_code, error_cstr ? error_cstr : "");
 
     CFRelease(error_message);
 
-    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);   
-
+    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
 }
 
 /*
- * Maps crt encryption algo enum to Security Framework equivalent. 
+ * Maps crt encryption algo enum to Security Framework equivalent.
  * Fails with AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM if mapping cannot be done for
  * some reason.
  * Mapped value is passed back through out variable.
@@ -90,7 +90,7 @@ static int s_map_rsa_encryption_algo_to_sec(enum aws_rsa_encryption_algorithm al
 }
 
 /*
- * Maps crt encryption algo enum to Security Framework equivalent. 
+ * Maps crt encryption algo enum to Security Framework equivalent.
  * Fails with AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM if mapping cannot be done for
  * some reason.
  * Mapped value is passed back through out variable.
@@ -102,9 +102,9 @@ static int s_map_rsa_signing_algo_to_sec(enum aws_rsa_signature_algorithm algori
             *out = kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
             return AWS_OP_SUCCESS;
         case AWS_CAL_RSA_SIGNATURE_PSS_SHA256:
-#if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300 /* macOS 10.13 */)) || \
-    (defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* iOS v11 */)) || \
-    (defined(__TV_OS_VERSION_MAX_ALLOWED) && (__TV_OS_VERSION_MAX_ALLOWED >= 110000 /* tvos v11 */)) || \
+#if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300 /* macOS 10.13 */)) ||       \
+    (defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* iOS v11 */)) ||         \
+    (defined(__TV_OS_VERSION_MAX_ALLOWED) && (__TV_OS_VERSION_MAX_ALLOWED >= 110000 /* tvos v11 */)) ||                \
     (defined(__WATCH_OS_VERSION_MAX_ALLOWED) && (__WATCH_OS_VERSION_MAX_ALLOWED >= 40000 /* watchos v4 */))
             if (__builtin_available(macos 10.13, ios 11.0, tvos 11.0, watchos 4.0, *)) {
                 *out = kSecKeyAlgorithmRSASignatureDigestPSSSHA256;
@@ -142,8 +142,8 @@ static int s_rsa_encrypt(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    CFDataRef plaintext_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, 
-        plaintext.ptr, plaintext.len, kCFAllocatorNull);
+    CFDataRef plaintext_ref =
+        CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, plaintext.ptr, plaintext.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(plaintext_ref);
 
     CFErrorRef error = NULL;
@@ -199,8 +199,8 @@ static int s_rsa_decrypt(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    CFDataRef ciphertext_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, 
-        ciphertext.ptr, ciphertext.len, kCFAllocatorNull);
+    CFDataRef ciphertext_ref =
+        CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, ciphertext.ptr, ciphertext.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(ciphertext_ref);
 
     CFErrorRef error = NULL;
@@ -256,7 +256,8 @@ static int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, digest.ptr, digest.len, kCFAllocatorNull);
+    CFDataRef digest_ref =
+        CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, digest.ptr, digest.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(digest_ref);
 
     CFErrorRef error = NULL;
@@ -311,14 +312,15 @@ static int s_rsa_verify(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
-    CFDataRef digest_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, digest.ptr, digest.len, kCFAllocatorNull);
-    CFDataRef signature_ref = CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator,
-        signature.ptr, signature.len, kCFAllocatorNull);
+    CFDataRef digest_ref =
+        CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, digest.ptr, digest.len, kCFAllocatorNull);
+    CFDataRef signature_ref =
+        CFDataCreateWithBytesNoCopy(key_pair_impl->cf_allocator, signature.ptr, signature.len, kCFAllocatorNull);
     AWS_FATAL_ASSERT(digest_ref && signature_ref);
 
     CFErrorRef error = NULL;
     Boolean result = SecKeyVerifySignature(key_pair_impl->pub_key_ref, alg, digest_ref, signature_ref, &error);
-    
+
     CFRelease(digest_ref);
     CFRelease(signature_ref);
     if (s_reinterpret_sec_error_as_crt(error, "SecKeyVerifySignature")) {
@@ -355,14 +357,14 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     key_attributes = CFDictionaryCreateMutable(key_pair_impl->cf_allocator, 0, NULL, NULL);
     AWS_FATAL_ASSERT(key_attributes);
-   
+
     CFDictionaryAddValue(key_attributes, kSecClass, kSecClassKey);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyType, kSecAttrKeyTypeRSA);
     CFDictionaryAddValue(key_attributes, kSecAttrKeyClass, kSecAttrKeyClassPrivate);
 
     CFErrorRef error = NULL;
     key_pair_impl->priv_key_ref = SecKeyCreateWithData(private_key_data, key_attributes, &error);
-    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateWithData"))  {
+    if (s_reinterpret_sec_error_as_crt(error, "SecKeyCreateWithData")) {
         CFRelease(error);
         goto on_error;
     }
@@ -375,7 +377,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     size_t block_size = SecKeyGetBlockSize(key_pair_impl->priv_key_ref);
-    
+
     if (block_size < (AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS / 8) ||
         block_size > (AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS / 8)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unsupported key size: %zu", block_size);

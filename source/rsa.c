@@ -5,14 +5,14 @@
 #include <aws/cal/private/rsa.h>
 
 #include <aws/cal/cal.h>
-#include <aws/cal/private/der.h>
 #include <aws/cal/hash.h>
+#include <aws/cal/private/der.h>
 
-typedef struct aws_rsa_key_pair *(
-    aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator, struct aws_byte_cursor public_key);
+typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator,
+                                                                           struct aws_byte_cursor public_key);
 
-typedef struct aws_rsa_key_pair *(
-    aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator, struct aws_byte_cursor private_key);
+typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator,
+                                                                            struct aws_byte_cursor private_key);
 
 #ifndef BYO_CRYPTO
 
@@ -140,10 +140,12 @@ int aws_rsa_key_pair_sign_message(
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
 
-    AWS_FATAL_ASSERT(algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256);
+    AWS_FATAL_ASSERT(
+        algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256);
 
     if (digest.len > AWS_SHA256_LEN) {
-        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unexpected digest size. For RSA, digest length is bound by max size of hash function");
+        AWS_LOGF_ERROR(
+            AWS_LS_CAL_RSA, "Unexpected digest size. For RSA, digest length is bound by max size of hash function");
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -271,11 +273,9 @@ int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struc
 
 int is_valid_rsa_key_size(size_t key_size_in_bits) {
     if (key_size_in_bits < AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS ||
-        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS || 
-        key_size_in_bits % 8 != 0) {
+        key_size_in_bits > AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS || key_size_in_bits % 8 != 0) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
     return AWS_OP_SUCCESS;
 }
-

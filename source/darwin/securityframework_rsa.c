@@ -56,17 +56,9 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
     CFIndex error_code = CFErrorGetCode(error);
     CFStringRef error_message = CFErrorCopyDescription(error);
 
-    struct aws_byte_cursor error_cur;
-    AWS_ZERO_STRUCT(error_cur);
-    if (error_message != NULL) {
-       const char* error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
-        if (error_cstr != NULL) {
-            error_cur = aws_byte_cursor_from_c_str(error_cstr);
-        }
-    }
+    const char* error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
      
-    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %ld and extended error" PRInSTR,
-        function_name, error_code, AWS_BYTE_CURSOR_PRI(error_cur));
+    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "%s() failed. CFError:%ld(%s)", error_code, error_cstr ? error_cstr : "");
 
     CFRelease(error_message);
 

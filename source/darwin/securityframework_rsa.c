@@ -58,7 +58,7 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
 
     const char* error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
      
-    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "%s() failed. CFError:%ld(%s)", error_code, error_cstr ? error_cstr : "");
+    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "%s() failed. CFError:%ld(%s)", function_name, error_code, error_cstr ? error_cstr : "");
 
     CFRelease(error_message);
 
@@ -434,7 +434,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     CFRelease(public_key_data);
 
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
-    size_t block_size = SecKeyGetBlockSize(key_pair_impl->priv_key_ref);
+    size_t block_size = SecKeyGetBlockSize(key_pair_impl->pub_key_ref);
     if (block_size < (AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS / 8) ||
         block_size > (AWS_CAL_RSA_MAX_SUPPORTED_KEY_SIZE_IN_BITS / 8)) {
         AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unsupported key size: %zu", block_size);

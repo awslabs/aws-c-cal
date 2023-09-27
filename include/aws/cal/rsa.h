@@ -137,7 +137,8 @@ enum aws_rsa_key_export_format {
 };
 
 /*
- * Get public key for the key pair. Appends key bytes to out.
+ * Get public key for the key pair.
+ * Inits out to a copy of key.
  * Any encoding on top of that (ex. b64) is left up to user.
  * Note: this function is currently not supported on windows for generated keys.
  */
@@ -147,8 +148,8 @@ AWS_CAL_API int aws_rsa_key_pair_get_public_key(
     struct aws_byte_buf *out);
 
 /*
- * Get private key for the key pair. Appends key bytes to out.
- * out must be large enough to hold the key.
+ * Get private key for the key pair.
+ * Inits out to a copy of key.
  * Any encoding on top of that (ex. b64) is left up to user.
  * Note: this function is currently not supported on Windows for generated keys.
  */

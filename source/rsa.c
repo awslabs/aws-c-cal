@@ -6,6 +6,7 @@
 
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
+#include <aws/cal/hash.h>
 
 typedef struct aws_rsa_key_pair *(
     aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator, struct aws_byte_cursor public_key);
@@ -138,6 +139,13 @@ int aws_rsa_key_pair_sign_message(
     struct aws_byte_buf *out) {
     AWS_PRECONDITION(key_pair);
     AWS_PRECONDITION(out);
+
+    AWS_FATAL_ASSERT(algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256);
+
+    if (digest.len > AWS_SHA256_LEN) {
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unexpected digest size. For RSA, digest length is bound by max size of hash function");
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
 
     return key_pair->vtable->sign(key_pair, algorithm, digest, out);
 }

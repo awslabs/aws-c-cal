@@ -155,22 +155,24 @@ static int s_rsa_decrypt(
     return AWS_OP_SUCCESS;
 }
 
-/*
- * Allocates and fills out appropriate padding info for algo. Up to caller to destroy.
- */
-static void *s_create_sign_padding_info(struct aws_allocator *allocator, enum aws_rsa_signature_algorithm algorithm) {
+union sign_padding_info {
+    BCRYPT_PKCS1_PADDING_INFO pkcs1;
+    BCRYPT_PSS_PADDING_INFO pss;
+};
+
+static int s_create_sign_padding_info(union sign_padding_info *info,, enum aws_rsa_signature_algorithm algorithm) {
+    memset(info, 0, sizeof(union sign_padding_info));
+
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
-        BCRYPT_PKCS1_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PKCS1_PADDING_INFO));
-        padding_info->pszAlgId = BCRYPT_SHA256_ALGORITHM;
-        return padding_info;
+        info->pkcs1.pszAlgId = BCRYPT_SHA256_ALGORITHM;
+        return AWS_OP_SUCCESS;
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
-        BCRYPT_PSS_PADDING_INFO *padding_info = aws_mem_calloc(allocator, 1, sizeof(BCRYPT_PSS_PADDING_INFO));
-        padding_info->pszAlgId = BCRYPT_SHA256_ALGORITHM;
-        padding_info->cbSalt = 32;
-        return padding_info;
+        info->pkcs1.pszAlgId = BCRYPT_SHA256_ALGORITHM;
+        info->pkcs1.cbSalt = 32;
+        return AWS_OP_SUCCESS;
     }
 
-    return NULL;
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 }
 
 static int s_rsa_sign(
@@ -180,15 +182,15 @@ static int s_rsa_sign(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    void *padding_info = s_create_sign_padding_info(key_pair->allocator, algorithm);
-    if (padding_info == NULL) {
+    union sign_padding_info padding_info;
+    if (s_sign_padding_info_init(&padding_info, algorithm)) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     ULONG length_written = 0;
     NTSTATUS status = BCryptSignHash(
         key_pair_impl->key_handle,
-        padding_info,
+        &padding_info,
         digest.ptr,
         (ULONG)digest.len,
         out->buffer + out->len,
@@ -241,7 +243,7 @@ static int s_rsa_verify(
     if (s_reinterpret_bc_error_as_crt(status, "BCryptVerifySignature")) {
        return AWS_OP_ERR;
     }
-    
+
     return AWS_OP_SUCCESS;
 }
 
@@ -280,8 +282,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     size_t total_buffer_size = key.len + sizeof(BCRYPT_RSAKEY_BLOB);
 
     aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size);
-
-    aws_byte_buf_secure_zero(&key_pair_impl->key_buf);
 
     BCRYPT_RSAKEY_BLOB key_blob;
     AWS_ZERO_STRUCT(key_blob);
@@ -361,7 +361,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     size_t total_buffer_size = key.len + sizeof(BCRYPT_RSAKEY_BLOB);
 
     aws_byte_buf_init(&key_pair_impl->key_buf, allocator, total_buffer_size);
-    aws_byte_buf_secure_zero(&key_pair_impl->key_buf);
 
     BCRYPT_RSAKEY_BLOB key_blob;
     AWS_ZERO_STRUCT(key_blob);

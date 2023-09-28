@@ -8,11 +8,11 @@
 #include <aws/cal/hash.h>
 #include <aws/cal/private/der.h>
 
-typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_public_key_fn)(struct aws_allocator *allocator,
-                                                                           struct aws_byte_cursor public_key);
+typedef struct aws_rsa_key_pair *(
+    aws_rsa_key_pair_new_from_public_pkcs1_fn)(struct aws_allocator *allocator, struct aws_byte_cursor public_key);
 
-typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_key_fn)(struct aws_allocator *allocator,
-                                                                            struct aws_byte_cursor private_key);
+typedef struct aws_rsa_key_pair *(
+    aws_rsa_key_pair_new_from_private_pkcs1_fn)(struct aws_allocator *allocator, struct aws_byte_cursor private_key);
 
 #ifndef BYO_CRYPTO
 
@@ -42,10 +42,10 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_pkcs1_impl(
 }
 #endif /* BYO_CRYPTO */
 
-static aws_rsa_key_pair_new_from_public_key_fn *s_rsa_key_pair_new_from_public_key_pkcs1_fn =
+static aws_rsa_key_pair_new_from_public_pkcs1_fn *s_rsa_key_pair_new_from_public_key_pkcs1_fn =
     aws_rsa_key_pair_new_from_public_key_pkcs1_impl;
 
-static aws_rsa_key_pair_new_from_private_key_fn *s_rsa_key_pair_new_from_private_key_pkcs1_fn =
+static aws_rsa_key_pair_new_from_private_pkcs1_fn *s_rsa_key_pair_new_from_private_key_pkcs1_fn =
     aws_rsa_key_pair_new_from_private_key_pkcs1_impl;
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1(

@@ -33,17 +33,29 @@ static int s_rsa_encryption_roundtrip_helper(
     struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algo) {
     struct aws_byte_cursor plaintext_cur = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
+    
+    /*since our apis work by appending to buffer, lets make sure they dont
+     *clobber anything already in the buffer*/
+    struct aws_byte_cursor prefix = aws_byte_cursor_from_c_str("random_prefix");
     struct aws_byte_buf ciphertext;
-
-    ASSERT_SUCCESS(aws_byte_buf_init(&ciphertext, allocator, aws_rsa_key_pair_block_length(key_pair)));
+    ASSERT_SUCCESS(aws_byte_buf_init(&ciphertext, allocator, prefix.len + aws_rsa_key_pair_block_length(key_pair)));
+    ASSERT_SUCCESS(aws_byte_buf_append(&ciphertext, &prefix));
     ASSERT_SUCCESS(aws_rsa_key_pair_encrypt(key_pair, algo, plaintext_cur, &ciphertext));
 
     struct aws_byte_cursor ciphertext_cur = aws_byte_cursor_from_buf(&ciphertext);
+    ASSERT_TRUE(aws_byte_cursor_starts_with(&ciphertext_cur, &prefix));
+
+    aws_byte_cursor_advance(&ciphertext_cur, prefix.len);
+
     struct aws_byte_buf decrypted;
     ASSERT_SUCCESS(aws_byte_buf_init(&decrypted, allocator, aws_rsa_key_pair_block_length(key_pair)));
+    ASSERT_SUCCESS(aws_byte_buf_append(&decrypted, &prefix));
     ASSERT_SUCCESS(aws_rsa_key_pair_decrypt(key_pair, algo, ciphertext_cur, &decrypted));
 
     struct aws_byte_cursor decrypted_cur = aws_byte_cursor_from_buf(&decrypted);
+    ASSERT_TRUE(aws_byte_cursor_starts_with(&decrypted_cur, &prefix));
+
+    aws_byte_cursor_advance(&decrypted_cur, prefix.len);
     ASSERT_CURSOR_VALUE_CSTRING_EQUALS(decrypted_cur, TEST_ENCRYPTION_STRING);
 
     aws_byte_buf_clean_up_secure(&ciphertext);
@@ -389,11 +401,17 @@ static int s_rsa_signing_roundtrip_helper(
     aws_sha256_compute(allocator, &message, &hash_value, 0);
     struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
 
+    /*since our apis work by appending to buffer, lets make sure they dont
+     *clobber anything already in the buffer*/
+    struct aws_byte_cursor prefix = aws_byte_cursor_from_c_str("random_prefix");
     struct aws_byte_buf signature;
-    ASSERT_SUCCESS(aws_byte_buf_init(&signature, allocator, aws_rsa_key_pair_signature_length(key_pair_private)));
+    ASSERT_SUCCESS(aws_byte_buf_init(&signature, allocator, prefix.len + aws_rsa_key_pair_signature_length(key_pair_private)));
+    ASSERT_SUCCESS(aws_byte_buf_append(&signature, &prefix));
     ASSERT_SUCCESS(aws_rsa_key_pair_sign_message(key_pair_private, algo, hash_cur, &signature));
 
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature);
+    ASSERT_TRUE(aws_byte_cursor_starts_with(&signature_cur, &prefix));
+    aws_byte_cursor_advance(&signature_cur, prefix.len);
 
     if (expected_signature) {
         struct aws_byte_buf sig_b64_buf;

@@ -33,7 +33,7 @@ static int s_rsa_encryption_roundtrip_helper(
     struct aws_rsa_key_pair *key_pair,
     enum aws_rsa_encryption_algorithm algo) {
     struct aws_byte_cursor plaintext_cur = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
-    
+
     /*since our apis work by appending to buffer, lets make sure they dont
      *clobber anything already in the buffer*/
     struct aws_byte_cursor prefix = aws_byte_cursor_from_c_str("random_prefix");
@@ -405,7 +405,8 @@ static int s_rsa_signing_roundtrip_helper(
      *clobber anything already in the buffer*/
     struct aws_byte_cursor prefix = aws_byte_cursor_from_c_str("random_prefix");
     struct aws_byte_buf signature;
-    ASSERT_SUCCESS(aws_byte_buf_init(&signature, allocator, prefix.len + aws_rsa_key_pair_signature_length(key_pair_private)));
+    ASSERT_SUCCESS(
+        aws_byte_buf_init(&signature, allocator, prefix.len + aws_rsa_key_pair_signature_length(key_pair_private)));
     ASSERT_SUCCESS(aws_byte_buf_append(&signature, &prefix));
     ASSERT_SUCCESS(aws_rsa_key_pair_sign_message(key_pair_private, algo, hash_cur, &signature));
 

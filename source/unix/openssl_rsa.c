@@ -177,7 +177,8 @@ static int s_rsa_decrypt(
 
     size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len), "EVP_PKEY_decrypt")) {
+            EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len),
+            "EVP_PKEY_decrypt")) {
         goto on_error;
     }
     out->len += ct_len;
@@ -211,7 +212,7 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
                 EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
             return AWS_OP_ERR;
         }
-#else 
+#else
         if (s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, RSA_PSS_SALTLEN_DIGEST), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
             return AWS_OP_ERR;

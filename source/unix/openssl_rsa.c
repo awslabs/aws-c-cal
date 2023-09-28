@@ -59,7 +59,7 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     unsigned long error = ERR_peek_error();
 #endif
 
-    char error_message[ERR_ERROR_STRING_BUF_LEN] = {0};
+    char error_message[120] = {0};
     int crt_error = AWS_OP_ERR;
 
     if (evp_error == -2) {
@@ -89,7 +89,7 @@ on_error:
         function_name,
         evp_error,
         (unsigned long)error,
-        ERR_error_string(error, error_message),
+        ERR_error_string_n(error, error_message, sizeof(error_message)),
         aws_error_name(aws_last_error()));
 
     return aws_raise_error(crt_error);

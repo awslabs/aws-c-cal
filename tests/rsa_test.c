@@ -48,7 +48,7 @@ static int s_rsa_encryption_roundtrip_helper(
     aws_byte_cursor_advance(&ciphertext_cur, prefix.len);
 
     struct aws_byte_buf decrypted;
-    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted, allocator, aws_rsa_key_pair_block_length(key_pair)));
+    ASSERT_SUCCESS(aws_byte_buf_init(&decrypted, allocator, prefix.len + aws_rsa_key_pair_block_length(key_pair)));
     ASSERT_SUCCESS(aws_byte_buf_append(&decrypted, &prefix));
     ASSERT_SUCCESS(aws_rsa_key_pair_decrypt(key_pair, algo, ciphertext_cur, &decrypted));
 

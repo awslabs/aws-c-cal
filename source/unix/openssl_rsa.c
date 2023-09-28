@@ -206,10 +206,17 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
             return AWS_OP_ERR;
         }
 
+#if defined(OPENSSL_IS_BORINGSSL)
+        if (s_reinterpret_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
+            return AWS_OP_ERR;
+        }
+#else 
         if (s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, RSA_PSS_SALTLEN_DIGEST), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
             return AWS_OP_ERR;
         }
+#endif
 
         if (s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md")) {

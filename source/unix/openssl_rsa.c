@@ -101,7 +101,6 @@ static int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryp
         if (s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
             return AWS_OP_ERR;
-            ;
         }
 
     } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
@@ -143,7 +142,7 @@ static int s_rsa_encrypt(
 
     size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_encrypt(ctx, out->buffer, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt")) {
+            EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt")) {
         goto on_error;
     }
     out->len += ct_len;
@@ -178,7 +177,7 @@ static int s_rsa_decrypt(
 
     size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_decrypt(ctx, out->buffer, &ct_len, ciphertext.ptr, ciphertext.len), "EVP_PKEY_decrypt")) {
+            EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len), "EVP_PKEY_decrypt")) {
         goto on_error;
     }
     out->len += ct_len;
@@ -208,7 +207,7 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
         }
 
         if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
+                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, RSA_PSS_SALTLEN_DIGEST), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
             return AWS_OP_ERR;
         }
 
@@ -245,7 +244,7 @@ static int s_rsa_sign(
 
     size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_sign(ctx, out->buffer, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign")) {
+            EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign")) {
         goto on_error;
     }
     out->len += ct_len;

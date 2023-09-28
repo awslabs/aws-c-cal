@@ -59,7 +59,8 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
     const char *error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
 
     AWS_LOGF_ERROR(
-        AWS_LS_CAL_RSA, "%s() failed. CFError:%ld(%s) aws_error:%s",
+        AWS_LS_CAL_RSA, 
+        "%s() failed. CFError:%ld(%s) aws_error:%s",
         function_name,
         error_code,
         error_cstr ? error_cstr : "",

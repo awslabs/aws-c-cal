@@ -83,13 +83,14 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
 
 on_error:
+    ERR_error_string_n(error, error_message, sizeof(error_message));
     AWS_LOGF_ERROR(
         AWS_LS_CAL_RSA,
         "%s() failed. returned: %d extended error:%lu(%s) aws_error:%s",
         function_name,
         evp_error,
         (unsigned long)error,
-        ERR_error_string_n(error, error_message, sizeof(error_message)),
+        error_message,
         aws_error_name(aws_last_error()));
 
     return aws_raise_error(crt_error);
@@ -285,7 +286,7 @@ static int s_rsa_verify(
     if (error_code > 0) {
         return AWS_OP_SUCCESS;
     } else if (error_code == 0) {
-       return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
     } else {
         return s_reinterpret_evp_error_as_crt(error_code, "EVP_PKEY_verify");
     }

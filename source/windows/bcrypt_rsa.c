@@ -59,16 +59,29 @@ static int s_reinterpret_bc_error_as_crt(NTSTATUS error, const char *function_na
         return AWS_OP_SUCCESS;
     }
 
-    AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Calling function %s failed with %X", function_name, error);
-
+    int crt_error = AWS_OP_ERR;
     switch (error) {
-        case STATUS_BUFFER_TOO_SMALL:
-            return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-        case STATUS_NOT_SUPPORTED:
-            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+        case STATUS_BUFFER_TOO_SMALL: {
+            crt_error = AWS_ERROR_SHORT_BUFFER;
+            goto on_error;
+        }
+        case STATUS_NOT_SUPPORTED: {
+            crt_error = AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
+            goto on_error;
+        }
     }
 
-    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+
+on_error:
+    AWS_LOGF_ERROR(
+        AWS_LS_CAL_RSA,
+        "%s() failed. returned: %d aws_error:%s",
+        function_name,
+        error,
+        aws_error_name(aws_last_error()));
+
+    return aws_raise_error(crt_error);
 }
 
 static int s_check_encryption_algorithm(enum aws_rsa_encryption_algorithm algorithm) {

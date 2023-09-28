@@ -52,28 +52,47 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
         return AWS_OP_SUCCESS;
     }
 
+    /* AWS-LC/BoringSSL error code is uint32_t, but OpenSSL uses unsigned long. */
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
     uint32_t error = ERR_peek_error();
-    if (evp_error == -2) {
-        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-    }
+#else
+    unsigned long error = ERR_peek_error();
+#endif
 
-    AWS_LOGF_ERROR(
-        AWS_LS_CAL_RSA,
-        "Calling function %s failed with %d and extended error %lu",
-        function_name,
-        evp_error,
-        (unsigned long)error);
+    int crt_error = AWS_OP_ERR;
+
+    if (evp_error == -2) {
+        crt_error = AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
+        goto on_error;
+    }
 
     if (ERR_GET_LIB(error) == ERR_LIB_EVP) {
         switch (ERR_GET_REASON(error)) {
-            case EVP_R_BUFFER_TOO_SMALL:
-                return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
-            case EVP_R_UNSUPPORTED_ALGORITHM:
-                return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+            case EVP_R_BUFFER_TOO_SMALL: {
+                crt_error = AWS_ERROR_SHORT_BUFFER;
+                goto on_error;
+            }
+            case EVP_R_UNSUPPORTED_ALGORITHM: {
+                crt_error = AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
+                goto on_error;
+            }
         }
     }
 
-    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+
+on_error:
+    char error_message[ERR_ERROR_STRING_BUF_LEN] = {0};
+    AWS_LOGF_ERROR(
+        AWS_LS_CAL_RSA,
+        "%s() failed. returned: %d extended error:%lu(%s) aws_error:%s",
+        function_name,
+        evp_error,
+        (unsigned long)error,
+        ERR_error_string(error, error_message),
+        aws_error_name(aws_last_error()));
+
+    return aws_raise_error(crt_error);
 }
 
 static int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
@@ -261,30 +280,14 @@ static int s_rsa_verify(
     int error_code = EVP_PKEY_verify(ctx, signature.ptr, signature.len, digest.ptr, digest.len);
     EVP_PKEY_CTX_free(ctx);
 
-    /*
-     * Verify errors slightly differently from the rest of evp functions. 0
-     * indicates signature does not pass verification, and negative indicates
-     * that something went wrong. Manually handle error instead of using helper.
-     */
+    /* Verify errors slightly differently from the rest of evp functions.
+     * 0 indicates signature does not pass verification, it's not necessarily an error. */
     if (error_code > 0) {
         return AWS_OP_SUCCESS;
+    } else if (error_code == 0) {
+       return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
     } else {
-
-        uint32_t error = ERR_peek_error();
-        AWS_LOGF_ERROR(
-            AWS_LS_CAL_RSA,
-            "Calling function %s failed with %d and extended error %lu",
-            "EVP_PKEY_verify",
-            error_code,
-            (unsigned long)error);
-
-        if (error == 0) {
-            return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
-        } else if (error == -2) {
-            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-        } else {
-            return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
-        }
+        return s_reinterpret_evp_error_as_crt(error_code, "EVP_PKEY_verify");
     }
 
 on_error:
@@ -319,6 +322,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     private_key = EVP_PKEY_new();
     if (private_key == NULL || EVP_PKEY_assign_RSA(private_key, rsa) == 0) {
+        RSA_Free(rsa);
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
@@ -359,6 +363,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     public_key = EVP_PKEY_new();
     if (public_key == NULL || EVP_PKEY_assign_RSA(public_key, rsa) == 0) {
+        RSA_Free(rsa);
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }

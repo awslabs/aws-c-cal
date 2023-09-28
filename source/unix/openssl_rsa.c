@@ -59,6 +59,7 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     unsigned long error = ERR_peek_error();
 #endif
 
+    char error_message[ERR_ERROR_STRING_BUF_LEN] = {0};
     int crt_error = AWS_OP_ERR;
 
     if (evp_error == -2) {
@@ -82,7 +83,6 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
 
 on_error:
-    char error_message[ERR_ERROR_STRING_BUF_LEN] = {0};
     AWS_LOGF_ERROR(
         AWS_LS_CAL_RSA,
         "%s() failed. returned: %d extended error:%lu(%s) aws_error:%s",
@@ -322,7 +322,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
 
     private_key = EVP_PKEY_new();
     if (private_key == NULL || EVP_PKEY_assign_RSA(private_key, rsa) == 0) {
-        RSA_Free(rsa);
+        RSA_free(rsa);
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
@@ -363,7 +363,7 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
 
     public_key = EVP_PKEY_new();
     if (public_key == NULL || EVP_PKEY_assign_RSA(public_key, rsa) == 0) {
-        RSA_Free(rsa);
+        RSA_free(rsa);
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }

@@ -59,8 +59,8 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     unsigned long error = ERR_peek_error();
 #endif
 
-    char error_message[120] = {0};
     int crt_error = AWS_OP_ERR;
+    const char *error_message = ERR_reason_error_string(error);
 
     if (evp_error == -2) {
         crt_error = AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
@@ -83,15 +83,14 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
 
 on_error:
-    ERR_error_string_n(error, error_message, sizeof(error_message));
     AWS_LOGF_ERROR(
         AWS_LS_CAL_RSA,
         "%s() failed. returned: %d extended error:%lu(%s) aws_error:%s",
         function_name,
         evp_error,
         (unsigned long)error,
-        error_message,
-        aws_error_name(aws_last_error()));
+        error_message == NULL ? "" : error_message,
+        aws_error_name(crt_error));
 
     return aws_raise_error(crt_error);
 }
@@ -208,16 +207,15 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
         }
 
 #if defined(OPENSSL_IS_BORINGSSL)
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
-            return AWS_OP_ERR;
-        }
+        int saltlen = -1; /* RSA_PSS_SALTLEN_DIGEST not defined in BoringSSL */
 #else
+        int saltlen = RSA_PSS_SALTLEN_DIGEST;
+#endif
+
         if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, RSA_PSS_SALTLEN_DIGEST), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
+                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, saltlen), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
             return AWS_OP_ERR;
         }
-#endif
 
         if (s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md")) {

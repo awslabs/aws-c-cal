@@ -79,7 +79,7 @@ on_error:
         "%s() failed. returned: %d aws_error:%s",
         function_name,
         error,
-        aws_error_name(aws_last_error()));
+        aws_error_name(crt_error));
 
     return aws_raise_error(crt_error);
 }

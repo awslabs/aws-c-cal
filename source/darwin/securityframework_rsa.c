@@ -57,6 +57,7 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
     CFStringRef error_message = CFErrorCopyDescription(error); /* This function never returns NULL */
 
     const char *error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
+    int crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
 
     AWS_LOGF_ERROR(
         AWS_LS_CAL_RSA,
@@ -64,11 +65,11 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
         function_name,
         error_code,
         error_cstr ? error_cstr : "",
-        aws_error_name(aws_last_error()));
+        aws_error_name(crt_error));
 
     CFRelease(error_message);
 
-    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+    return aws_raise_error(crt_error);
 }
 
 /*
@@ -330,7 +331,7 @@ static int s_rsa_verify(
     CFRelease(signature_ref);
     if (s_reinterpret_sec_error_as_crt(error, "SecKeyVerifySignature")) {
         CFRelease(error);
-        return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
+        return AWS_OP_ERR;
     }
 
     return result ? AWS_OP_SUCCESS : aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
@@ -377,9 +378,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     key_pair_impl->pub_key_ref = SecKeyCopyPublicKey(key_pair_impl->priv_key_ref);
     AWS_FATAL_ASSERT(key_pair_impl->pub_key_ref);
 
-    CFRelease(key_attributes);
-    CFRelease(private_key_data);
-
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     size_t block_size = SecKeyGetBlockSize(key_pair_impl->priv_key_ref);
 
@@ -391,6 +389,9 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     }
 
     key_pair_impl->base.key_size_in_bits = block_size * 8;
+
+    CFRelease(key_attributes);
+    CFRelease(private_key_data);
 
     return &key_pair_impl->base;
 
@@ -437,9 +438,6 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
         goto on_error;
     }
 
-    CFRelease(key_attributes);
-    CFRelease(public_key_data);
-
     key_pair_impl->base.vtable = &s_rsa_key_pair_vtable;
     size_t block_size = SecKeyGetBlockSize(key_pair_impl->pub_key_ref);
     if (block_size < (AWS_CAL_RSA_MIN_SUPPORTED_KEY_SIZE_IN_BITS / 8) ||
@@ -449,6 +447,9 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
         goto on_error;
     }
     key_pair_impl->base.key_size_in_bits = block_size * 8;
+
+    CFRelease(key_attributes);
+    CFRelease(public_key_data);
 
     return &key_pair_impl->base;
 

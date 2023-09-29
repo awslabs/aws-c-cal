@@ -75,11 +75,7 @@ static int s_reinterpret_bc_error_as_crt(NTSTATUS error, const char *function_na
 
 on_error:
     AWS_LOGF_ERROR(
-        AWS_LS_CAL_RSA,
-        "%s() failed. returned: %d aws_error:%s",
-        function_name,
-        error,
-        aws_error_name(crt_error));
+        AWS_LS_CAL_RSA, "%s() failed. returned: %d aws_error:%s", function_name, error, aws_error_name(crt_error));
 
     return aws_raise_error(crt_error);
 }

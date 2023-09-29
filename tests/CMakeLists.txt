@@ -85,6 +85,7 @@ add_test_case(rsa_verify_signing_pss_sha256)
 add_test_case(rsa_decrypt_pkcs1)
 add_test_case(rsa_decrypt_oaep256)
 add_test_case(rsa_decrypt_oaep512)
+add_test_case(rsa_neg_modulus_pub_key)
 
 add_test_case(aes_cbc_NIST_CBCGFSbox256_case_1)
 add_test_case(aes_cbc_NIST_CBCVarKey256_case_254)

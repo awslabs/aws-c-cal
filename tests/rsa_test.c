@@ -423,8 +423,8 @@ static int s_rsa_signing_roundtrip_helper(
     /*short buffer should fail*/
     struct aws_byte_buf signature_short;
     ASSERT_SUCCESS(aws_byte_buf_init(&signature_short, allocator, 5));
-    ASSERT_ERROR(AWS_ERROR_SHORT_BUFFER,
-            aws_rsa_key_pair_sign_message(key_pair_private, algo, hash_cur, &signature_short));
+    ASSERT_ERROR(
+        AWS_ERROR_SHORT_BUFFER, aws_rsa_key_pair_sign_message(key_pair_private, algo, hash_cur, &signature_short));
 
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature);
     ASSERT_TRUE(aws_byte_cursor_starts_with(&signature_cur, &prefix));

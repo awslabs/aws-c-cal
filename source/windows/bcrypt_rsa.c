@@ -132,6 +132,14 @@ static int s_rsa_decrypt(
     struct aws_byte_buf *out) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
+    /* There is a bug in old versions of BCryptDecrypt, where it does not return
+    * error status if out buffer is too short. So manually check that buffer is
+    * large enough.
+    */
+    if ((out->capacity - out->len) < aws_rsa_key_pair_block_length(key_pair)) {
+        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    }
+
     if (s_check_encryption_algorithm(algorithm)) {
         return AWS_OP_ERR;
     }

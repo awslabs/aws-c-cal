@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
 
 #include <aws/testing/aws_test_harness.h>
@@ -154,7 +155,7 @@ static int s_der_encode_integer(struct aws_allocator *allocator, void *ctx) {
     struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, 1024);
     ASSERT_NOT_NULL(encoder);
     struct aws_byte_cursor bigint_cur = aws_byte_cursor_from_array(s_bigint, AWS_ARRAY_SIZE(s_bigint));
-    ASSERT_SUCCESS(aws_der_encoder_write_integer(encoder, bigint_cur));
+    ASSERT_SUCCESS(aws_der_encoder_write_unsigned_integer(encoder, bigint_cur));
     struct aws_byte_cursor encoded;
     ASSERT_SUCCESS(aws_der_encoder_get_contents(encoder, &encoded));
 
@@ -302,7 +303,7 @@ static int s_der_decode_integer(struct aws_allocator *allocator, void *ctx) {
     ASSERT_INT_EQUALS(AWS_DER_INTEGER, aws_der_decoder_tlv_type(decoder));
     ASSERT_INT_EQUALS(decoded_size, aws_der_decoder_tlv_length(decoder));
     struct aws_byte_cursor decoded;
-    ASSERT_SUCCESS(aws_der_decoder_tlv_integer(decoder, &decoded));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_unsigned_integer(decoder, &decoded));
     ASSERT_BIN_ARRAYS_EQUALS(s_bigint, decoded_size, decoded.ptr, decoded.len);
     ASSERT_FALSE(aws_der_decoder_next(decoder));
     aws_der_decoder_destroy(decoder);
@@ -508,7 +509,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
     struct aws_byte_cursor integer;
     ASSERT_TRUE(aws_der_decoder_next(decoder));
     ASSERT_INT_EQUALS(AWS_DER_INTEGER, aws_der_decoder_tlv_type(decoder));
-    ASSERT_SUCCESS(aws_der_decoder_tlv_integer(decoder, &integer));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_unsigned_integer(decoder, &integer));
     ASSERT_BIN_ARRAYS_EQUALS("\x01", 1, integer.ptr, integer.len);
 
     /* 32 byte private key */
@@ -551,3 +552,92 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
 }
 
 AWS_TEST_CASE(der_decode_key_pair, s_der_decode_key_pair)
+
+static int s_der_decode_negative_int(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t negative_der[] = {0x02 /*int*/, 0x01 /*len 1*/, 0xfd /*-3*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NULL(decoder);
+
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_DER_UNSUPPORTED_NEGATIVE_INT, aws_last_error());
+    aws_der_decoder_destroy(decoder);
+
+    return 0;
+}
+AWS_TEST_CASE(der_decode_negative_int, s_der_decode_negative_int)
+
+static int s_der_decode_positive_int(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t negative_der[] = {0x02 /*int*/, 0x02 /*len 2*/, 0x00, 0xfd /*253*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NOT_NULL(decoder);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+    struct aws_byte_cursor cur;
+    ASSERT_SUCCESS(aws_der_decoder_tlv_unsigned_integer(decoder, &cur));
+    aws_der_decoder_destroy(decoder);
+
+    return 0;
+}
+AWS_TEST_CASE(der_decode_positive_int, s_der_decode_positive_int)
+
+static int s_der_decode_zero_int(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t negative_der[] = {0x02 /*int*/, 0x01 /*len 2*/, 0x00 /*0*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NOT_NULL(decoder);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+    struct aws_byte_cursor cur;
+    ASSERT_SUCCESS(aws_der_decoder_tlv_unsigned_integer(decoder, &cur));
+    aws_der_decoder_destroy(decoder);
+
+    return 0;
+}
+AWS_TEST_CASE(der_decode_zero_int, s_der_decode_zero_int)
+
+static int s_der_decode_bad_length(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t negative_der[] = {0x02 /*int*/, 0x09 /*len 9*/, 0x00 /*0*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NULL(decoder);
+
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
+    aws_der_decoder_destroy(decoder);
+
+    return 0;
+}
+AWS_TEST_CASE(der_decode_bad_length, s_der_decode_bad_length)
+
+static int s_der_decode_zero_length_int(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t negative_der[] = {0x02 /*int*/, 0x00 /*len 9*/, 0x00 /*0*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(negative_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(negative_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NULL(decoder);
+
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
+    aws_der_decoder_destroy(decoder);
+
+    return 0;
+}
+AWS_TEST_CASE(der_decode_zero_length_int, s_der_decode_zero_length_int)

@@ -40,6 +40,9 @@ static struct aws_error_info s_errors[] = {
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM,
         "A cipher material such as an initialization vector or tag was an incorrect size for the selected algorithm."),
+    AWS_DEFINE_ERROR_INFO_CAL(
+        AWS_ERROR_CAL_DER_UNSUPPORTED_NEGATIVE_INT,
+        "DER decoder does support negative integers."),
     AWS_DEFINE_ERROR_INFO_CAL(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, "Key format is not supported."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED,

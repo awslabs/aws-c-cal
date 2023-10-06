@@ -32,7 +32,7 @@ static struct aws_error_info s_errors[] = {
         "An invalid DER type was requested during encoding/decoding"),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM,
-        "The specified algorithim is unsupported on this platform."),
+        "The specified algorithm is unsupported on this platform."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_BUFFER_TOO_LARGE_FOR_ALGORITHM,
         "The input passed to a cipher algorithm was too large for that algorithm. Consider breaking the input into "
@@ -40,6 +40,9 @@ static struct aws_error_info s_errors[] = {
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_INVALID_CIPHER_MATERIAL_SIZE_FOR_ALGORITHM,
         "A cipher material such as an initialization vector or tag was an incorrect size for the selected algorithm."),
+    AWS_DEFINE_ERROR_INFO_CAL(
+        AWS_ERROR_CAL_DER_UNSUPPORTED_NEGATIVE_INT,
+        "DER decoder does support negative integers."),
 };
 
 static struct aws_error_info_list s_list = {

@@ -325,7 +325,7 @@ static int s_der_decode_integer_zero(struct aws_allocator *allocator, void *ctx)
     ASSERT_INT_EQUALS(AWS_DER_INTEGER, aws_der_decoder_tlv_type(decoder));
     ASSERT_INT_EQUALS(decoded_size, aws_der_decoder_tlv_length(decoder));
     struct aws_byte_cursor decoded;
-    ASSERT_SUCCESS(aws_der_decoder_tlv_integer(decoder, &decoded));
+    ASSERT_SUCCESS(aws_der_decoder_tlv_unsigned_integer(decoder, &decoded));
     ASSERT_BIN_ARRAYS_EQUALS(s_bigint_zero, decoded_size, decoded.ptr, decoded.len);
     ASSERT_FALSE(aws_der_decoder_next(decoder));
     aws_der_decoder_destroy(decoder);

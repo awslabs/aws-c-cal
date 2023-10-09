@@ -211,7 +211,7 @@ int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, stru
     }
 
     struct aws_byte_cursor version_cur;
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &version_cur)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &version_cur)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -220,35 +220,35 @@ int aws_der_decoder_load_private_rsa_pkcs1(struct aws_der_decoder *decoder, stru
     }
     out->version = 0;
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &(out->modulus))) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &(out->modulus))) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->publicExponent)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->publicExponent)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->privateExponent)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->privateExponent)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->prime1)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->prime1)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->prime2)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->prime2)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->exponent1)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->exponent1)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->exponent2)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->exponent2)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->coefficient)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->coefficient)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -260,11 +260,11 @@ int aws_der_decoder_load_public_rsa_pkcs1(struct aws_der_decoder *decoder, struc
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &(out->modulus))) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &(out->modulus))) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_integer(decoder, &out->publicExponent)) {
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &out->publicExponent)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 

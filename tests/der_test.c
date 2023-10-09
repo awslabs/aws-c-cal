@@ -171,7 +171,7 @@ static int s_der_encode_integer_zero(struct aws_allocator *allocator, void *ctx)
     struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, 1024);
     ASSERT_NOT_NULL(encoder);
     struct aws_byte_cursor bigint_cur = aws_byte_cursor_from_array(s_bigint_zero, AWS_ARRAY_SIZE(s_bigint_zero));
-    ASSERT_SUCCESS(aws_der_encoder_write_integer(encoder, bigint_cur));
+    ASSERT_SUCCESS(aws_der_encoder_write_unsigned_integer(encoder, bigint_cur));
     struct aws_byte_cursor encoded;
     ASSERT_SUCCESS(aws_der_encoder_get_contents(encoder, &encoded));
 

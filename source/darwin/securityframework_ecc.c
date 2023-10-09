@@ -10,10 +10,6 @@
 #include <Security/SecKey.h>
 #include <Security/Security.h>
 
-#if !defined(AWS_OS_IOS)
-#    include <Security/SecSignVerifyTransform.h>
-#endif
-
 struct commoncrypto_ecc_key_pair {
     struct aws_ecc_key_pair key_pair;
     SecKeyRef priv_key_ref;
@@ -334,7 +330,7 @@ error:
     return NULL;
 }
 
-#if !defined(AWS_OS_IOS)
+#if defined(AWS_OS_MACOS)
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name) {
@@ -484,7 +480,7 @@ error:
     s_destroy_key(&cc_key_pair->key_pair);
     return NULL;
 }
-#endif /* AWS_OS_IOS */
+#endif /* AWS_OS_MACOS */
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,

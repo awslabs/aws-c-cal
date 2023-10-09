@@ -417,6 +417,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         while (cur.len && *cur.ptr == '\n') {
             aws_byte_cursor_advance(&cur, 1);
         }
+
         if (aws_array_list_push_back(&decoder->tlvs, &tlv)) {
             return aws_raise_error(AWS_ERROR_INVALID_STATE);
         }

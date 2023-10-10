@@ -30,10 +30,11 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     struct aws_allocator *allocator,
     struct aws_byte_cursor public_key) {
     (void)allocator;
-    (void)public_key abort();
+    (void)public_key;
+    abort();
 }
 
-struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_pkcs1_impl(
+struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     struct aws_allocator *allocator,
     struct aws_byte_cursor private_key) {
     (void)allocator;

@@ -929,3 +929,36 @@ static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator 
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(ecdsa_p256_test_small_coordinate_verification, s_ecdsa_p256_test_small_coordinate_verification);
+
+static int s_test_key_gen_from_private_fuzz(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name,
+    size_t number_loop) {
+
+    for (size_t i = 0; i < number_loop; i++) {
+        struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, curve_name);
+        struct aws_byte_cursor priv_d;
+        aws_ecc_key_pair_get_private_key(key_pair, &priv_d);
+        ASSERT_TRUE(priv_d.len > 0);
+
+        struct aws_ecc_key_pair *key_pair_private =
+            aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &priv_d);
+        ASSERT_NOT_NULL(key_pair_private);
+
+        aws_ecc_key_pair_release(key_pair);
+        aws_ecc_key_pair_release(key_pair_private);
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_ecc_key_gen_from_private_fuzz_test(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_init(allocator);
+    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P256, 10000));
+    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P384, 10000));
+    aws_cal_library_clean_up();
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(ecc_key_gen_from_private_fuzz_test, s_ecc_key_gen_from_private_fuzz_test)

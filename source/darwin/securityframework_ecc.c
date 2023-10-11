@@ -231,13 +231,18 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     const struct aws_byte_cursor *priv_key) {
 
     /**
-     * Use a fake public key to create a SecKeyRef with only private key.
+     * We use SecCreateKeyWithData to create ECC key. Expected format for the key passed to that api is a byte buffer
+     * consisting of "0x04 | x | y | p", where x,y is public pair and p is private key.
      *
-     * We used to use zeroed public keys to create the private only SecKeyRef, however, from MacOS 14,
-     * SecKeyCreateWithData updated with a check to verify the public keys are still a valid point in the curve,
-     * otherwise, it fails.
+     * In this case we only have private key and we need to construct SecKey from that.
      *
-     * So, use a fake key can get around the check, even if they don't match the private key.
+     * We used to just pass 0,0 point for x,y, i.e. "0x04 | 0 | 0 | p".
+     *
+     * This used to work on Macs before 14, but in 14+ SecCreateKeyWithData returns error,
+     * which is reasonable since 0,0 is not a valid public point.
+     *
+     * To get around the issue, we use a fake public key, which is a valid public point, but not matching the private
+     * key as a quick workaround.
      */
     struct aws_byte_cursor fake_pub_x;
     AWS_ZERO_STRUCT(fake_pub_x);

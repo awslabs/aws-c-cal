@@ -21,24 +21,24 @@ static uint8_t s_preamble = 0x04;
 
 static size_t s_der_overhead = 8;
 
-/* The hard-coded "valid" public keys. */
-static uint8_t FAKE_X_ECDSA_P256[] = {
+/* The hard-coded "valid" public keys. Copy/pated from one of our unit test. */
+const static uint8_t s_fake_x_ecdsa_p256[] = {
     0xd0, 0x72, 0x0d, 0xc6, 0x91, 0xaa, 0x80, 0x09, 0x6b, 0xa3, 0x2f, 0xed, 0x1c, 0xb9, 0x7c, 0x2b,
     0x62, 0x06, 0x90, 0xd0, 0x6d, 0xe0, 0x31, 0x7b, 0x86, 0x18, 0xd5, 0xce, 0x65, 0xeb, 0x72, 0x8f,
 };
 
-static uint8_t FAKE_Y_ECDSA_P256[] = {
+const static uint8_t s_fake_y_ecdsa_p256[] = {
     0x96, 0x81, 0xb5, 0x17, 0xb1, 0xcd, 0xa1, 0x7d, 0x0d, 0x83, 0xd3, 0x35, 0xd9, 0xc4, 0xa8, 0xa9,
     0xa9, 0xb0, 0xb1, 0xb3, 0xc7, 0x10, 0x6d, 0x8f, 0x3c, 0x72, 0xbc, 0x50, 0x93, 0xdc, 0x27, 0x5f,
 };
 
-static uint8_t FAKE_X_ECDSA_P384[] = {
+const static uint8_t s_fake_x_ecdsa_p384[] = {
     0xfd, 0x3c, 0x84, 0xe5, 0x68, 0x9b, 0xed, 0x27, 0x0e, 0x60, 0x1b, 0x3d, 0x80, 0xf9, 0x0d, 0x67,
     0xa9, 0xae, 0x45, 0x1c, 0xce, 0x89, 0x0f, 0x53, 0xe5, 0x83, 0x22, 0x9a, 0xd0, 0xe2, 0xee, 0x64,
     0x56, 0x11, 0xfa, 0x99, 0x36, 0xdf, 0xa4, 0x53, 0x06, 0xec, 0x18, 0x06, 0x67, 0x74, 0xaa, 0x24,
 };
 
-static uint8_t FAKE_Y_ECDSA_P384[] = {
+const static uint8_t s_fake_y_ecdsa_p384[] = {
     0xb8, 0x3c, 0xa4, 0x12, 0x6c, 0xfc, 0x4c, 0x4d, 0x1d, 0x18, 0xa4, 0xb6, 0xc2, 0x1c, 0x7f, 0x69,
     0x9d, 0x51, 0x23, 0xdd, 0x9c, 0x24, 0xf6, 0x6f, 0x83, 0x38, 0x46, 0xee, 0xb5, 0x82, 0x96, 0x19,
     0x6b, 0x42, 0xec, 0x06, 0x42, 0x5d, 0xb5, 0xb7, 0x0a, 0x4b, 0x81, 0xb7, 0xfc, 0xf7, 0x05, 0xa0,
@@ -250,26 +250,24 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     AWS_ZERO_STRUCT(fake_pub_y);
     switch (curve_name) {
         case AWS_CAL_ECDSA_P256:
-            fake_pub_x = aws_byte_cursor_from_array(FAKE_X_ECDSA_P256, sizeof(FAKE_X_ECDSA_P256));
-            fake_pub_y = aws_byte_cursor_from_array(FAKE_Y_ECDSA_P256, sizeof(FAKE_Y_ECDSA_P256));
+            fake_pub_x = aws_byte_cursor_from_array(s_fake_x_ecdsa_p256, AWS_ARRAY_SIZE(s_fake_x_ecdsa_p256));
+            fake_pub_y = aws_byte_cursor_from_array(s_fake_y_ecdsa_p256, AWS_ARRAY_SIZE(s_fake_y_ecdsa_p256));
             break;
         case AWS_CAL_ECDSA_P384:
-            fake_pub_x = aws_byte_cursor_from_array(FAKE_X_ECDSA_P384, sizeof(FAKE_X_ECDSA_P384));
-            fake_pub_y = aws_byte_cursor_from_array(FAKE_Y_ECDSA_P384, sizeof(FAKE_Y_ECDSA_P384));
+            fake_pub_x = aws_byte_cursor_from_array(s_fake_x_ecdsa_p384, AWS_ARRAY_SIZE(s_fake_x_ecdsa_p384));
+            fake_pub_y = aws_byte_cursor_from_array(s_fake_y_ecdsa_p384, AWS_ARRAY_SIZE(s_fake_y_ecdsa_p384));
             break;
-
         default:
-            break;
+            aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+            return NULL;
     }
+
     struct commoncrypto_ecc_key_pair *cc_key_pair =
         s_alloc_pair_and_init_buffers(allocator, curve_name, fake_pub_x, fake_pub_y, *priv_key);
 
     if (!cc_key_pair) {
         return NULL;
     }
-    /* Clear out the public keys in the key pair */
-    aws_byte_buf_clean_up(&cc_key_pair->key_pair.pub_x);
-    aws_byte_buf_clean_up(&cc_key_pair->key_pair.pub_y);
 
     CFMutableDictionaryRef key_attributes = NULL;
     CFDataRef private_key_data = CFDataCreate(
@@ -302,6 +300,10 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
         CFRelease(error);
         goto error;
     }
+
+    /* Zero out the fake public keys in the key pair */
+    aws_byte_buf_secure_zero(&cc_key_pair->key_pair.pub_x);
+    aws_byte_buf_secure_zero(&cc_key_pair->key_pair.pub_y);
 
     CFRelease(key_attributes);
     CFRelease(private_key_data);

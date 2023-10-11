@@ -966,8 +966,8 @@ static int s_test_key_gen_from_private_fuzz(
         struct aws_byte_cursor pub_x;
         struct aws_byte_cursor pub_y;
         aws_ecc_key_pair_get_public_key(key_pair_private, &pub_x, &pub_y);
-        ASSERT_NULL(pub_x.ptr);
-        ASSERT_NULL(pub_y.ptr);
+        ASSERT_UINT_EQUALS(0, pub_x.len);
+        ASSERT_UINT_EQUALS(0, pub_y.len);
 
         size_t signature_size = aws_ecc_key_pair_signature_length(key_pair_private);
 

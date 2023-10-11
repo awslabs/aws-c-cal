@@ -285,6 +285,9 @@ static int s_test_key_gen(struct aws_allocator *allocator, enum aws_ecc_curve_na
     aws_ecc_key_pair_get_private_key(key_pair, &priv_d);
     ASSERT_TRUE(priv_d.len > 0);
 
+    struct aws_ecc_key_pair *key_pair_from_private =
+        aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &priv_d);
+
     uint8_t message[] = {
         0x59, 0x05, 0x23, 0x88, 0x77, 0xc7, 0x74, 0x21, 0xf7, 0x3e, 0x43, 0xee, 0x3d, 0xa6, 0xf2, 0xd9,
         0xe2, 0xcc, 0xad, 0x5f, 0xc9, 0x42, 0xdc, 0xec, 0x0c, 0xbd, 0x25, 0x48, 0x29, 0x35, 0xfa, 0xaf,
@@ -302,20 +305,21 @@ static int s_test_key_gen(struct aws_allocator *allocator, enum aws_ecc_curve_na
     struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
     aws_sha256_compute(allocator, &message_input, &hash_value, 0);
 
-    size_t signature_size = aws_ecc_key_pair_signature_length(key_pair);
+    size_t signature_size = aws_ecc_key_pair_signature_length(key_pair_from_private);
 
     struct aws_byte_buf signature_buf;
     AWS_ZERO_STRUCT(signature_buf);
     aws_byte_buf_init(&signature_buf, allocator, signature_size);
 
     struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
-    ASSERT_SUCCESS(aws_ecc_key_pair_sign_message(key_pair, &hash_cur, &signature_buf));
+    ASSERT_SUCCESS(aws_ecc_key_pair_sign_message(key_pair_from_private, &hash_cur, &signature_buf));
 
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
-    ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(key_pair, &hash_cur, &signature_cur));
+    ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(key_pair_from_private, &hash_cur, &signature_cur));
 
     aws_byte_buf_clean_up(&signature_buf);
     aws_ecc_key_pair_release(key_pair);
+    aws_ecc_key_pair_release(key_pair_from_private);
 
     aws_cal_library_clean_up();
 

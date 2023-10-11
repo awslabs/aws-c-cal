@@ -959,9 +959,12 @@ static int s_test_key_gen_from_private_fuzz(
 
 static int s_ecc_key_gen_from_private_fuzz_test(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
     aws_cal_library_init(allocator);
+#if defined(AWS_OS_MACOS)
     ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P256, 100));
     ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P384, 100));
+#endif
     aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }

@@ -21,7 +21,7 @@ static uint8_t s_preamble = 0x04;
 
 static size_t s_der_overhead = 8;
 
-/* We are using a hard-coded public keys to get  */
+/* The hard-coded "valid" public keys. */
 static uint8_t FAKE_X_ECDSA_P256[] = {
     0xd0, 0x72, 0x0d, 0xc6, 0x91, 0xaa, 0x80, 0x09, 0x6b, 0xa3, 0x2f, 0xed, 0x1c, 0xb9, 0x7c, 0x2b,
     0x62, 0x06, 0x90, 0xd0, 0x6d, 0xe0, 0x31, 0x7b, 0x86, 0x18, 0xd5, 0xce, 0x65, 0xeb, 0x72, 0x8f,
@@ -230,6 +230,15 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key) {
 
+    /**
+     * Use a fake public key to create a SecKeyRef with only private key.
+     *
+     * We used to use zeroed public keys to create the private only SecKeyRef, however, from MacOS 14,
+     * SecKeyCreateWithData updated with a check to verify the public keys are still a valid point in the curve,
+     * otherwise, it fails.
+     *
+     * So, use a fake key can get around the check, even if they don't match the private key.
+     */
     struct aws_byte_cursor fake_pub_x;
     AWS_ZERO_STRUCT(fake_pub_x);
     struct aws_byte_cursor fake_pub_y;

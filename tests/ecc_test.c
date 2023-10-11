@@ -993,8 +993,8 @@ static int s_ecc_key_gen_from_private_fuzz_test(struct aws_allocator *allocator,
     (void)ctx;
 
     aws_cal_library_init(allocator);
-    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P256, 1));
-    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P384, 1));
+    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P256, 1000));
+    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P384, 1000));
     aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }

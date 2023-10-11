@@ -944,6 +944,11 @@ static int s_test_key_gen_from_private_fuzz(
         struct aws_ecc_key_pair *key_pair_private =
             aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &priv_d);
         ASSERT_NOT_NULL(key_pair_private);
+        struct aws_byte_cursor pub_x;
+        struct aws_byte_cursor pub_y;
+        aws_ecc_key_pair_get_public_key(key_pair_private, &pub_x, &pub_y);
+        ASSERT_NULL(pub_x.ptr);
+        ASSERT_NULL(pub_y.ptr);
 
         aws_ecc_key_pair_release(key_pair);
         aws_ecc_key_pair_release(key_pair_private);

@@ -929,3 +929,85 @@ static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator 
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(ecdsa_p256_test_small_coordinate_verification, s_ecdsa_p256_test_small_coordinate_verification);
+
+#ifdef AWS_OS_APPLE
+
+static int s_test_key_gen_from_private_fuzz(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name,
+    size_t number_loop) {
+
+    uint8_t message[] = {
+        0x59, 0x05, 0x23, 0x88, 0x77, 0xc7, 0x74, 0x21, 0xf7, 0x3e, 0x43, 0xee, 0x3d, 0xa6, 0xf2, 0xd9,
+        0xe2, 0xcc, 0xad, 0x5f, 0xc9, 0x42, 0xdc, 0xec, 0x0c, 0xbd, 0x25, 0x48, 0x29, 0x35, 0xfa, 0xaf,
+        0x41, 0x69, 0x83, 0xfe, 0x16, 0x5b, 0x1a, 0x04, 0x5e, 0xe2, 0xbc, 0xd2, 0xe6, 0xdc, 0xa3, 0xbd,
+        0xf4, 0x6c, 0x43, 0x10, 0xa7, 0x46, 0x1f, 0x9a, 0x37, 0x96, 0x0c, 0xa6, 0x72, 0xd3, 0xfe, 0xb5,
+        0x47, 0x3e, 0x25, 0x36, 0x05, 0xfb, 0x1d, 0xdf, 0xd2, 0x80, 0x65, 0xb5, 0x3c, 0xb5, 0x85, 0x8a,
+        0x8a, 0xd2, 0x81, 0x75, 0xbf, 0x9b, 0xd3, 0x86, 0xa5, 0xe4, 0x71, 0xea, 0x7a, 0x65, 0xc1, 0x7c,
+        0xc9, 0x34, 0xa9, 0xd7, 0x91, 0xe9, 0x14, 0x91, 0xeb, 0x37, 0x54, 0xd0, 0x37, 0x99, 0x79, 0x0f,
+        0xe2, 0xd3, 0x08, 0xd1, 0x61, 0x46, 0xd5, 0xc9, 0xb0, 0xd0, 0xde, 0xbd, 0x97, 0xd7, 0x9c, 0xe8,
+    };
+    struct aws_byte_cursor message_input = aws_byte_cursor_from_array(message, sizeof(message));
+    uint8_t hash[AWS_SHA256_LEN];
+    AWS_ZERO_ARRAY(hash);
+    struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
+    struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
+    aws_sha256_compute(allocator, &message_input, &hash_value, 0);
+
+    for (size_t i = 0; i < number_loop; i++) {
+        struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, curve_name);
+        struct aws_byte_cursor priv_d;
+        aws_ecc_key_pair_get_private_key(key_pair, &priv_d);
+        ASSERT_TRUE(priv_d.len > 0);
+
+        struct aws_ecc_key_pair *key_pair_private =
+            aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &priv_d);
+        ASSERT_NOT_NULL(key_pair_private);
+        struct aws_byte_cursor pub_x;
+        struct aws_byte_cursor pub_y;
+        aws_ecc_key_pair_get_public_key(key_pair_private, &pub_x, &pub_y);
+        ASSERT_UINT_EQUALS(0, pub_x.len);
+        ASSERT_UINT_EQUALS(0, pub_y.len);
+
+        size_t signature_size = aws_ecc_key_pair_signature_length(key_pair_private);
+
+        struct aws_byte_buf signature_buf;
+        AWS_ZERO_STRUCT(signature_buf);
+        aws_byte_buf_init(&signature_buf, allocator, signature_size);
+
+        /* Use key from private to sign */
+        ASSERT_SUCCESS(aws_ecc_key_pair_sign_message(key_pair_private, &hash_cur, &signature_buf));
+        struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
+        ASSERT_SUCCESS(aws_ecc_key_pair_verify_signature(key_pair, &hash_cur, &signature_cur));
+
+        aws_ecc_key_pair_release(key_pair);
+        aws_ecc_key_pair_release(key_pair_private);
+        aws_byte_buf_clean_up(&signature_buf);
+    }
+    aws_byte_buf_clean_up(&hash_value);
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_ecc_key_gen_from_private_fuzz_test(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    aws_cal_library_init(allocator);
+    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P256, 1000));
+    ASSERT_SUCCESS(s_test_key_gen_from_private_fuzz(allocator, AWS_CAL_ECDSA_P384, 1000));
+    aws_cal_library_clean_up();
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(ecc_key_gen_from_private_fuzz_test, s_ecc_key_gen_from_private_fuzz_test)
+
+#else
+
+static int s_ecc_key_gen_from_private_fuzz_test(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    (void)allocator;
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(ecc_key_gen_from_private_fuzz_test, s_ecc_key_gen_from_private_fuzz_test)
+#endif

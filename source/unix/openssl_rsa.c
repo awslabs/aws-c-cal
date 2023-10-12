@@ -209,8 +209,8 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
             return AWS_OP_ERR;
         }
 
-#if defined(OPENSSL_IS_BORINGSSL)
-        int saltlen = -1; /* RSA_PSS_SALTLEN_DIGEST not defined in BoringSSL */
+#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER < 0x10100000L
+        int saltlen = -1; /* RSA_PSS_SALTLEN_DIGEST not defined in BoringSSL and old versions of openssl */
 #else
         int saltlen = RSA_PSS_SALTLEN_DIGEST;
 #endif

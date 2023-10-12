@@ -19,8 +19,11 @@ jobs:
   osx:
     runs-on: macos-12 # latest
     steps:
+    - name: Checkout Sources
+      uses: actions/checkout@v2
     - name: Build ${{ env.PACKAGE_NAME }} + consumers
       run: |
+        ls
         cd sample
         cmake -B build
         cmake --build build

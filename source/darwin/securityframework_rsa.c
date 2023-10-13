@@ -56,8 +56,33 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
     CFIndex error_code = CFErrorGetCode(error);
     CFStringRef error_message = CFErrorCopyDescription(error); /* This function never returns NULL */
 
-    const char *error_cstr = CFStringGetCStringPtr(error_message, kCFStringEncodingASCII);
+    /*
+     * Note: CFStringGetCStringPtr returns NULL quite often.
+     * Refer to writeup at the start of CFString.h as to why.
+     * To reliably get an error message we need to use the following function
+     * that will copy error string into our buffer.
+     */
+    const char *error_cstr = NULL;
+    char buffer[128];
+    if (CFStringGetCString(error_message, buffer, 128, kCFStringEncodingUTF8)) {
+        error_cstr = buffer;
+    }
+
     int crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+
+    /*
+     * Mac seems throws errSecVerifyFailed for any signature verification
+     * failures (based on testing and not review of their code).
+     * Which makes it impossible to distinguish between signature validation
+     * failure and api call failure.
+     * So let errSecVerifyFailed as signature validation failure, rather than a
+     * more generic Crypto Failure as it seems more intuitive to caller that
+     * signature cannot be verified, rather than something wrong with crypto (and
+     * in most cases crypto is working correctly, but returning non-specific error).
+     */
+    if (error_code == errSecVerifyFailed) {
+        crt_error = AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED;
+    }
 
     AWS_LOGF_ERROR(
         AWS_LS_CAL_RSA,

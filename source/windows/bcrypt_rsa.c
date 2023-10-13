@@ -232,7 +232,7 @@ static int s_rsa_verify(
     struct aws_byte_cursor signature) {
     struct bcrypt_rsa_key_pair *key_pair_impl = key_pair->impl;
 
-    /* BCrypt raises invalid argument if signature does not have correct size. 
+    /* BCrypt raises invalid argument if signature does not have correct size.
      * Verify size here and raise appropriate error and treat all other errors
      * from BCrypt (including invalid arg) in reinterp. */
     if (signature.len != aws_rsa_key_pair_signature_length(key_pair)) {

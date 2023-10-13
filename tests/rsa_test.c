@@ -729,6 +729,12 @@ static int s_rsa_signing_mismatch_pkcs1_sha256(struct aws_allocator *allocator, 
         aws_rsa_key_pair_verify_signature(
             key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, hash_cur, signature_cur));
 
+    struct aws_byte_cursor short_signature_cur = aws_byte_cursor_from_c_str("bad signature");
+    ASSERT_ERROR(
+        AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED,
+        aws_rsa_key_pair_verify_signature(
+            key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, hash_cur, short_signature_cur));
+
     aws_byte_buf_clean_up(&hash_value);
     aws_byte_buf_clean_up(&signature_buf);
     aws_byte_buf_clean_up(&public_key_buf);

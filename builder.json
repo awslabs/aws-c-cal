@@ -51,6 +51,22 @@
                 }
             }
         },
+        "openssl3": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "libssl3-dev"
+                    ]
+                }
+            },
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        { "name": "aws-c-common" }
+                    ]
+                }
+            }
+        },
         "boringssl": {
             "hosts": {
                 "ubuntu": {

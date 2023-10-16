@@ -15,6 +15,11 @@
 
 #include <openssl/crypto.h>
 
+#if !defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__ * 10 > 410)
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 static struct openssl_hmac_ctx_table hmac_ctx_table;
 static struct openssl_evp_md_ctx_table evp_md_ctx_table;
 
@@ -580,6 +585,11 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
 
     return result;
 }
+
+#if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
+#    pragma GCC diagnostic pop
+#endif
+
 
 /* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
 #if !defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__ * 10 > 410)

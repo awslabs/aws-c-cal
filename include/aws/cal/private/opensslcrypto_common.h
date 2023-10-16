@@ -5,11 +5,6 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-#if !defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__ * 10 > 410)
-#    pragma GCC diagnostic push
-#    pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
 typedef HMAC_CTX *(*hmac_ctx_new)(void);
 typedef void (*hmac_ctx_free)(HMAC_CTX *);
 typedef void (*hmac_ctx_init)(HMAC_CTX *);
@@ -17,11 +12,6 @@ typedef void (*hmac_ctx_clean_up)(HMAC_CTX *);
 typedef int (*hmac_init_ex)(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *);
 typedef int (*hmac_update)(HMAC_CTX *, const unsigned char *, size_t);
 typedef int (*hmac_final)(HMAC_CTX *, unsigned char *, unsigned int *);
-
-#if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
-#    pragma GCC diagnostic pop
-#endif
-
 
 /* C standard does not have concept of generic function pointer, but it does
 guarantee that function pointer casts will roundtrip when casting to any type and

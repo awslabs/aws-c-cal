@@ -310,7 +310,6 @@ static int s_rsa_sign(
         goto on_error;
     }
 
-    size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign")) {
         goto on_error;

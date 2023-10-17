@@ -17,15 +17,15 @@
 
 /*
  * There are some differences in function definitions between OpenSSL 1.0.2 and
- * 1.1.1, aws-lc and boringssl. 
- * This file defines some common wrappers that abstract away those differences. 
+ * 1.1.1, aws-lc and boringssl.
+ * This file defines some common wrappers that abstract away those differences.
  * For OpenSSL we currently support building against 1.0.2 or 1.1.1, and can
  * detect version used at runtime and dyn load those symbols correctly.
  * For OpenSSL 3.0 the code will compile and run, but largely because we disable
- * deprecation warnings. 
+ * deprecation warnings.
  * For aws-lc and boringssl code must be compiled against the same version as
- * the runtime lib. 
-*/
+ * the runtime lib.
+ */
 
 typedef HMAC_CTX *(*hmac_ctx_new)(void);
 typedef void (*hmac_ctx_free)(HMAC_CTX *);

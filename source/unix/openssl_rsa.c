@@ -2,8 +2,8 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
-#include <aws/cal/private/rsa.h>
 #include <aws/cal/private/opensslcrypto_common.h>
+#include <aws/cal/private/rsa.h>
 
 #include <aws/cal/cal.h>
 #include <aws/common/encoding.h>
@@ -146,8 +146,8 @@ static int s_rsa_encrypt(
 
     size_t needed_buffer_len = 0;
     if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_encrypt(ctx, NULL, &needed_buffer_len,
-                plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt get length")) {
+            EVP_PKEY_encrypt(ctx, NULL, &needed_buffer_len, plaintext.ptr, plaintext.len),
+            "EVP_PKEY_encrypt get length")) {
         goto on_error;
     }
 
@@ -157,7 +157,7 @@ static int s_rsa_encrypt(
          * OpenSSL 3 seems to no longer fail if the buffer is too short.
          * Instead it seems to write out enough data to fill the buffer and then
          * updates the out_len to full buffer. It does not seem to corrupt
-         * memory after the buffer, but behavior is non-ideal. 
+         * memory after the buffer, but behavior is non-ideal.
          * Let get length needed for buffer from api first and then manually ensure that
          * buffer we have is big enough.
          */
@@ -201,15 +201,15 @@ static int s_rsa_decrypt(
 
     size_t needed_buffer_len = 0;
     if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_decrypt(ctx, NULL, &needed_buffer_len,
-                ciphertext.ptr, ciphertext.len), "EVP_PKEY_decrypt get length")) {
+            EVP_PKEY_decrypt(ctx, NULL, &needed_buffer_len, ciphertext.ptr, ciphertext.len),
+            "EVP_PKEY_decrypt get length")) {
         goto on_error;
     }
 
     size_t ct_len = out->capacity - out->len;
     if (needed_buffer_len > ct_len) {
         /*
-         * manual short buffer length check for OpenSSL 3. 
+         * manual short buffer length check for OpenSSL 3.
          * refer to encrypt implementation for more details
          */
         aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -291,8 +291,7 @@ static int s_rsa_sign(
 
     size_t needed_buffer_len = 0;
     if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len,
-                digest.ptr, digest.len), "EVP_PKEY_sign get length")) {
+            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len, digest.ptr, digest.len), "EVP_PKEY_sign get length")) {
         goto on_error;
     }
 

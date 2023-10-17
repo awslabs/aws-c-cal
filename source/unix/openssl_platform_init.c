@@ -15,10 +15,10 @@
 
 /*
  * OpenSSL 3 has a large amount of interface changes and many of the functions used
- * throughout aws-c-cal have become deprecated. 
+ * throughout aws-c-cal have become deprecated.
  * Lets disable deprecation warnings, so that we can atleast run CI, until we
  * can move over to new functions.
-*/
+ */
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/crypto.h>
 

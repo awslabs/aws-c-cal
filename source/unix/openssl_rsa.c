@@ -216,7 +216,6 @@ static int s_rsa_decrypt(
         goto on_error;
     }
 
-    size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len),
             "EVP_PKEY_decrypt")) {

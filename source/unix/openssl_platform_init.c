@@ -13,6 +13,7 @@
 
 #include <aws/cal/private/opensslcrypto_common.h>
 
+#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/crypto.h>
 
 static struct openssl_hmac_ctx_table hmac_ctx_table;

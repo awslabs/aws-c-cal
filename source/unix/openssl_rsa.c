@@ -3,14 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 #include <aws/cal/private/rsa.h>
+#include <aws/cal/private/opensslcrypto_common.h>
 
 #include <aws/cal/cal.h>
 #include <aws/common/encoding.h>
 
+#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_OPENSSL)
 /*Error defines were part of evp.h in 1.0.x and were moved to evperr.h in 1.1.0*/
 #    if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #        include <openssl/evperr.h>
@@ -56,7 +58,7 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     }
 
     /* AWS-LC/BoringSSL error code is uint32_t, but OpenSSL uses unsigned long. */
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_OPENSSL)
     uint32_t error = ERR_peek_error();
 #else
     unsigned long error = ERR_peek_error();

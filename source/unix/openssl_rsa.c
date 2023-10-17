@@ -145,10 +145,12 @@ static int s_rsa_encrypt(
     }
 
     size_t ct_len = out->capacity - out->len;
+    AWS_LOGF_DEBUG("buffer len: %zu", ct_len);
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt")) {
         goto on_error;
     }
+    AWS_LOGF_DEBUG("written: %zu", ct_len);
     out->len += ct_len;
 
     EVP_PKEY_CTX_free(ctx);

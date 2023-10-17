@@ -81,6 +81,8 @@ jobs:
           aws s3 cp s3://aws-crt-test-stuff/ci/${{ env.BUILDER_VERSION }}/linux-container-ci.sh ./linux-container-ci.sh && chmod a+x ./linux-container-ci.sh
           ./linux-container-ci.sh ${{ env.BUILDER_VERSION }} aws-crt-${{ env.LINUX_BASE_IMAGE }} build -p ${{ env.PACKAGE_NAME }} --cmake-extra=-DBUILD_SHARED_LIBS=ON
 
+  #Warning: this ci relies on ubuntu pulling correct version of openssl
+  #Current version (18.04) pulls 1.1.1, but 22.04+ will pull in 3.0
   linux-openssl-static:
     runs-on: ubuntu-20.04 # latest
     steps:
@@ -89,7 +91,9 @@ jobs:
       run: |
         aws s3 cp s3://aws-crt-test-stuff/ci/${{ env.BUILDER_VERSION }}/linux-container-ci.sh ./linux-container-ci.sh && chmod a+x ./linux-container-ci.sh
         ./linux-container-ci.sh ${{ env.BUILDER_VERSION }} aws-crt-${{env.LINUX_BASE_IMAGE }} build -p ${{ env.PACKAGE_NAME }} --variant=openssl --cmake-extra=-DUSE_OPENSSL=ON
-        
+
+  #ubuntu 22.04 defaults to openssl3 version by default when installing
+  #libssl-dev package. Hence we can rely on OS version to pull in openssl3.     
   linux-openssl3-static:
     runs-on: ubuntu-22.04 # latest
     steps:

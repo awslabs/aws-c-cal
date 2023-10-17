@@ -199,6 +199,23 @@ static int s_rsa_decrypt(
         goto on_error;
     }
 
+    size_t needed_buffer_len = 0;
+    if (s_reinterpret_evp_error_as_crt(
+            EVP_PKEY_decrypt(ctx, NULL, &needed_buffer_len,
+                ciphertext.ptr, ciphertext.len), "EVP_PKEY_decrypt get length")) {
+        goto on_error;
+    }
+
+    size_t ct_len = out->capacity - out->len;
+    if (needed_buffer_len > ct_len) {
+        /*
+         * manual short buffer length check for OpenSSL 3. 
+         * refer to encrypt implementation for more details
+         */
+        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        goto on_error;
+    }
+
     size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len),

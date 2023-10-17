@@ -144,13 +144,31 @@ static int s_rsa_encrypt(
         goto on_error;
     }
 
+    size_t needed_buffer_len = 0;
+    if (s_reinterpret_evp_error_as_crt(
+            EVP_PKEY_encrypt(ctx, NULL, &needed_buffer_len,
+                plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt get length")) {
+        goto on_error;
+    }
+
     size_t ct_len = out->capacity - out->len;
-    AWS_LOGF_DEBUG(0, "buffer len: %zu", ct_len);
+    if (needed_buffer_len > ct_len) {
+        /*
+         * OpenSSL 3 seems to no longer fail if the buffer is too short.
+         * Instead it seems to write out enough data to fill the buffer and then
+         * updates the out_len to full buffer. It does not seem to corrupt
+         * memory after the buffer, but behavior is non-ideal. 
+         * Let get length needed for buffer from api first and then manually ensure that
+         * buffer we have is big enough.
+         */
+        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        goto on_error;
+    }
+
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt")) {
         goto on_error;
     }
-    AWS_LOGF_DEBUG(0, "written: %zu", ct_len);
     out->len += ct_len;
 
     EVP_PKEY_CTX_free(ctx);

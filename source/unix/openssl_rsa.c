@@ -289,6 +289,27 @@ static int s_rsa_sign(
         goto on_error;
     }
 
+    size_t needed_buffer_len = 0;
+    if (s_reinterpret_evp_error_as_crt(
+            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len,
+                digest.ptr, digest.len), "EVP_PKEY_sign get length")) {
+        goto on_error;
+    }
+
+    size_t ct_len = out->capacity - out->len;
+    if (needed_buffer_len > ct_len) {
+        /*
+         * manual short buffer length check for OpenSSL 3.
+         * refer to encrypt implementation for more details.
+         * OpenSSL3 actually does throw an error here, but error code comes from
+         * component that does not exist in OpenSSL 1.x. So check manually right
+         * now and we can figure out how to handle it better, once we can
+         * properly support OpenSSL 3.
+         */
+        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        goto on_error;
+    }
+
     size_t ct_len = out->capacity - out->len;
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign")) {

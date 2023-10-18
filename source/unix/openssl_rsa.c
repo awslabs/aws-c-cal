@@ -2,15 +2,17 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
+#include <aws/cal/private/opensslcrypto_common.h>
 #include <aws/cal/private/rsa.h>
 
 #include <aws/cal/cal.h>
 #include <aws/common/encoding.h>
 
+#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_OPENSSL)
 /*Error defines were part of evp.h in 1.0.x and were moved to evperr.h in 1.1.0*/
 #    if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #        include <openssl/evperr.h>
@@ -56,7 +58,7 @@ static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_na
     }
 
     /* AWS-LC/BoringSSL error code is uint32_t, but OpenSSL uses unsigned long. */
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_OPENSSL)
     uint32_t error = ERR_peek_error();
 #else
     unsigned long error = ERR_peek_error();
@@ -142,7 +144,27 @@ static int s_rsa_encrypt(
         goto on_error;
     }
 
+    size_t needed_buffer_len = 0;
+    if (s_reinterpret_evp_error_as_crt(
+            EVP_PKEY_encrypt(ctx, NULL, &needed_buffer_len, plaintext.ptr, plaintext.len),
+            "EVP_PKEY_encrypt get length")) {
+        goto on_error;
+    }
+
     size_t ct_len = out->capacity - out->len;
+    if (needed_buffer_len > ct_len) {
+        /*
+         * OpenSSL 3 seems to no longer fail if the buffer is too short.
+         * Instead it seems to write out enough data to fill the buffer and then
+         * updates the out_len to full buffer. It does not seem to corrupt
+         * memory after the buffer, but behavior is non-ideal.
+         * Let get length needed for buffer from api first and then manually ensure that
+         * buffer we have is big enough.
+         */
+        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        goto on_error;
+    }
+
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt")) {
         goto on_error;
@@ -177,7 +199,23 @@ static int s_rsa_decrypt(
         goto on_error;
     }
 
+    size_t needed_buffer_len = 0;
+    if (s_reinterpret_evp_error_as_crt(
+            EVP_PKEY_decrypt(ctx, NULL, &needed_buffer_len, ciphertext.ptr, ciphertext.len),
+            "EVP_PKEY_decrypt get length")) {
+        goto on_error;
+    }
+
     size_t ct_len = out->capacity - out->len;
+    if (needed_buffer_len > ct_len) {
+        /*
+         * manual short buffer length check for OpenSSL 3.
+         * refer to encrypt implementation for more details
+         */
+        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        goto on_error;
+    }
+
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len),
             "EVP_PKEY_decrypt")) {
@@ -251,7 +289,26 @@ static int s_rsa_sign(
         goto on_error;
     }
 
+    size_t needed_buffer_len = 0;
+    if (s_reinterpret_evp_error_as_crt(
+            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len, digest.ptr, digest.len), "EVP_PKEY_sign get length")) {
+        goto on_error;
+    }
+
     size_t ct_len = out->capacity - out->len;
+    if (needed_buffer_len > ct_len) {
+        /*
+         * manual short buffer length check for OpenSSL 3.
+         * refer to encrypt implementation for more details.
+         * OpenSSL3 actually does throw an error here, but error code comes from
+         * component that does not exist in OpenSSL 1.x. So check manually right
+         * now and we can figure out how to handle it better, once we can
+         * properly support OpenSSL 3.
+         */
+        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        goto on_error;
+    }
+
     if (s_reinterpret_evp_error_as_crt(
             EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign")) {
         goto on_error;

@@ -9,13 +9,11 @@
 #include <CommonCrypto/CommonHMAC.h>
 #include <CommonCrypto/CommonSymmetricKeywrap.h>
 
-#ifdef AWS_OS_MACOS
+#if !defined(AWS_APPSTORE_SAFE)
 /* CommonCrypto does not offer public APIs for doing AES GCM.
  * There are private APIs for doing it (CommonCryptoSPI.h), but App Store
- * submissions that reference these private symbols will be rejected.
- *
- * Therefore, enable AES GCM via the private APIs on MacOS builds only,
- * iOS, watchOS, etc will have to do without. */
+ * submissions that reference these private symbols will be rejected. */
+
 #    define SUPPORT_AES_GCM_VIA_SPI 1
 #    include "common_cryptor_spi.h"
 

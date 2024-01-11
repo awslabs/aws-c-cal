@@ -78,7 +78,7 @@
         }
     },
     "test_steps": [
-        "ls {build_dir}",
+        "ls {build_dir}/aws-c-cal/bin/",
         [
             "{build_dir}/aws-c-cal/bin/sha256_profile/sha256_profile"
         ],

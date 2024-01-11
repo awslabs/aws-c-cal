@@ -78,11 +78,11 @@
         }
     },
     "test_steps": [
-        "test",
+        "ls {build_dir}",
         [
-            "{build_dir}/bin/sha256_profile/sha256_profile"
+            "{build_dir}/aws-c-cal/bin/sha256_profile/sha256_profile"
         ],
-        "{build_dir}/bin/run_x_platform_fuzz_corpus/run_x_platform_fuzz_corpus --corpus-path {source_dir}/ecdsa-fuzz-corpus"
+        "{build_dir}/aws-c-cal/bin/run_x_platform_fuzz_corpus/run_x_platform_fuzz_corpus --corpus-path {source_dir}/ecdsa-fuzz-corpus"
 
     ]
 }

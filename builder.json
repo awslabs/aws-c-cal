@@ -15,24 +15,21 @@
         "linux": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "fips-2022-11-02"
+                    "name": "aws-lc"
                 }
             ]
         },
         "android": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "fips-2022-11-02"
+                    "name": "aws-lc"
                 }
             ]
         },
         "openbsd": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "fips-2022-11-02"
+                    "name": "aws-lc"
                 }
             ]
         }

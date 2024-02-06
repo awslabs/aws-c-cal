@@ -62,8 +62,8 @@
             "targets": {
                 "linux": {
                     "!upstream": [
-                        { 
-                            "name": "aws-c-common" 
+                        {
+                            "name": "aws-c-common"
                         },
                         {
                             "name": "boringssl",
@@ -72,6 +72,9 @@
                     ]
                 }
             }
+        },
+        "no-tests": {
+            "!test_steps": []
         }
     },
     "test_steps": [

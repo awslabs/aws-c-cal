@@ -6,7 +6,7 @@ on:
       - 'main'
 
 env:
-  BUILDER_VERSION: v0.9.49
+  BUILDER_VERSION: v0.9.55
   BUILDER_SOURCE: releases
   BUILDER_HOST: https://d19elf31gohf1l.cloudfront.net
   PACKAGE_NAME: aws-c-cal
@@ -93,7 +93,7 @@ jobs:
         ./linux-container-ci.sh ${{ env.BUILDER_VERSION }} aws-crt-${{env.LINUX_BASE_IMAGE }} build -p ${{ env.PACKAGE_NAME }} --variant=openssl --cmake-extra=-DUSE_OPENSSL=ON
 
   #ubuntu 22.04 defaults to openssl3 version by default when installing
-  #libssl-dev package. Hence we can rely on OS version to pull in openssl3.     
+  #libssl-dev package. Hence we can rely on OS version to pull in openssl3.
   linux-openssl3-static:
     runs-on: ubuntu-22.04 # latest
     steps:

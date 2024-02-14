@@ -17,6 +17,6 @@ target_include_directories(${PROFILE_PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROFILE_PROJECT_NAME} PRIVATE aws-c-cal)
 
-if(BUILD_SHARED_LIBS AND NOT WIN32)
+if (BUILD_SHARED_LIBS AND NOT WIN32)
     message(INFO " sha256_profile will be built with shared libs, but you may need to set LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib to run the application")
 endif()

@@ -56,9 +56,9 @@ if (WIN32)
             "source/windows/*.c"
         )
         if (AWS_SUPPORT_WIN7)
-            set(PLATFORM_LIBS BCrypt)
+            set(PLATFORM_LIBS bcrypt)
         else()
-            set(PLATFORM_LIBS NCrypt)
+            set(PLATFORM_LIBS ncrypt)
         endif()
     endif()
 

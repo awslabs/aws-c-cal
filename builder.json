@@ -36,7 +36,8 @@
         "windows": {
             "!test_steps": [
                 "test",
-                "ls {build_dir}/aws-c-cal/bin/sha256_profile/RelWithDebInfo"
+                "{build_dir}/aws-c-cal/bin/sha256_profile/RelWithDebInfo/sha256_profile.exe",
+                "{build_dir}/aws-c-cal/bin/run_x_platform_fuzz_corpus/RelWithDebInfo/run_x_platform_fuzz_corpus.exe --corpus-path {source_dir}/ecdsa-fuzz-corpus"
             ]
         }
     },
@@ -84,6 +85,7 @@
         }
     },
     "test_steps": [
+        "test",
         [
             "{build_dir}/aws-c-cal/bin/sha256_profile/sha256_profile"
         ],

@@ -32,6 +32,12 @@
                     "name": "aws-lc"
                 }
             ]
+        },
+        "windows": {
+            "!test_steps": [
+                "test",
+                "ls {build_dir}/aws-c-cal/bin/sha256_profile/RelWithDebInfo"
+            ]
         }
     },
     "variants": {
@@ -78,7 +84,6 @@
         }
     },
     "test_steps": [
-        "ls {build_dir}/aws-c-cal/bin/sha256_profile",
         [
             "{build_dir}/aws-c-cal/bin/sha256_profile/sha256_profile"
         ],

@@ -32,6 +32,13 @@
                     "name": "aws-lc"
                 }
             ]
+        },
+        "windows": {
+            "!test_steps": [
+                "test",
+                "{build_dir}/aws-c-cal/bin/sha256_profile/RelWithDebInfo/sha256_profile.exe",
+                "{build_dir}/aws-c-cal/bin/run_x_platform_fuzz_corpus/RelWithDebInfo/run_x_platform_fuzz_corpus.exe --corpus-path {source_dir}/ecdsa-fuzz-corpus"
+            ]
         }
     },
     "variants": {
@@ -80,9 +87,9 @@
     "test_steps": [
         "test",
         [
-            "{install_dir}/bin/sha256_profile"
+            "{build_dir}/aws-c-cal/bin/sha256_profile/sha256_profile"
         ],
-        "{install_dir}/bin/run_x_platform_fuzz_corpus --corpus-path {source_dir}/ecdsa-fuzz-corpus"
+        "{build_dir}/aws-c-cal/bin/run_x_platform_fuzz_corpus/run_x_platform_fuzz_corpus --corpus-path {source_dir}/ecdsa-fuzz-corpus"
 
     ]
 }

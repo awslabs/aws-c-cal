@@ -178,7 +178,7 @@ jobs:
         ./builder build -p ${{ env.PACKAGE_NAME }} --cmake-extra=-DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
 
   freebsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04 # latest
     steps:
       - uses: actions/checkout@v4
       - name: Build ${{ env.PACKAGE_NAME }} + consumers

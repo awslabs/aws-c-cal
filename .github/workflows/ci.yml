@@ -178,15 +178,15 @@ jobs:
         ./builder build -p ${{ env.PACKAGE_NAME }} --cmake-extra=-DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
 
   openbsd:
-    runs-on: macos-12 # macos's virtual machine is faster than ubuntu's
+    runs-on: ubuntu-22.04 # latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build ${{ env.PACKAGE_NAME }} + consumers
-        uses: cross-platform-actions/action@v0.10.0
+        uses: cross-platform-actions/action@v0.23.0
         with:
           operating_system: openbsd
           architecture: x86-64
-          version: '7.2'
+          version: '7.4'
           shell: bash
           run: |
             sudo pkg_add py3-urllib3

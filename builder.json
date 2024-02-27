@@ -26,6 +26,13 @@
                 }
             ]
         },
+        "freebsd": {
+            "upstream": [
+                {
+                    "name": "aws-lc"
+                }
+            ]
+        },
         "openbsd": {
             "upstream": [
                 {

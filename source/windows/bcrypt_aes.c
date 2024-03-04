@@ -205,6 +205,8 @@ static int s_initialize_cipher_materials(
             /* windows handles this, just go ahead and tell the API it's got a length. */
             cipher->working_mac_buffer.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
         }
+    } else {
+        aws_byte_buf_reset(&cipher->working_mac_buffer, false);
     }
 
     cipher->key_handle = s_import_key_blob(cipher->alg_handle, cipher->cipher.allocator, &cipher->cipher.key);

@@ -142,6 +142,7 @@ bool s_resolve_hmac_102(void *module) {
     if (has_102_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.0.2 HMAC symbols");
     } else {
+        AWS_FATAL_ASSERT(!module && "Cannot read process symbols and libcrypto 1.0.2 HMAC symbols not found");
         /* If symbols aren't already found, try to find the requested version */
         *(void **)(&init_fn) = dlsym(module, "HMAC_CTX_init");
         *(void **)(&clean_up_fn) = dlsym(module, "HMAC_CTX_cleanup");
@@ -182,6 +183,7 @@ bool s_resolve_hmac_111(void *module) {
     if (has_111_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.1.1 HMAC symbols");
     } else {
+        AWS_FATAL_ASSERT(!module && "Cannot read process symbols and libcrypto 1.1.1 HMAC symbols not found");
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
@@ -227,6 +229,7 @@ bool s_resolve_hmac_lc(void *module) {
     if (has_awslc_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static aws-lc HMAC symbols");
     } else {
+        AWS_FATAL_ASSERT(!module && "Cannot read process symbols and libcrypto aws-lc HMAC symbols not found");
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
@@ -354,6 +357,7 @@ bool s_resolve_md_102(void *module) {
     if (has_102_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.0.2 EVP_MD symbols");
     } else {
+        AWS_FATAL_ASSERT(!module && "Cannot read process symbols and libcrypto 1.0.2 EVP_MD symbols not found");
         *(void **)(&md_create_fn) = dlsym(module, "EVP_MD_CTX_create");
         *(void **)(&md_destroy_fn) = dlsym(module, "EVP_MD_CTX_destroy");
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
@@ -389,6 +393,7 @@ bool s_resolve_md_111(void *module) {
     if (has_111_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.1.1 EVP_MD symbols");
     } else {
+        AWS_FATAL_ASSERT(!module && "Cannot read process symbols and libcrypto 1.1.1 EVP_MD symbols not found");
         *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_new");
         *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_free");
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
@@ -428,6 +433,7 @@ bool s_resolve_md_lc(void *module) {
     if (has_awslc_symbols) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static aws-lc libcrypto 1.1.1 EVP_MD symbols");
     } else {
+        AWS_FATAL_ASSERT(!module && "Cannot read process symbols and aws-lc libcrypto 1.1.1 EVP_MD symbols not found");
         *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_new");
         *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_free");
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
@@ -561,7 +567,6 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
     void *process = dlopen(NULL, RTLD_NOW);
-    AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
     enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find aws-lc symbols linked");
@@ -575,7 +580,9 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find libcrypto 1.0.2 symbols linked");
         result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, process);
     }
-    dlclose(process);
+    if (process) {
+        dlclose(process);
+    }
 
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find libcrypto 1.1.1 symbols linked");

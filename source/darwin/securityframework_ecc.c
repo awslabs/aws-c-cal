@@ -7,6 +7,7 @@
 #include <aws/cal/cal.h>
 #include <aws/cal/private/der.h>
 
+#include <CoreFoundation/CoreFoundation.h>
 #include <Security/SecKey.h>
 #include <Security/Security.h>
 

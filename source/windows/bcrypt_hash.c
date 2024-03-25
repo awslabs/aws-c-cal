@@ -59,30 +59,31 @@ struct bcrypt_hash_handle {
 static void s_load_sha256_alg_handle(void *user_data) {
     (void)user_data;
     /* this function is incredibly slow, LET IT LEAK*/
-    BCryptOpenAlgorithmProvider(&s_sha256_alg, BCRYPT_SHA256_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
+    (void)BCryptOpenAlgorithmProvider(&s_sha256_alg, BCRYPT_SHA256_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
     AWS_ASSERT(s_sha256_alg);
     DWORD result_length = 0;
-    BCryptGetProperty(
+    (void)BCryptGetProperty(
         s_sha256_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_sha256_obj_len, sizeof(s_sha256_obj_len), &result_length, 0);
 }
 
 static void s_load_sha1_alg_handle(void *user_data) {
     (void)user_data;
     /* this function is incredibly slow, LET IT LEAK*/
-    BCryptOpenAlgorithmProvider(&s_sha1_alg, BCRYPT_SHA1_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
+    (void)BCryptOpenAlgorithmProvider(&s_sha1_alg, BCRYPT_SHA1_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
     AWS_ASSERT(s_sha1_alg);
     DWORD result_length = 0;
-    BCryptGetProperty(
+    (void)BCryptGetProperty(
         s_sha1_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_sha1_obj_len, sizeof(s_sha1_obj_len), &result_length, 0);
 }
 
 static void s_load_md5_alg_handle(void *user_data) {
     (void)user_data;
     /* this function is incredibly slow, LET IT LEAK*/
-    BCryptOpenAlgorithmProvider(&s_md5_alg, BCRYPT_MD5_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
+    (void)BCryptOpenAlgorithmProvider(&s_md5_alg, BCRYPT_MD5_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
     AWS_ASSERT(s_md5_alg);
     DWORD result_length = 0;
-    BCryptGetProperty(s_md5_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_md5_obj_len, sizeof(s_md5_obj_len), &result_length, 0);
+    (void)BCryptGetProperty(
+        s_md5_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_md5_obj_len, sizeof(s_md5_obj_len), &result_length, 0);
 }
 
 struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {

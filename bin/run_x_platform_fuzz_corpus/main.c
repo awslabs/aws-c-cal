@@ -221,7 +221,8 @@ int main(int argc, char *argv[]) {
             }
             fprintf(
                 stdout,
-                "Corpus verification complete with %d failures out of %d signatures processed\n\n",
+                "Corpus %d verification complete with %d failures out of %d signatures processed\n\n",
+                (int)corpus_runs,
                 (int)signatures_failed,
                 (int)signatures_processed);
 

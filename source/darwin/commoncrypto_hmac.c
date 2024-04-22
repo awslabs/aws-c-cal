@@ -74,6 +74,6 @@ static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
 
     CCHmacFinal(&ctx->cc_hmac_ctx, output->buffer + output->len);
     hmac->good = false;
-    output->len += buffer_len;
+    output->len += hmac->digest_size;
     return AWS_OP_SUCCESS;
 }

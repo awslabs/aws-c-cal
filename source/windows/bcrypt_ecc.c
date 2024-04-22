@@ -82,6 +82,10 @@ static size_t s_signature_length(const struct aws_ecc_key_pair *key_pair) {
     return s_der_overhead + aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2;
 }
 
+static bool s_trim_zeros_predicate(uint8_t value) {
+    return value == 0;
+}
+
 static int s_sign_message(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
@@ -124,9 +128,13 @@ static int s_sign_message(
 
     aws_der_encoder_begin_sequence(encoder);
     struct aws_byte_cursor integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer, coordinate_len);
-    aws_der_encoder_write_integer(encoder, integer_cur);
+    /* trim off the leading zero padding for DER encoding */
+    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
+    aws_der_encoder_write_unsigned_integer(encoder, integer_cur);
     integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer + coordinate_len, coordinate_len);
-    aws_der_encoder_write_integer(encoder, integer_cur);
+    /* trim off the leading zero padding for DER encoding */
+    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
+    aws_der_encoder_write_unsigned_integer(encoder, integer_cur);
     aws_der_encoder_end_sequence(encoder);
 
     struct aws_byte_cursor signature_out_cur;
@@ -170,8 +178,7 @@ static int s_append_coordinate(
         size_t leading_zero_count = coordinate_size - coordinate->len;
         AWS_FATAL_ASSERT(leading_zero_count + buffer->len <= buffer->capacity);
 
-        memset(buffer->buffer + buffer->len, 0, leading_zero_count);
-        buffer->len += leading_zero_count;
+        aws_byte_buf_write_u8_n(buffer, 0x0, leading_zero_count);
     }
 
     return aws_byte_buf_append(buffer, coordinate);
@@ -208,7 +215,7 @@ static int s_verify_signature(
     /* there will be two coordinates. They need to be concatenated together. */
     struct aws_byte_cursor coordinate;
     AWS_ZERO_STRUCT(coordinate);
-    if (aws_der_decoder_tlv_integer(decoder, &coordinate)) {
+    if (aws_der_decoder_tlv_unsigned_integer(decoder, &coordinate)) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
@@ -222,7 +229,7 @@ static int s_verify_signature(
         goto error;
     }
     AWS_ZERO_STRUCT(coordinate);
-    if (aws_der_decoder_tlv_integer(decoder, &coordinate)) {
+    if (aws_der_decoder_tlv_unsigned_integer(decoder, &coordinate)) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto error;
     }
@@ -325,14 +332,14 @@ static struct aws_ecc_key_pair *s_alloc_pair_and_init_buffers(
         aws_byte_buf_append(&key_impl->key_pair.key_buf, &priv_key);
     }
 
-    key_impl->key_pair.pub_x.buffer = key_impl->key_pair.key_buf.buffer + sizeof(key_blob);
-    key_impl->key_pair.pub_x.len = key_impl->key_pair.pub_x.capacity = s_key_coordinate_size;
+    key_impl->key_pair.pub_x =
+        aws_byte_buf_from_array(key_impl->key_pair.key_buf.buffer + sizeof(key_blob), s_key_coordinate_size);
 
-    key_impl->key_pair.pub_y.buffer = key_impl->key_pair.pub_x.buffer + s_key_coordinate_size;
-    key_impl->key_pair.pub_y.len = key_impl->key_pair.pub_y.capacity = s_key_coordinate_size;
+    key_impl->key_pair.pub_y =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_x.buffer + s_key_coordinate_size, s_key_coordinate_size);
 
-    key_impl->key_pair.priv_d.buffer = key_impl->key_pair.pub_y.buffer + s_key_coordinate_size;
-    key_impl->key_pair.priv_d.len = key_impl->key_pair.priv_d.capacity = s_key_coordinate_size;
+    key_impl->key_pair.priv_d =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_y.buffer + s_key_coordinate_size, s_key_coordinate_size);
 
     BCRYPT_ALG_HANDLE alg_handle = s_key_alg_handle_from_curve_name(curve_name);
     NTSTATUS status = BCryptImportKeyPair(
@@ -356,7 +363,7 @@ error:
     return NULL;
 }
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key) {
@@ -366,7 +373,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     return s_alloc_pair_and_init_buffers(allocator, curve_name, empty, empty, *priv_key);
 }
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *public_key_x,
@@ -426,14 +433,14 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     aws_byte_buf_secure_zero(&key_impl->key_pair.key_buf);
 
-    key_impl->key_pair.pub_x.buffer = key_impl->key_pair.key_buf.buffer + sizeof(BCRYPT_ECCKEY_BLOB);
-    key_impl->key_pair.pub_x.len = key_impl->key_pair.pub_x.capacity = key_coordinate_size;
+    key_impl->key_pair.pub_x =
+        aws_byte_buf_from_array(key_impl->key_pair.key_buf.buffer + sizeof(BCRYPT_ECCKEY_BLOB), key_coordinate_size);
 
-    key_impl->key_pair.pub_y.buffer = key_impl->key_pair.pub_x.buffer + key_coordinate_size;
-    key_impl->key_pair.pub_y.len = key_impl->key_pair.pub_y.capacity = key_coordinate_size;
+    key_impl->key_pair.pub_y =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_x.buffer + key_coordinate_size, key_coordinate_size);
 
-    key_impl->key_pair.priv_d.buffer = key_impl->key_pair.pub_y.buffer + key_coordinate_size;
-    key_impl->key_pair.priv_d.len = key_impl->key_pair.priv_d.capacity = key_coordinate_size;
+    key_impl->key_pair.priv_d =
+        aws_byte_buf_from_array(key_impl->key_pair.pub_y.buffer + key_coordinate_size, key_coordinate_size);
 
     if (s_derive_public_key(&key_impl->key_pair)) {
         goto error;

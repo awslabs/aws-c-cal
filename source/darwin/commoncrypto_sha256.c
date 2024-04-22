@@ -65,12 +65,12 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
 
     size_t buffer_len = output->capacity - output->len;
 
-    if (buffer_len < AWS_SHA256_LEN) {
+    if (buffer_len < hash->digest_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
     CC_SHA256_Final(output->buffer + output->len, &ctx->cc_hash);
     hash->good = false;
-    output->len += buffer_len;
+    output->len += hash->digest_size;
     return AWS_OP_SUCCESS;
 }

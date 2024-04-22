@@ -127,6 +127,6 @@ static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
-    output->len += buffer_len;
+    output->len += hmac->digest_size;
     return AWS_OP_SUCCESS;
 }

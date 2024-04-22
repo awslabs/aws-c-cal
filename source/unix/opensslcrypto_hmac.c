@@ -73,7 +73,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     hmac->impl = ctx;
     hmac->good = true;
 
-    if (!g_aws_openssl_hmac_ctx_table->init_ex_fn(ctx, secret->ptr, (int)secret->len, EVP_sha256(), NULL)) {
+    if (!g_aws_openssl_hmac_ctx_table->init_ex_fn(ctx, secret->ptr, secret->len, EVP_sha256(), NULL)) {
         s_destroy(hmac);
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         return NULL;
@@ -113,7 +113,7 @@ static int s_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output) {
     if (AWS_LIKELY(
             g_aws_openssl_hmac_ctx_table->final_fn(ctx, output->buffer + output->len, (unsigned int *)&buffer_len))) {
         hmac->good = false;
-        output->len += buffer_len;
+        output->len += hmac->digest_size;
         return AWS_OP_SUCCESS;
     }
 

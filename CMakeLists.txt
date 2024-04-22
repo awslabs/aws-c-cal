@@ -2,13 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0.
 
 cmake_minimum_required(VERSION 3.0)
+
 project(aws-c-cal LANGUAGES C VERSION 0.1.0)
 
 if (POLICY CMP0069)
     cmake_policy(SET CMP0069 NEW) # Enable LTO/IPO if available in the compiler, see AwsCFlags
 endif()
 
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
+option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
+option(AWS_USE_CRYPTO_SHARED_LIBS "Force c-cal to use shared libs in Findcrypto" OFF)
 
 if (DEFINED CMAKE_PREFIX_PATH)
     file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
@@ -52,9 +57,9 @@ if (WIN32)
             "source/windows/*.c"
         )
         if (AWS_SUPPORT_WIN7)
-            set(PLATFORM_LIBS BCrypt)
+            set(PLATFORM_LIBS bcrypt)
         else()
-            set(PLATFORM_LIBS NCrypt)
+            set(PLATFORM_LIBS ncrypt)
         endif()
     endif()
 
@@ -75,15 +80,41 @@ elseif (APPLE)
            message(FATAL_ERROR "Security Framework not found")
         endif ()
 
-        list(APPEND PLATFORM_LIBS "-framework Security")
+        
+        find_library(COREFOUNDATION_LIB CoreFoundation)
+        if(NOT COREFOUNDATION_LIB)
+           message(FATAL_ERROR "CoreFoundation Framework not found")
+        endif()
+
+        list(APPEND PLATFORM_LIBS "-framework Security -framework CoreFoundation")
     endif()
 else ()
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
         )
-        find_package(LibCrypto REQUIRED)
-        set(PLATFORM_LIBS LibCrypto::Crypto dl)
+        if (USE_OPENSSL AND NOT ANDROID)
+            find_package(OpenSSL REQUIRED)
+            find_package(Threads REQUIRED)
+            set(PLATFORM_LIBS OpenSSL::Crypto Threads::Threads)
+            message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
+        elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
+            if (TARGET crypto)
+                message(STATUS "Using libcrypto from AWS-LC")
+            else()
+                message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
+            endif()
+            set(PLATFORM_LIBS crypto)
+        else()
+            #  note aws_use_package() does this for you, except it appends to the public link targets
+            # which we probably don't want for this case where we want the crypto dependency private
+            if (IN_SOURCE_BUILD)
+                set(PLATFORM_LIBS crypto)
+            else()
+                find_package(crypto REQUIRED)
+                set(PLATFORM_LIBS AWS::crypto)
+            endif()
+        endif()
     endif()
 endif()
 
@@ -99,15 +130,13 @@ file(GLOB CAL_SRC
 add_library(${PROJECT_NAME} ${CAL_SRC})
 aws_set_common_properties(${PROJECT_NAME} NO_WEXTRA)
 aws_prepare_symbol_visibility_args(${PROJECT_NAME} "AWS_CAL")
-aws_add_sanitizers(${PROJECT_NAME} BLACKLIST "sanitizer-blacklist.txt")
+aws_add_sanitizers(${PROJECT_NAME})
 
 aws_use_package(aws-c-common)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 
 if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
-elseif (NOT WIN32 AND NOT APPLE)
-    target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:LibCrypto::Crypto,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
 # Our ABI is not yet stable
@@ -146,7 +175,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     COMPONENT Development)
 
 list(APPEND EXPORT_MODULES
-    "cmake/modules/FindLibCrypto.cmake"
+    "cmake/modules/Findcrypto.cmake"
     )
 
 install(FILES ${EXPORT_MODULES}
@@ -154,9 +183,11 @@ install(FILES ${EXPORT_MODULES}
         COMPONENT Development)
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT BYO_CRYPTO)
-    add_subdirectory(bin/sha256_profile)
     include(CTest)
     if (BUILD_TESTING)
+        add_subdirectory(bin/sha256_profile)
+        add_subdirectory(bin/produce_x_platform_fuzz_corpus)
+        add_subdirectory(bin/run_x_platform_fuzz_corpus)
         add_subdirectory(tests)
     endif()
 endif()

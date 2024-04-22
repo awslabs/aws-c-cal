@@ -4,18 +4,99 @@
         { "name": "aws-c-common" }
     ],
     "downstream": [
-
+        {
+            "name": "aws-c-io"
+        },
+        {
+            "name": "aws-c-auth"
+        }
     ],
     "targets": {
         "linux": {
             "upstream": [
-                { "name": "aws-lc" }
+                {
+                    "name": "aws-lc"
+                }
             ]
         },
         "android": {
             "upstream": [
-                { "name": "aws-lc" }
+                {
+                    "name": "aws-lc"
+                }
+            ]
+        },
+        "freebsd": {
+            "upstream": [
+                {
+                    "name": "aws-lc"
+                }
+            ]
+        },
+        "openbsd": {
+            "upstream": [
+                {
+                    "name": "aws-lc"
+                }
+            ]
+        },
+        "windows": {
+            "!test_steps": [
+                "test",
+                "{build_dir}/aws-c-cal/bin/sha256_profile/RelWithDebInfo/sha256_profile.exe",
+                "{build_dir}/aws-c-cal/bin/run_x_platform_fuzz_corpus/RelWithDebInfo/run_x_platform_fuzz_corpus.exe --corpus-path {source_dir}/ecdsa-fuzz-corpus"
             ]
         }
-    }
+    },
+    "variants": {
+        "openssl": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "libssl-dev"
+                    ]
+                }
+            },
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        { "name": "aws-c-common" }
+                    ]
+                }
+            }
+        },
+        "boringssl": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "golang-go"
+                    ]
+                }
+            },
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        {
+                            "name": "aws-c-common"
+                        },
+                        {
+                            "name": "boringssl",
+                            "commit": "9939e14"
+                        }
+                    ]
+                }
+            }
+        },
+        "no-tests": {
+            "!test_steps": []
+        }
+    },
+    "test_steps": [
+        "test",
+        [
+            "{build_dir}/aws-c-cal/bin/sha256_profile/sha256_profile"
+        ],
+        "{build_dir}/aws-c-cal/bin/run_x_platform_fuzz_corpus/run_x_platform_fuzz_corpus --corpus-path {source_dir}/ecdsa-fuzz-corpus"
+
+    ]
 }

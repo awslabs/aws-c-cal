@@ -356,5 +356,33 @@ static int s_md5_test_invalid_state_fn(struct aws_allocator *allocator, void *ct
 
     return AWS_OP_SUCCESS;
 }
-
 AWS_TEST_CASE(md5_test_invalid_state, s_md5_test_invalid_state_fn)
+
+static int s_md5_test_extra_buffer_space_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_cursor input = aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
+                                                              "67890123456789012345678901234567890");
+
+    struct aws_byte_buf digest_size_buf;
+    struct aws_byte_buf super_size_buf;
+
+    aws_byte_buf_init(&digest_size_buf, allocator, AWS_MD5_LEN);
+    aws_byte_buf_init(&super_size_buf, allocator, AWS_MD5_LEN + 100);
+
+    aws_md5_compute(allocator, &input, &digest_size_buf, 0);
+    aws_md5_compute(allocator, &input, &super_size_buf, 0);
+
+    ASSERT_TRUE(aws_byte_buf_eq(&digest_size_buf, &super_size_buf));
+    ASSERT_TRUE(super_size_buf.len == AWS_MD5_LEN);
+
+    aws_byte_buf_clean_up(&digest_size_buf);
+    aws_byte_buf_clean_up(&super_size_buf);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(md5_test_extra_buffer_space, s_md5_test_extra_buffer_space_fn)

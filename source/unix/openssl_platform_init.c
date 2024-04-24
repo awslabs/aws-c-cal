@@ -642,6 +642,13 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 #endif
 }
 
+void __attribute__((destructor)) s_cal_crypto_shutdown(); 
+
+void s_cal_crypto_shutdown() 
+{ 
+    AWSLC_thread_local_shutdown();
+} 
+
 void aws_cal_platform_clean_up(void) {
 #if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
     if (CRYPTO_get_locking_callback() == s_locking_fn) {

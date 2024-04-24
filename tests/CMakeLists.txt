@@ -147,4 +147,6 @@ add_test_case(ecc_key_pair_asn1_ref_count_test)
 add_test_case(ecc_key_pair_private_ref_count_test)
 add_test_case(ecc_key_gen_from_private_fuzz_test)
 
+add_test_case(cal_reinit)
+
 generate_test_driver(${PROJECT_NAME}-tests)

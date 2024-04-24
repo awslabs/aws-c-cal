@@ -642,11 +642,12 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 #endif
 }
 
-void __attribute__((destructor)) s_cal_crypto_shutdown(void);
-
-void s_cal_crypto_shutdown(void) 
-{ 
-    AWSLC_thread_local_shutdown();
+void __attribute__((destructor)) s_cal_crypto_shutdown(void) 
+{
+    AWS_FATAL_ASSERT(false);
+    #if defined(OPENSSL_IS_AWSLC)
+        AWSLC_thread_local_shutdown();
+    #endif
 } 
 
 void aws_cal_platform_clean_up(void) {

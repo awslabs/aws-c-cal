@@ -555,8 +555,6 @@ static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
     return AWS_LIBCRYPTO_NONE;
 }
 
-static void *s_libcrypto_module = NULL;
-
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
@@ -662,12 +660,7 @@ void aws_cal_platform_clean_up(void) {
 
 #if defined(OPENSSL_IS_AWSLC)
     AWSLC_thread_local_clear();
-    AWSLC_thread_local_shutdown();
 #endif
-
-    if (s_libcrypto_module) {
-        dlclose(s_libcrypto_module);
-    }
 
     s_libcrypto_allocator = NULL;
 }

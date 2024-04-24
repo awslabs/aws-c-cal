@@ -642,9 +642,9 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 #endif
 }
 
-void __attribute__((destructor)) s_cal_crypto_shutdown(); 
+void __attribute__((destructor)) s_cal_crypto_shutdown(void);
 
-void s_cal_crypto_shutdown() 
+void s_cal_crypto_shutdown(void) 
 { 
     AWSLC_thread_local_shutdown();
 } 

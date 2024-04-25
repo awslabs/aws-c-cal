@@ -4,8 +4,6 @@
  */
 #include <aws/cal/cal.h>
 #include <aws/testing/aws_test_harness.h>
-#define OPENSSL_SUPPRESS_DEPRECATED
-#include <openssl/crypto.h>
 
 static int s_cal_reinit(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -15,7 +13,6 @@ static int s_cal_reinit(struct aws_allocator *allocator, void *ctx) {
     aws_cal_library_clean_up();
 
     aws_cal_library_init(allocator);
-    CRYPTO_get_thread_local(1);
     aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;

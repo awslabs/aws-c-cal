@@ -646,22 +646,21 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
  * Shutdown any resources before unloading CRT (ex. dlclose).
  * This is currently aws-lc specific.
  * Ex. why we need it:
- * aws-lc uses thread local date extensively and registers thread atexit
+ * aws-lc uses thread local data extensively and registers thread atexit
  * callback to clean it up.
- * there are cases where crt gets dlopen'ed and then dl'closed on the same thread.
- * (ex. nodejs workers)
- * on glibc, dlclose actually removes symbols from global space (musl does not)
+ * there are cases where crt gets dlopen'ed and then dlclose'ed within a larger program
+ * (ex. nodejs workers).
+ * with glibc, dlclose actually removes symbols from global space (musl does not).
  * once crt is unloaded, thread atexit will no longer point at a valid aws-lc
- * symbol and happily crash when thread is done.
+ * symbol and will happily crash when thread is closed.
  * AWSLC_thread_local_shutdown was added by aws-lc to let teams remove thread
  * local data manually before lib is unloaded.
- * We cant call AWSLC_thread_local_shutdown in cal cleanup because it renders
- * aws-lc unusable for the rest of the process and there is no way to reinitilize aws-lc
- * to a working state, i.e. everything that depends on aws-lc stop working after
- * shutdown (ex. curl).
+ * We can't call AWSLC_thread_local_shutdown in cal cleanup because it renders
+ * aws-lc unusable and there is no way to reinitilize aws-lc to a working state,
+ * i.e. everything that depends on aws-lc stops working after shutdown (ex. curl).
  * So instead rely on GCC/Clang destructor extension to shutdown right before
  * crt gets unloaded. Does not work on msvc, but thats a bridge we can cross at
- * a later date.
+ * a later date (since we dont support aws-lc on win right now)
  * TODO: do already init'ed check on lc similar to what we do for s2n, so we
  * only shutdown when we initialized aws-lc. currently not possible because
  * there is no way to check that aws-lc has been initialized.

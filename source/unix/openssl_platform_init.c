@@ -642,12 +642,35 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 #endif
 }
 
-void __attribute__((destructor)) s_cal_crypto_shutdown(void) 
-{
-    #if defined(OPENSSL_IS_AWSLC)
-        AWSLC_thread_local_shutdown();
-    #endif
-} 
+/*
+ * Shutdown any resources before unloading CRT (ex. dlclose).
+ * This is currently aws-lc specific.
+ * Ex. why we need it:
+ * aws-lc uses thread local date extensively and registers thread atexit
+ * callback to clean it up.
+ * there are cases where crt gets dlopen'ed and then dl'closed on the same thread.
+ * (ex. nodejs workers)
+ * on glibc, dlclose actually removes symbols from global space (musl does not)
+ * once crt is unloaded, thread atexit will no longer point at a valid aws-lc
+ * symbol and happily crash when thread is done.
+ * AWSLC_thread_local_shutdown was added by aws-lc to let teams remove thread
+ * local data manually before lib is unloaded.
+ * We cant call AWSLC_thread_local_shutdown in cal cleanup because it renders
+ * aws-lc unusable for the rest of the process and there is no way to reinitilize aws-lc
+ * to a working state, i.e. everything that depends on aws-lc stop working after
+ * shutdown (ex. curl).
+ * So instead rely on GCC/Clang destructor extension to shutdown right before
+ * crt gets unloaded. Does not work on msvc, but thats a bridge we can cross at
+ * a later date.
+ * TODO: do already init'ed check on lc similar to what we do for s2n, so we
+ * only shutdown when we initialized aws-lc. currently not possible because
+ * there is no way to check that aws-lc has been initialized.
+ */
+void __attribute__((destructor)) s_cal_crypto_shutdown(void) {
+#if defined(OPENSSL_IS_AWSLC)
+    AWSLC_thread_local_shutdown();
+#endif
+}
 
 void aws_cal_platform_clean_up(void) {
 #if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)

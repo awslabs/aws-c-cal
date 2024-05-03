@@ -1499,6 +1499,7 @@ static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
 
     aws_byte_buf_clean_up(&encrypt_buf);
     aws_byte_buf_clean_up(&final_buf);
+    aws_symmetric_cipher_destroy(cipher);
 
     return AWS_OP_SUCCESS;
 }

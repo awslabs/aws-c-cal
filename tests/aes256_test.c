@@ -1467,9 +1467,6 @@ static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
         0x4E, 0x84, 0x31, 0x42
     };
 
-    uint8_t tag[] = {
-        0xD6, 0x36, 0xAC, 0x1B, 0xBE, 0xDD, 0x5C, 0xC3, 0xEE, 0x72, 0x7D, 0xC2, 0xAB, 0x4A, 0x94, 0x89 }; 
-
     uint8_t aad[] = {
         0x16, 0x7B, 0x5C, 0x22, 0x61, 0x77, 0x73, 0x3A, 0x78, 0x2D, 0x61, 0x6D, 0x7A, 0x2D, 0x63, 
         0x65, 0x6B, 0x2D, 0x61, 0x6C, 0x67, 0x5C, 0x22, 0x3A, 0x20, 0x5C, 0x22, 0x41, 0x45, 0x53, 
@@ -1483,7 +1480,7 @@ static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_c_str(data);
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
-    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
+    struct aws_byte_cursor tag_cur = {0};
 
     struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad_cur, &tag_cur);
  

@@ -1453,3 +1453,49 @@ static int s_test_input_too_large_fn(struct aws_allocator *allocator, void *ctx)
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_test_input_too_large, s_test_input_too_large_fn)
+
+static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t iv[] = {
+       0xFB, 0x7B, 0x4A, 0x82, 0x4E, 0x82, 0xDA, 0xA6, 0xC8, 0xBC, 0x12, 0x51
+    };
+
+    uint8_t key[] = {
+        0x20, 0x14, 0x2E, 0x89, 0x8C, 0xD2, 0xFD, 0x98, 0x0F, 0xBF, 0x34, 0xDE, 0x6B, 0xC8, 
+        0x5C, 0x14, 0xDA, 0x7D, 0x57, 0xBD, 0x28, 0xF4, 0xAA, 0x5C, 0xF1, 0x72, 0x8A, 0xB6, 
+        0x4E, 0x84, 0x31, 0x42
+    };
+
+    uint8_t tag[] = {};
+
+    uint8_t aad[] = {
+        0x16, 0x7B, 0x5C, 0x22, 0x61, 0x77, 0x73, 0x3A, 0x78, 0x2D, 0x61, 0x6D, 0x7A, 0x2D, 0x63, 
+        0x65, 0x6B, 0x2D, 0x61, 0x6C, 0x67, 0x5C, 0x22, 0x3A, 0x20, 0x5C, 0x22, 0x41, 0x45, 0x53, 
+        0x2F, 0x47, 0x43, 0x4D, 0x2F, 0x4E, 0x6F, 0x50, 0x61, 0x64, 0x64, 0x69, 0x6E, 0x67, 0x5C, 
+        0x22, 0x7D
+    };
+
+    uint8_t data[] = {};
+
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, sizeof(key));
+    struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
+    struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
+    struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
+
+    const auto cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad, &tag);
+ 
+    // encrypt
+    struct aws_byte_buf encrypt_buf = {};
+    aws_byte_buf_init(&encrypt_buf, allocator, data_cur.len + AWS_AES_256_CIPHER_BLOCK_SIZE);
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, data_cur, &encrypt_buf));
+ 
+    //finalize
+    struct aws_byte_buf final_buf = {};
+    aws_byte_buf_init(&final_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &final_buf));
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(aes_test_foo, s_aes_test_foo)

@@ -1476,23 +1476,23 @@ static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
         0x22, 0x7D
     };
 
-    uint8_t data[] = {};
+    const char *data = "Single block msg";
 
     struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, sizeof(key));
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
-    struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
+    struct aws_byte_cursor data_cur = aws_byte_cursor_from_c_str(data);
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
     struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
 
     struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad_cur, &tag_cur);
  
     // encrypt
-    struct aws_byte_buf encrypt_buf = {};
+    struct aws_byte_buf encrypt_buf = {0};
     aws_byte_buf_init(&encrypt_buf, allocator, data_cur.len + AWS_AES_256_CIPHER_BLOCK_SIZE);
     ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, data_cur, &encrypt_buf));
  
     //finalize
-    struct aws_byte_buf final_buf = {};
+    struct aws_byte_buf final_buf = {0};
     aws_byte_buf_init(&final_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &final_buf));
 

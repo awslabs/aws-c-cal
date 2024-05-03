@@ -1480,9 +1480,9 @@ static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor data_cur = aws_byte_cursor_from_c_str(data);
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
-    struct aws_byte_cursor tag_cur = {0};
+    //struct aws_byte_cursor tag_cur = {0};
 
-    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad_cur, &tag_cur);
+    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad_cur, NULL);
  
     // encrypt
     struct aws_byte_buf encrypt_buf = {0};

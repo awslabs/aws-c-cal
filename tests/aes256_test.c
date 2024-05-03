@@ -1497,6 +1497,9 @@ static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
     aws_byte_buf_init(&final_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &final_buf));
 
+    aws_byte_buf_clean_up(&encrypt_buf);
+    aws_byte_buf_clean_up(&final_buf);
+
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_test_foo, s_aes_test_foo)

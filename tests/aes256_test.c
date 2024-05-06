@@ -1478,7 +1478,8 @@ static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
 
     struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, sizeof(key));
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
-    struct aws_byte_cursor data_cur = aws_byte_cursor_from_c_str(data);
+    //struct aws_byte_cursor data_cur = aws_byte_cursor_from_c_str(data);
+    struct aws_byte_cursor data_cur = {0};
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
     //struct aws_byte_cursor tag_cur = {0};
 

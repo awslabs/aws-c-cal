@@ -19,9 +19,11 @@ static struct aws_byte_cursor s_empty_plain_text = AWS_BYTE_CUR_INIT_FROM_STRING
 static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
 
     /*
-     * Openssl 1.1.1 does not handle the case of empty plaintext well (encrypt
-     * succeeds, but following finalize fails). This has been fixed in openssl
-     * 3.0 and other implementations. 
+     * Openssl 1.1.1 and its derivatives like aws-lc and boringssl do not handle
+     * the case of null input of 0 len gracefully in update (it succeeds, but
+     * finalize after it will fail). Openssl 3.0 fixed this. Other crypto implementations
+     * do not have similar issue. 
+     * To workaround the issue, replace null cursor with empty cursor.
      */
     if (input.ptr == NULL && input.len == 0) {
         input = s_empty_plain_text;

@@ -1495,6 +1495,9 @@ static int s_aes_test_empty_input(struct aws_allocator *allocator, void *ctx) {
     aws_byte_buf_clean_up(&final_buf);
     aws_symmetric_cipher_destroy(cipher);
 
+    static struct aws_byte_cursor foo = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("");
+    ASSERT_INT_EQUALS(foo.len, 0);
+
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_test_empty_input, s_aes_test_empty_input)

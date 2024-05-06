@@ -14,7 +14,7 @@ struct openssl_aes_cipher {
     struct aws_byte_buf working_buffer;
 };
 
-static struct aws_byte_cursor s_empty_plain_text = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("");
+//static struct aws_byte_cursor s_empty_plain_text = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("");
 
 static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
 

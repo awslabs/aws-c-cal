@@ -116,7 +116,7 @@ add_test_case(aes_keywrap_RFC3394_256BitKey128BitCekIntegrityCheckFailedTestVect
 add_test_case(aes_keywrap_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector)
 add_test_case(aes_keywrap_validate_materials_fails)
 add_test_case(aes_test_input_too_large)
-add_test_case(aes_test_foo)
+add_test_case(aes_test_empty_input)
 
 add_test_case(der_encode_integer)
 add_test_case(der_encode_integer_zero)

@@ -1454,7 +1454,7 @@ static int s_test_input_too_large_fn(struct aws_allocator *allocator, void *ctx)
 }
 AWS_TEST_CASE(aes_test_input_too_large, s_test_input_too_large_fn)
 
-static int s_aes_test_foo(struct aws_allocator *allocator, void *ctx) {
+static int s_aes_test_empty_input(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
     uint8_t iv[] = {

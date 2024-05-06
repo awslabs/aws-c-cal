@@ -156,7 +156,7 @@ int aws_symmetric_cipher_encrypt(
     struct aws_byte_cursor to_encrypt,
     struct aws_byte_buf *out) {
 
-    AWS_PRECONDITION(aws_byte_cursor_is_valid(to_encrypt));
+    AWS_PRECONDITION(aws_byte_cursor_is_valid(&to_encrypt));
 
     if (AWS_UNLIKELY(s_check_input_size_limits(cipher, &to_encrypt) != AWS_OP_SUCCESS)) {
         return AWS_OP_ERR;
@@ -174,7 +174,7 @@ int aws_symmetric_cipher_decrypt(
     struct aws_byte_cursor to_decrypt,
     struct aws_byte_buf *out) {
 
-    AWS_PRECONDITION(aws_byte_cursor_is_valid(to_decrypt));
+    AWS_PRECONDITION(aws_byte_cursor_is_valid(&to_decrypt));
 
     if (AWS_UNLIKELY(s_check_input_size_limits(cipher, &to_decrypt) != AWS_OP_SUCCESS)) {
         return AWS_OP_ERR;

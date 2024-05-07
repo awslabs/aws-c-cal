@@ -1483,6 +1483,7 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
 
     ASSERT_INT_EQUALS(0, encrypt_buf.len);
 
+    aws_symmetric_cipher_reset(cipher);
     struct aws_byte_buf decrypted_buf = {0};
     aws_byte_buf_init(&decrypted_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
     struct aws_byte_cursor ciphertext_cur = aws_byte_cursor_from_buf(&encrypt_buf);

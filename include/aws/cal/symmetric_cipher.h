@@ -35,6 +35,8 @@ typedef struct aws_symmetric_cipher *(aws_aes_gcm_256_new_fn)(
 typedef struct aws_symmetric_cipher *(
     aws_aes_keywrap_256_new_fn)(struct aws_allocator *allocator, const struct aws_byte_cursor *key);
 
+enum aws_symmetric_cipher_state { AWS_CIPHER_READY, AWS_CIPHER_FINALIZED, AWS_CIPHER_ERROR };
+
 AWS_EXTERN_C_BEGIN
 
 /**
@@ -235,6 +237,12 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws
  * aws_symmetric_cipher_reset() will reset the state to a good state if possible.
  */
 AWS_CAL_API bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher);
+
+/**
+ * Retuns the current state of the cipher. If the cipher is finished that means it must
+ * be re-set to be used again, but its most recent result succeeded successfully.
+ */
+AWS_CAL_API enum aws_symmetric_cipher_state aws_symmetric_cipher_get_state(const struct aws_symmetric_cipher *cipher);
 
 AWS_EXTERN_C_END
 AWS_POP_SANE_WARNING_LEVEL

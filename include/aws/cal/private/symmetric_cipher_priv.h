@@ -32,6 +32,7 @@ struct aws_symmetric_cipher {
     size_t block_size;
     size_t key_length_bits;
     bool good;
+    enum aws_symmetric_cipher_state state;
     void *impl;
 };
 

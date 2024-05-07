@@ -211,6 +211,7 @@ static int s_initialize_cipher_materials(
 
     if (!cipher->key_handle) {
         cipher->cipher.good = false;
+        cipher->cipher.state = AWS_CIPHER_ERROR;
         return AWS_OP_ERR;
     }
 
@@ -229,6 +230,7 @@ static int s_initialize_cipher_materials(
 
         if (!NT_SUCCESS(status)) {
             cipher->cipher.good = false;
+            cipher->cipher.state = AWS_CIPHER_ERROR;
             return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }
     } else if (is_gcm) {
@@ -359,6 +361,7 @@ static int s_aes_default_encrypt(
 
     if (!NT_SUCCESS(status)) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -476,6 +479,7 @@ static int s_default_aes_decrypt(
 
     if (!NT_SUCCESS(status)) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -548,6 +552,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
     cipher->working_iv.allocator = NULL;
     cipher->cipher.impl = cipher;
     cipher->cipher.good = true;
+    cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;
 
@@ -716,6 +721,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
 
     cipher->cipher.impl = cipher;
     cipher->cipher.good = true;
+    cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;
 
@@ -832,6 +838,7 @@ static int s_aes_ctr_encrypt(
 
             if (!NT_SUCCESS(status)) {
                 cipher->good = false;
+                cipher->state = AWS_CIPHER_ERROR;
                 ret_val = aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
                 goto clean_up;
             }
@@ -857,6 +864,7 @@ static int s_aes_ctr_encrypt(
             /* check for overflow here. */
             if (aws_add_u32_checked(counter, 1, &counter) != AWS_OP_SUCCESS) {
                 cipher->good = false;
+                cipher->state = AWS_CIPHER_ERROR;
                 ret_val = AWS_OP_ERR;
                 goto clean_up;
             }
@@ -923,6 +931,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
 
     cipher->cipher.impl = cipher;
     cipher->cipher.good = true;
+    cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;
 
@@ -965,6 +974,7 @@ static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 
     if (!NT_SUCCESS(status)) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -987,6 +997,7 @@ static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 
     if (!NT_SUCCESS(status)) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         goto clean_up;
     }
 
@@ -1058,6 +1069,7 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
         } else {
             aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
             cipher->good = false;
+            cipher->state = AWS_CIPHER_ERROR;
         }
 
     clean_up:
@@ -1067,6 +1079,7 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
     } else {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
     }
 
     return ret_val;
@@ -1112,6 +1125,7 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
 
     cipher->cipher.impl = cipher;
     cipher->cipher.good = true;
+    cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;
 

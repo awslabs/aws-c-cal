@@ -47,6 +47,7 @@ static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
 
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -71,6 +72,7 @@ static int s_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
 
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -96,6 +98,7 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
 
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -121,6 +124,7 @@ static int s_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws
 
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -255,6 +259,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
     }
 
     cc_cipher->cipher_base.good = true;
+    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;
@@ -355,6 +360,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     }
 
     cc_cipher->cipher_base.good = true;
+    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;
@@ -415,6 +421,7 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
     CCStatus status = s_cc_crypto_gcm_finalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -431,6 +438,7 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
     CCStatus status = s_cc_crypto_gcm_finalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -585,6 +593,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     }
 
     cc_cipher->cipher_base.good = true;
+    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;
@@ -623,6 +632,7 @@ static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, st
 
     if (cc_cipher->working_buffer.len == 0) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -645,6 +655,7 @@ static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, st
 
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -658,6 +669,7 @@ static int s_finalize_keywrap_decryption(struct aws_symmetric_cipher *cipher, st
 
     if (cc_cipher->working_buffer.len == 0) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -680,6 +692,7 @@ static int s_finalize_keywrap_decryption(struct aws_symmetric_cipher *cipher, st
 
     if (status != kCCSuccess) {
         cipher->good = false;
+        cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -717,6 +730,7 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
 
     aws_byte_buf_init(&cc_cipher->working_buffer, allocator, (AWS_AES_256_CIPHER_BLOCK_SIZE * 2) + 8);
     cc_cipher->cipher_base.good = true;
+    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;

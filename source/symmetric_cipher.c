@@ -160,7 +160,7 @@ int aws_symmetric_cipher_encrypt(
         return AWS_OP_ERR;
     }
 
-    if (cipher->good) {
+    if (cipher->good && cipher->state == AWS_CIPHER_READY) {
         return cipher->vtable->encrypt(cipher, to_encrypt, out);
     }
 
@@ -176,7 +176,7 @@ int aws_symmetric_cipher_decrypt(
         return AWS_OP_ERR;
     }
 
-    if (cipher->good) {
+    if (cipher->good && cipher->state == AWS_CIPHER_READY) {
         return cipher->vtable->decrypt(cipher, to_decrypt, out);
     }
 
@@ -184,9 +184,10 @@ int aws_symmetric_cipher_decrypt(
 }
 
 int aws_symmetric_cipher_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
-    if (cipher->good) {
+    if (cipher->good && cipher->state == AWS_CIPHER_READY) {
         int ret_val = cipher->vtable->finalize_encryption(cipher, out);
         cipher->good = false;
+        cipher->state = AWS_CIPHER_FINALIZED;
         return ret_val;
     }
 
@@ -194,9 +195,10 @@ int aws_symmetric_cipher_finalize_encryption(struct aws_symmetric_cipher *cipher
 }
 
 int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
-    if (cipher->good) {
+    if (cipher->good && cipher->state == AWS_CIPHER_READY) {
         int ret_val = cipher->vtable->finalize_decryption(cipher, out);
         cipher->good = false;
+        cipher->state = AWS_CIPHER_FINALIZED;
         return ret_val;
     }
     return aws_raise_error(AWS_ERROR_INVALID_STATE);
@@ -206,6 +208,7 @@ int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher) {
     int ret_val = cipher->vtable->reset(cipher);
     if (ret_val == AWS_OP_SUCCESS) {
         cipher->good = true;
+        cipher->state = AWS_CIPHER_READY;
     }
 
     return ret_val;
@@ -225,6 +228,10 @@ struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws_symmetric_c
 
 bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher) {
     return cipher->good;
+}
+
+enum aws_symmetric_cipher_state aws_symmetric_cipher_get_state(const struct aws_symmetric_cipher *cipher) {
+    return cipher->state;
 }
 
 void aws_symmetric_cipher_generate_initialization_vector(

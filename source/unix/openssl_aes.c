@@ -14,7 +14,20 @@ struct openssl_aes_cipher {
     struct aws_byte_buf working_buffer;
 };
 
+static struct aws_byte_cursor s_empty_plain_text = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("");
+
 static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
+
+    /*
+     * Openssl 1.1.1 and its derivatives like aws-lc and boringssl do not handle
+     * the case of null input of 0 len gracefully in update (it succeeds, but
+     * finalize after it will fail). Openssl 3.0 fixed this. Other crypto implementations
+     * do not have similar issue.
+     * To workaround the issue, replace null cursor with empty cursor.
+     */
+    if (input.len == 0) {
+        input = s_empty_plain_text;
+    }
 
     size_t required_buffer_space = input.len + cipher->block_size;
 

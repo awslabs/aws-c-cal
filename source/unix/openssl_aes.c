@@ -25,7 +25,7 @@ static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
      * do not have similar issue.
      * To workaround the issue, replace null cursor with empty cursor.
      */
-    if (input.ptr == NULL && input.len == 0) {
+    if (input.len == 0) {
         input = s_empty_plain_text;
     }
 

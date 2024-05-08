@@ -31,6 +31,8 @@ struct aws_symmetric_cipher {
     struct aws_byte_buf tag;
     size_t block_size;
     size_t key_length_bits;
+    // deprecated for use, only for backwards compat
+    // use state to represent current state of cipher.
     bool good;
     enum aws_symmetric_cipher_state state;
     void *impl;

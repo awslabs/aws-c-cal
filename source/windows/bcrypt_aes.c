@@ -210,7 +210,6 @@ static int s_initialize_cipher_materials(
     cipher->key_handle = s_import_key_blob(cipher->alg_handle, cipher->cipher.allocator, &cipher->cipher.key);
 
     if (!cipher->key_handle) {
-        cipher->cipher.good = false;
         cipher->cipher.state = AWS_CIPHER_ERROR;
         return AWS_OP_ERR;
     }
@@ -229,7 +228,6 @@ static int s_initialize_cipher_materials(
             0);
 
         if (!NT_SUCCESS(status)) {
-            cipher->cipher.good = false;
             cipher->cipher.state = AWS_CIPHER_ERROR;
             return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }
@@ -360,7 +358,6 @@ static int s_aes_default_encrypt(
         cipher_impl->cipher_flags);
 
     if (!NT_SUCCESS(status)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -424,7 +421,7 @@ static int s_aes_cbc_encrypt(
 static int s_aes_cbc_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (cipher->good && cipher_impl->overflow.len > 0) {
+    if (cipher->state == AWS_CIPHER_READY && cipher_impl->overflow.len > 0) {
         cipher_impl->cipher_flags = BCRYPT_BLOCK_PADDING;
         /* take the rest of the overflow and turn padding on so the remainder is properly padded
            without timing attack vulnerabilities. */
@@ -478,7 +475,6 @@ static int s_default_aes_decrypt(
         cipher_impl->cipher_flags);
 
     if (!NT_SUCCESS(status)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -502,7 +498,7 @@ static int s_aes_cbc_decrypt(
 static int s_aes_cbc_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (cipher->good && cipher_impl->overflow.len > 0) {
+    if (cipher->state == AWS_CIPHER_READY && cipher_impl->overflow.len > 0) {
         cipher_impl->cipher_flags = BCRYPT_BLOCK_PADDING;
         /* take the rest of the overflow and turn padding on so the remainder is properly padded
            without timing attack vulnerabilities. */
@@ -551,7 +547,6 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
     /* make sure the cleanup doesn't do anything. */
     cipher->working_iv.allocator = NULL;
     cipher->cipher.impl = cipher;
-    cipher->cipher.good = true;
     cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;
@@ -720,7 +715,6 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     aws_byte_buf_secure_zero(&cipher->working_iv);
 
     cipher->cipher.impl = cipher;
-    cipher->cipher.good = true;
     cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;
@@ -837,7 +831,6 @@ static int s_aes_ctr_encrypt(
                 cipher_impl->cipher_flags);
 
             if (!NT_SUCCESS(status)) {
-                cipher->good = false;
                 cipher->state = AWS_CIPHER_ERROR;
                 ret_val = aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
                 goto clean_up;
@@ -863,7 +856,6 @@ static int s_aes_ctr_encrypt(
 
             /* check for overflow here. */
             if (aws_add_u32_checked(counter, 1, &counter) != AWS_OP_SUCCESS) {
-                cipher->good = false;
                 cipher->state = AWS_CIPHER_ERROR;
                 ret_val = AWS_OP_ERR;
                 goto clean_up;
@@ -930,7 +922,6 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     aws_byte_buf_init_copy(&cipher->working_iv, allocator, &cipher->cipher.iv);
 
     cipher->cipher.impl = cipher;
-    cipher->cipher.good = true;
     cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;
@@ -973,7 +964,6 @@ static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, st
         key_handle_to_encrypt, cipher_impl->key_handle, BCRYPT_AES_WRAP_KEY_BLOB, NULL, 0, &output_size, 0);
 
     if (!NT_SUCCESS(status)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
@@ -996,7 +986,6 @@ static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, st
         0);
 
     if (!NT_SUCCESS(status)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         goto clean_up;
     }
@@ -1068,7 +1057,6 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
 
         } else {
             aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-            cipher->good = false;
             cipher->state = AWS_CIPHER_ERROR;
         }
 
@@ -1078,7 +1066,6 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
 
     } else {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
     }
 
@@ -1124,7 +1111,6 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
     aws_byte_buf_init(&cipher->overflow, allocator, (AWS_AES_256_CIPHER_BLOCK_SIZE * 2) + 8);
 
     cipher->cipher.impl = cipher;
-    cipher->cipher.good = true;
     cipher->cipher.state = AWS_CIPHER_READY;
 
     return &cipher->cipher;

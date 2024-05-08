@@ -41,7 +41,6 @@ static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
     int len_written = (int)(available_write_space);
     if (!EVP_EncryptUpdate(
             openssl_cipher->encryptor_ctx, out->buffer + out->len, &len_written, input.ptr, (int)input.len)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -61,7 +60,6 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
 
     int len_written = (int)(out->capacity - out->len);
     if (!EVP_EncryptFinal_ex(openssl_cipher->encryptor_ctx, out->buffer + out->len, &len_written)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -84,7 +82,6 @@ static int s_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
     int len_written = (int)available_write_space;
     if (!EVP_DecryptUpdate(
             openssl_cipher->decryptor_ctx, out->buffer + out->len, &len_written, input.ptr, (int)input.len)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -104,7 +101,6 @@ static int s_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws
 
     int len_written = (int)out->capacity - out->len;
     if (!EVP_DecryptFinal_ex(openssl_cipher->decryptor_ctx, out->buffer + out->len, &len_written)) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -146,7 +142,6 @@ static int s_clear_reusable_state(struct aws_symmetric_cipher *cipher) {
     EVP_CIPHER_CTX_cleanup(openssl_cipher->encryptor_ctx);
     EVP_CIPHER_CTX_cleanup(openssl_cipher->decryptor_ctx);
     aws_byte_buf_secure_zero(&openssl_cipher->working_buffer);
-    cipher->good = true;
     cipher->state = AWS_CIPHER_READY;
     return AWS_OP_SUCCESS;
 }
@@ -232,7 +227,6 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
         goto error;
     }
 
-    cipher->cipher_base.good = true;
     cipher->cipher_base.state = AWS_CIPHER_READY;
     return &cipher->cipher_base;
 
@@ -324,7 +318,6 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
         goto error;
     }
 
-    cipher->cipher_base.good = true;
     cipher->cipher_base.state = AWS_CIPHER_READY;
     return &cipher->cipher_base;
 
@@ -345,7 +338,6 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
                     EVP_CTRL_GCM_GET_TAG,
                     (int)cipher->tag.capacity,
                     cipher->tag.buffer)) {
-                cipher->good = false;
                 cipher->state = AWS_CIPHER_ERROR;
                 return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
             }
@@ -486,7 +478,6 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
         goto error;
     }
 
-    cipher->cipher_base.good = true;
     cipher->cipher_base.state = AWS_CIPHER_READY;
     return &cipher->cipher_base;
 
@@ -513,7 +504,6 @@ static int s_key_wrap_finalize_encryption(struct aws_symmetric_cipher *cipher, s
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
     if (openssl_cipher->working_buffer.len < MIN_CEK_LENGTH_BYTES) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
@@ -557,7 +547,6 @@ static int s_key_wrap_finalize_encryption(struct aws_symmetric_cipher *cipher, s
             /* encrypt the concatenated A and R[I] and store it in B */
             if (!EVP_EncryptUpdate(
                     openssl_cipher->encryptor_ctx, b.buffer, &b_out_len, temp_input.buffer, (int)temp_input.capacity)) {
-                cipher->good = false;
                 cipher->state = AWS_CIPHER_ERROR;
                 return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
             }
@@ -583,7 +572,6 @@ static int s_key_wrap_finalize_decryption(struct aws_symmetric_cipher *cipher, s
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
     if (openssl_cipher->working_buffer.len < MIN_CEK_LENGTH_BYTES + KEYWRAP_BLOCK_SIZE) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
@@ -631,7 +619,6 @@ static int s_key_wrap_finalize_decryption(struct aws_symmetric_cipher *cipher, s
             /* Decrypt the concatenated buffer */
             if (!EVP_DecryptUpdate(
                     openssl_cipher->decryptor_ctx, b.buffer, &b_out_len, temp_input.buffer, (int)temp_input.capacity)) {
-                cipher->good = false;
                 cipher->state = AWS_CIPHER_ERROR;
                 return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
             }
@@ -650,7 +637,6 @@ static int s_key_wrap_finalize_decryption(struct aws_symmetric_cipher *cipher, s
     /* here we perform the integrity check to make sure A == 0xA6A6A6A6A6A6A6A6 */
     for (size_t i = 0; i < KEYWRAP_BLOCK_SIZE; ++i) {
         if (a[i] != INTEGRITY_VALUE) {
-            cipher->good = false;
             cipher->state = AWS_CIPHER_ERROR;
             return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
         }
@@ -667,7 +653,6 @@ static int s_init_keywrap_cipher_materials(struct aws_symmetric_cipher *cipher) 
           EVP_CIPHER_CTX_set_padding(openssl_cipher->encryptor_ctx, 0)) ||
         !(EVP_DecryptInit_ex(openssl_cipher->decryptor_ctx, EVP_aes_256_ecb(), NULL, cipher->key.buffer, NULL) &&
           EVP_CIPHER_CTX_set_padding(openssl_cipher->decryptor_ctx, 0))) {
-        cipher->good = false;
         cipher->state = AWS_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -728,7 +713,6 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
         goto error;
     }
 
-    cipher->cipher_base.good = true;
     cipher->cipher_base.state = AWS_CIPHER_READY;
     return &cipher->cipher_base;
 

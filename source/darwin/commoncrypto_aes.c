@@ -46,7 +46,7 @@ static int s_encrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
         cc_cipher->encryptor_handle, input.ptr, input.len, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -70,7 +70,7 @@ static int s_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor
         cc_cipher->decryptor_handle, input.ptr, input.len, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -95,7 +95,7 @@ static int s_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws
         CCCryptorFinal(cc_cipher->encryptor_handle, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -120,7 +120,7 @@ static int s_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws
         CCCryptorFinal(cc_cipher->decryptor_handle, out->buffer + out->len, available_write_space, &len_written);
 
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -254,7 +254,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
         return NULL;
     }
 
-    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
+    cc_cipher->cipher_base.state = AWS_SYMMETRIC_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;
@@ -354,7 +354,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
         return NULL;
     }
 
-    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
+    cc_cipher->cipher_base.state = AWS_SYMMETRIC_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;
@@ -414,7 +414,7 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
     size_t tag_length = AWS_AES_256_CIPHER_BLOCK_SIZE;
     CCStatus status = s_cc_crypto_gcm_finalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -430,7 +430,7 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
     size_t tag_length = AWS_AES_256_CIPHER_BLOCK_SIZE;
     CCStatus status = s_cc_crypto_gcm_finalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
@@ -584,7 +584,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
         return NULL;
     }
 
-    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
+    cc_cipher->cipher_base.state = AWS_SYMMETRIC_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;
@@ -622,7 +622,7 @@ static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, st
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     if (cc_cipher->working_buffer.len == 0) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -644,7 +644,7 @@ static int s_finalize_keywrap_encryption(struct aws_symmetric_cipher *cipher, st
         &output_buffer_len);
 
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -657,7 +657,7 @@ static int s_finalize_keywrap_decryption(struct aws_symmetric_cipher *cipher, st
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     if (cc_cipher->working_buffer.len == 0) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -679,7 +679,7 @@ static int s_finalize_keywrap_decryption(struct aws_symmetric_cipher *cipher, st
         &output_buffer_len);
 
     if (status != kCCSuccess) {
-        cipher->state = AWS_CIPHER_ERROR;
+        cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
@@ -716,7 +716,7 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
     }
 
     aws_byte_buf_init(&cc_cipher->working_buffer, allocator, (AWS_AES_256_CIPHER_BLOCK_SIZE * 2) + 8);
-    cc_cipher->cipher_base.state = AWS_CIPHER_READY;
+    cc_cipher->cipher_base.state = AWS_SYMMETRIC_CIPHER_READY;
     cc_cipher->cipher_base.key_length_bits = AWS_AES_256_KEY_BIT_LEN;
 
     return &cc_cipher->cipher_base;

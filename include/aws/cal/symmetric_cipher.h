@@ -242,12 +242,12 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws
  */
 AWS_CAL_API bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher);
 
-AWS_EXTERN_C_END
-AWS_POP_SANE_WARNING_LEVEL
-
 /**
  * Retuns the current state of the cipher. Ther state of the cipher can be ready for use, finalized, or has encountered
  * an error. if the cipher is in a finished or eror state, it must be reset before further use.
  */
 AWS_CAL_API enum aws_symmetric_cipher_state aws_symmetric_cipher_get_state(const struct aws_symmetric_cipher *cipher);
+
+AWS_EXTERN_C_END
+AWS_POP_SANE_WARNING_LEVEL
 #endif /* AWS_CAL_SYMMETRIC_CIPHER_H */

@@ -559,6 +559,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
     return AWS_LIBCRYPTO_NONE;
 }
 
+/* Validate at runtime that we're linked against the same libcrypto we compiled against. */
 static void s_validate_libcrypto_linkage(void) {
     /* NOTE: the choice of stack buffer size is somewhat arbitrary. it's
      * possible, but unlikely, that libcrypto version strings may exceed this in

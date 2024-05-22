@@ -582,8 +582,7 @@ static void s_validate_libcrypto_linkage(void) {
 #error Unsupported libcrypto!
 #endif
     const char *runtime_version = SSLeay_version(SSLEAY_VERSION);
-    AWS_FATAL_ASSERT(strlen(expected_version) == strlen(runtime_version) && "libcrypto mislink");
-    AWS_FATAL_ASSERT(strstr(expected_version, runtime_version) && "libcrypto mislink");
+    AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
 }
 
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {

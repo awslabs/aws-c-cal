@@ -567,7 +567,7 @@ static void s_validate_libcrypto_linkage(void) {
      * snprintf with the size of the buffer itself. if libcrypto version strings
      * do eventually exceed the chosen size, this runtime check will fail and
      * will need to be addressed by increasing buffer size.*/
-    char expected_version[32] = { 0 };
+    char expected_version[64] = { 0 };
 #if defined(OPENSSL_IS_AWSLC)
     /* get FIPS mode at runtime becuase headers don't give any indication of
      * AWS-LC's FIPSness at aws-c-cal compile time. version number can still be

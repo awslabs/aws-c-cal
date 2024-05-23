@@ -578,10 +578,15 @@ static void s_validate_libcrypto_linkage(void) {
     snprintf(expected_version, sizeof(expected_version), "BoringSSL");
 #elif defined(OPENSSL_IS_OPENSSL)
     snprintf(expected_version, sizeof(expected_version), OPENSSL_VERSION_TEXT);
-#else
+#elif !defined(BYO_CRYPTO)
 #    error Unsupported libcrypto!
 #endif
     const char *runtime_version = SSLeay_version(SSLEAY_VERSION);
+    AWS_LOGF_DEBUG(
+        AWS_LS_CAL_LIBCRYPTO_RESOLVE,
+        "Compiled with libcrypto %s, linked to libcrypto %s",
+        expected_version,
+        runtime_version);
     AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
 }
 

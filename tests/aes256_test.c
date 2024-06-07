@@ -1510,6 +1510,9 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
                      0x6B, 0x2D, 0x61, 0x6C, 0x67, 0x5C, 0x22, 0x3A, 0x20, 0x5C, 0x22, 0x41, 0x45, 0x53, 0x2F, 0x47,
                      0x43, 0x4D, 0x2F, 0x4E, 0x6F, 0x50, 0x61, 0x64, 0x64, 0x69, 0x6E, 0x67, 0x5C, 0x22, 0x7D};
 
+    uint8_t expected_tag[] = {
+        0x81, 0xC0, 0xE4, 0x2B, 0xB1, 0x95, 0xE2, 0x62, 0xCB, 0x3B, 0x3A, 0x74, 0xA0, 0xDA, 0xE1, 0xC8};
+
     struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, sizeof(key));
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
@@ -1533,6 +1536,8 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
     struct aws_byte_cursor ciphertext_cur = aws_byte_cursor_from_buf(&encrypt_buf);
     ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    struct aws_byte_cursor encryption_tag = aws_symmetric_cipher_get_tag(cipher);
+    ASSERT_BIN_ARRAYS_EQUALS(expected_tag, sizeof(expected_tag), encryption_tag.ptr, encryption_tag.len);
 
     aws_byte_buf_clean_up(&encrypt_buf);
     aws_byte_buf_clean_up(&decrypted_buf);

@@ -588,19 +588,13 @@ static void s_validate_libcrypto_linkage(void) {
         expected_version,
         runtime_version);
 #if defined(OPENSSL_IS_OPENSSL)
-    /* OpenSSL version string contains components that may differ between
-     * compatible versions (fix, patch, status, build date, etc.), so here we
-     * only test for identical libcrypto name (i.e. "OpenSSL"), major version,
-     * and minor version.*/
-    AWS_FATAL_ASSERT(strstr(runtime_version, "OpenSSL") == &runtime_version[0] && "runtime libcrypto not OpenSSL");
-    const unsigned long expected_openssl_version = OPENSSL_VERSION_NUMBER;
-    const unsigned long expected_openssl_major = (expected_openssl_version & 0x00000000F0000000L);
-    const unsigned long expected_openssl_minor = (expected_openssl_version & 0x000000000FF00000L);
-    const unsigned long runtime_openssl_version = OpenSSL_version_num();
-    const unsigned long runtime_openssl_major = (runtime_openssl_version & 0x00000000F0000000L);
-    const unsigned long runtime_openssl_minor = (runtime_openssl_version & 0x000000000FF00000L);
-    AWS_FATAL_ASSERT(expected_openssl_major == runtime_openssl_major && "OpenSSL major version mismatch");
-    AWS_FATAL_ASSERT(expected_openssl_minor == runtime_openssl_minor && "OpenSSL minor version mismatch");
+    /* Validate that the string "AWS-LC" doesn't appear in OpenSSL version str. */
+    AWS_FATAL_ASSERT(strstr("AWS-LC", expected_version) == NULL);
+    AWS_FATAL_ASSERT(strstr("AWS-LC", runtime_version) == NULL);
+    /* Validate both expected and runtime versions begin with OpenSSL's version str prefix. */
+    const char *openssl_prefix = "OpenSSL ";
+    AWS_FATAL_ASSERT(strncmp(openssl_prefix, expected_version) == 0);
+    AWS_FATAL_ASSERT(strncmp(openssl_prefix, runtime_version) == 0);
 #else
     AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
 #endif

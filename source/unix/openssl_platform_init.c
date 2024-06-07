@@ -593,8 +593,8 @@ static void s_validate_libcrypto_linkage(void) {
     AWS_FATAL_ASSERT(strstr("AWS-LC", runtime_version) == NULL);
     /* Validate both expected and runtime versions begin with OpenSSL's version str prefix. */
     const char *openssl_prefix = "OpenSSL ";
-    AWS_FATAL_ASSERT(strncmp(openssl_prefix, expected_version) == 0);
-    AWS_FATAL_ASSERT(strncmp(openssl_prefix, runtime_version) == 0);
+    AWS_FATAL_ASSERT(strncmp(openssl_prefix, expected_version, strlen(openssl_prefix)) == 0);
+    AWS_FATAL_ASSERT(strncmp(openssl_prefix, runtime_version, strlen(openssl_prefix)) == 0);
 #else
     AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
 #endif

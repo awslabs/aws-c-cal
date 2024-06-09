@@ -1519,8 +1519,9 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
     struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, sizeof(key));
     struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
     struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
+    struct aws_byte_cursor tag_cur = aws_byte_cursor_from_array(tag, sizeof(tag));
 
-    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad_cur, &tag);
+    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad_cur, &tag_cur);
 
     // encrypt
     struct aws_byte_cursor data_cur = {0};

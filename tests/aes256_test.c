@@ -1525,6 +1525,9 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
     aws_byte_buf_init(&encrypt_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
     ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, data_cur, &encrypt_buf));
 
+    struct aws_byte_cursor encryption_tag = aws_symmetric_cipher_get_tag(cipher);
+    ASSERT_BIN_ARRAYS_EQUALS(expected_tag, sizeof(expected_tag), encryption_tag.ptr, encryption_tag.len);
+
     // finalize
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &encrypt_buf));
 
@@ -1536,8 +1539,6 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
     struct aws_byte_cursor ciphertext_cur = aws_byte_cursor_from_buf(&encrypt_buf);
     ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
-    struct aws_byte_cursor encryption_tag = aws_symmetric_cipher_get_tag(cipher);
-    ASSERT_BIN_ARRAYS_EQUALS(expected_tag, sizeof(expected_tag), encryption_tag.ptr, encryption_tag.len);
 
     aws_byte_buf_clean_up(&encrypt_buf);
     aws_byte_buf_clean_up(&decrypted_buf);

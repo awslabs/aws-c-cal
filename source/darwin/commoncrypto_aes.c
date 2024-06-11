@@ -428,7 +428,7 @@ static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     size_t tag_length = AWS_AES_256_CIPHER_BLOCK_SIZE;
-    CCStatus status = s_cc_crypto_gcm_finalize(cc_cipher->encryptor_handle, cipher->tag.buffer, tag_length);
+    CCStatus status = s_cc_crypto_gcm_finalize(cc_cipher->decryptor_handle, cipher->tag.buffer, tag_length);
     if (status != kCCSuccess) {
         cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
@@ -441,8 +441,7 @@ static int s_initialize_gcm_cipher_materials(
     struct cc_aes_cipher *cc_cipher,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *tag) {
+    const struct aws_byte_cursor *aad) {
     if (!cc_cipher->cipher_base.key.len) {
         if (key) {
             aws_byte_buf_init_copy_from_cursor(&cc_cipher->cipher_base.key, cc_cipher->cipher_base.allocator, *key);
@@ -469,10 +468,6 @@ static int s_initialize_gcm_cipher_materials(
 
     if (aad && aad->len) {
         aws_byte_buf_init_copy_from_cursor(&cc_cipher->cipher_base.aad, cc_cipher->cipher_base.allocator, *aad);
-    }
-
-    if (tag && tag->len) {
-        aws_byte_buf_init_copy_from_cursor(&cc_cipher->cipher_base.tag, cc_cipher->cipher_base.allocator, *tag);
     }
 
     CCCryptorStatus status = CCCryptorCreateWithMode(
@@ -507,6 +502,8 @@ static int s_initialize_gcm_cipher_materials(
             return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }
     }
+
+    aws_byte_buf_clean_up_secure(&cc_cipher->cipher_base.tag);
 
     status = CCCryptorCreateWithMode(
         kCCDecrypt,
@@ -550,7 +547,7 @@ static int s_gcm_reset(struct aws_symmetric_cipher *cipher) {
     int ret_val = s_reset(cipher);
 
     if (ret_val == AWS_OP_SUCCESS) {
-        ret_val = s_initialize_gcm_cipher_materials(cc_cipher, NULL, NULL, NULL, NULL);
+        ret_val = s_initialize_gcm_cipher_materials(cc_cipher, NULL, NULL, NULL);
     }
 
     return ret_val;
@@ -571,15 +568,14 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *tag) {
+    const struct aws_byte_cursor *aad) {
     struct cc_aes_cipher *cc_cipher = aws_mem_calloc(allocator, 1, sizeof(struct cc_aes_cipher));
     cc_cipher->cipher_base.allocator = allocator;
     cc_cipher->cipher_base.block_size = AWS_AES_256_CIPHER_BLOCK_SIZE;
     cc_cipher->cipher_base.impl = cc_cipher;
     cc_cipher->cipher_base.vtable = &s_aes_gcm_vtable;
 
-    if (s_initialize_gcm_cipher_materials(cc_cipher, key, iv, aad, tag) != AWS_OP_SUCCESS) {
+    if (s_initialize_gcm_cipher_materials(cc_cipher, key, iv, aad) != AWS_OP_SUCCESS) {
         s_destroy(&cc_cipher->cipher_base);
         return NULL;
     }

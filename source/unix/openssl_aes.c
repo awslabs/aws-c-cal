@@ -332,17 +332,15 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
     int ret_val = s_finalize_encryption(cipher, out);
 
     if (ret_val == AWS_OP_SUCCESS) {
-        if (!cipher->tag.len) {
-            if (!EVP_CIPHER_CTX_ctrl(
-                    openssl_cipher->encryptor_ctx,
-                    EVP_CTRL_GCM_GET_TAG,
-                    (int)cipher->tag.capacity,
-                    cipher->tag.buffer)) {
-                cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
-                return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-            }
-            cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
+        if (!EVP_CIPHER_CTX_ctrl(
+                openssl_cipher->encryptor_ctx,
+                EVP_CTRL_GCM_GET_TAG,
+                (int)cipher->tag.capacity,
+                cipher->tag.buffer)) {
+            cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
+            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }
+        cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
     }
 
     return ret_val;

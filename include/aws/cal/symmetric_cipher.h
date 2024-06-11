@@ -29,8 +29,7 @@ typedef struct aws_symmetric_cipher *(aws_aes_gcm_256_new_fn)(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag);
+    const struct aws_byte_cursor *aad);
 
 typedef struct aws_symmetric_cipher *(
     aws_aes_keywrap_256_new_fn)(struct aws_allocator *allocator, const struct aws_byte_cursor *key);
@@ -107,8 +106,7 @@ AWS_CAL_API struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag);
+    const struct aws_byte_cursor *aad);
 
 /**
  * Creates an instance of AES Keywrap with 256-bit key.
@@ -210,6 +208,11 @@ AWS_CAL_API int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
  * If you need to access it in a different pattern, copy the values to your own buffer first.
  */
 AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_tag(const struct aws_symmetric_cipher *cipher);
+
+/**
+ * Sets the GMAC tag on the cipher. Does nothing for cipphers that do not support tag.
+ */
+AWS_CAL_API void aws_symmetric_cipher_set_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor tag);
 
 /**
  * Gets the original initialization vector as a cursor.

@@ -584,7 +584,7 @@ static int s_check_multi_block_gcm(
 
     ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
 
-    aws_symmetric_cipher_set_tag(cipher, encryption_tag);
+    aws_symmetric_cipher_set_tag(cipher, tag);
 
     /* slice on a weird boundary to hit boundary conditions. */
     while (encrypted_cur.len) {
@@ -1533,11 +1533,12 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
 
     ASSERT_INT_EQUALS(0, encrypt_buf.len);
 
-    struct aws_byte_cursor encryption_tag = aws_symmetric_cipher_get_tag(cipher);
+    struct aws_byte_buf encryption_tag;
+    aws_byte_buf_init_copy_from_cursor(&encryption_tag, allocator, aws_symmetric_cipher_get_tag(cipher));
 
     aws_symmetric_cipher_reset(cipher);
 
-    aws_symmetric_cipher_set_tag(cipher, encryption_tag);
+    aws_symmetric_cipher_set_tag(cipher, aws_byte_cursor_from_buf(&encryption_tag));
 
     struct aws_byte_buf decrypted_buf = {0};
     aws_byte_buf_init(&decrypted_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);

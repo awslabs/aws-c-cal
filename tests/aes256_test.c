@@ -1089,11 +1089,12 @@ static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocat
     ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, input, &encrypted_buf));
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &encrypted_buf));
 
-    struct aws_byte_cursor encryption_tag = aws_symmetric_cipher_get_tag(cipher);
+    struct aws_byte_buf encryption_tag;
+    aws_byte_buf_init_copy_from_cursor(&encryption_tag, allocator, aws_symmetric_cipher_get_tag(cipher));
 
     ASSERT_SUCCESS(aws_symmetric_cipher_reset(cipher));
 
-    aws_symmetric_cipher_set_tag(cipher, encryption_tag);
+    aws_symmetric_cipher_set_tag(cipher, aws_byte_cursor_from_buf(&encryption_tag));
 
     struct aws_byte_buf decrypted_buf;
     aws_byte_buf_init(&decrypted_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
@@ -1106,6 +1107,7 @@ static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocat
 
     ASSERT_BIN_ARRAYS_EQUALS(input.ptr, input.len, decrypted_buf.buffer, decrypted_buf.len);
 
+    aws_byte_buf_clean_up(&encryption_tag);
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
@@ -1546,6 +1548,7 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
     ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
 
+    aws_byte_buf_clean_up(&encryption_tag);
     aws_byte_buf_clean_up(&encrypt_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_symmetric_cipher_destroy(cipher);

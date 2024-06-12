@@ -15,25 +15,22 @@ AWS_PUSH_SANE_WARNING_LEVEL
 
 struct aws_symmetric_cipher;
 
-typedef struct aws_symmetric_cipher *(aws_aes_cbc_256_new_fn)(
-    struct aws_allocator *allocator,
-    const struct aws_byte_cursor *key,
-    const struct aws_byte_cursor *iv);
+typedef struct aws_symmetric_cipher *(aws_aes_cbc_256_new_fn)(struct aws_allocator *allocator,
+                                                              const struct aws_byte_cursor *key,
+                                                              const struct aws_byte_cursor *iv);
 
-typedef struct aws_symmetric_cipher *(aws_aes_ctr_256_new_fn)(
-    struct aws_allocator *allocator,
-    const struct aws_byte_cursor *key,
-    const struct aws_byte_cursor *iv);
+typedef struct aws_symmetric_cipher *(aws_aes_ctr_256_new_fn)(struct aws_allocator *allocator,
+                                                              const struct aws_byte_cursor *key,
+                                                              const struct aws_byte_cursor *iv);
 
-typedef struct aws_symmetric_cipher *(aws_aes_gcm_256_new_fn)(
-    struct aws_allocator *allocator,
-    const struct aws_byte_cursor *key,
-    const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag);
+typedef struct aws_symmetric_cipher *(aws_aes_gcm_256_new_fn)(struct aws_allocator *allocator,
+                                                              const struct aws_byte_cursor *key,
+                                                              const struct aws_byte_cursor *iv,
+                                                              const struct aws_byte_cursor *aad,
+                                                              const struct aws_byte_cursor *decryption_tag);
 
-typedef struct aws_symmetric_cipher *(
-    aws_aes_keywrap_256_new_fn)(struct aws_allocator *allocator, const struct aws_byte_cursor *key);
+typedef struct aws_symmetric_cipher *(aws_aes_keywrap_256_new_fn)(struct aws_allocator *allocator,
+                                                                  const struct aws_byte_cursor *key);
 
 enum aws_symmetric_cipher_state {
     AWS_SYMMETRIC_CIPHER_READY,

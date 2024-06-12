@@ -654,6 +654,8 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     /* take whatever is remaining, make the final encrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_aes_default_encrypt(cipher, &remaining_cur, out);
+
+    AWS_LOGF_ERROR(0, "finalize enc returned %d", ret_val);
     if (ret_val == AWS_OP_SUCCESS) {
         aws_byte_buf_clean_up_secure(&cipher->tag);
         struct aws_byte_cursor foo = aws_byte_cursor_from_array(cipher_impl->auth_info_ptr->pbTag, 

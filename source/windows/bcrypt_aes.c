@@ -206,6 +206,9 @@ static int s_initialize_cipher_materials(
 
     cipher->cipher_flags = 0;
 
+    aws_byte_buf_init(&cipher->cipher.tag, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+    aws_byte_buf_secure_zero(&cipher->cipher.tag);
+
     /* In GCM mode, the IV is set on the auth info pointer and a working copy
        is passed to each encryt call. CBC and CTR mode function differently here
        and the IV is set on the key itself. */
@@ -231,8 +234,8 @@ static int s_initialize_cipher_materials(
         cipher->auth_info_ptr->pbNonce = cipher->cipher.iv.buffer;
         cipher->auth_info_ptr->cbNonce = (ULONG)cipher->cipher.iv.len;
         cipher->auth_info_ptr->dwFlags = BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
-        cipher->auth_info_ptr->pbTag = NULL;
-        cipher->auth_info_ptr->cbTag = 0;
+        cipher->auth_info_ptr->pbTag = cipher->cipher.tag.buffer;
+        cipher->auth_info_ptr->cbTag = (ULONG)cipher->cipher.tag.capacity;
         cipher->auth_info_ptr->pbMacContext = cipher->working_mac_buffer.buffer;
         cipher->auth_info_ptr->cbMacContext = (ULONG)cipher->working_mac_buffer.len;
 

@@ -592,14 +592,12 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *tag) {
+    const struct aws_byte_cursor *aad) {
 
     (void)allocator;
     (void)key;
     (void)iv;
     (void)aad;
-    (void)tag;
     aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
     return NULL;
 }

@@ -123,9 +123,7 @@ static void s_destroy(struct aws_symmetric_cipher *cipher) {
     aws_byte_buf_clean_up_secure(&cipher->key);
     aws_byte_buf_clean_up_secure(&cipher->iv);
 
-    if (cipher->tag.buffer) {
-        aws_byte_buf_clean_up_secure(&cipher->tag);
-    }
+    aws_byte_buf_clean_up_secure(&cipher->tag);
 
     if (cipher->aad.buffer) {
         aws_byte_buf_clean_up_secure(&cipher->aad);
@@ -329,6 +327,10 @@ error:
 static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
+    if (!cipher->tag.len) {
+        aws_byte_buf_init(&cipher->tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+    }
+
     int ret_val = s_finalize_encryption(cipher, out);
 
     if (ret_val == AWS_OP_SUCCESS) {
@@ -344,6 +346,20 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
     }
 
     return ret_val;
+}
+
+static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    if (openssl_cipher->cipher_base.tag.len) {
+        if (!EVP_CIPHER_CTX_ctrl(
+                openssl_cipher->decryptor_ctx,
+                EVP_CTRL_GCM_SET_TAG,
+                (int)openssl_cipher->cipher_base.tag.len,
+                openssl_cipher->cipher_base.tag.buffer)) {
+            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        }
+    }
+
+    return s_finalize_decryption(cipher, out);
 }
 
 static int s_init_gcm_cipher_materials(struct aws_symmetric_cipher *cipher) {
@@ -386,15 +402,7 @@ static int s_init_gcm_cipher_materials(struct aws_symmetric_cipher *cipher) {
         }
     }
 
-    if (openssl_cipher->cipher_base.tag.len) {
-        if (!EVP_CIPHER_CTX_ctrl(
-                openssl_cipher->decryptor_ctx,
-                EVP_CTRL_GCM_SET_TAG,
-                (int)openssl_cipher->cipher_base.tag.len,
-                openssl_cipher->cipher_base.tag.buffer)) {
-            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-        }
-    }
+    aws_byte_buf_clean_up_secure(&openssl_cipher->cipher_base.tag);
 
     return AWS_OP_SUCCESS;
 }
@@ -416,7 +424,7 @@ static struct aws_symmetric_cipher_vtable s_gcm_vtable = {
     .reset = s_reset_gcm_cipher_materials,
     .decrypt = s_decrypt,
     .encrypt = s_encrypt,
-    .finalize_decryption = s_finalize_decryption,
+    .finalize_decryption = s_finalize_gcm_decryption,
     .finalize_encryption = s_finalize_gcm_encryption,
 };
 
@@ -424,8 +432,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag) {
+    const struct aws_byte_cursor *aad) {
 
     struct openssl_aes_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct openssl_aes_cipher));
     cipher->cipher_base.allocator = allocator;
@@ -461,14 +468,6 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     /* Set AAD if provided */
     if (aad) {
         aws_byte_buf_init_copy_from_cursor(&cipher->cipher_base.aad, allocator, *aad);
-    }
-
-    /* Set tag for the decryptor to use.*/
-    if (decryption_tag) {
-        aws_byte_buf_init_copy_from_cursor(&cipher->cipher_base.tag, allocator, *decryption_tag);
-    } else {
-        /* we'll need this later when we grab the tag during encryption time. */
-        aws_byte_buf_init(&cipher->cipher_base.tag, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
     }
 
     /* Initialize the cipher contexts with the specified key and IV. */

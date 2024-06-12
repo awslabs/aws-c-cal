@@ -525,7 +525,7 @@ struct aws_symmetric_cipher *aws_aes_cbc_256_new_impl(
     cipher->alg_handle = s_aes_cbc_algorithm_handle;
     cipher->cipher.vtable = &s_aes_cbc_vtable;
 
-    if (s_initialize_cipher_materials(cipher, key, iv, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, false, false) !=
+    if (s_initialize_cipher_materials(cipher, key, iv, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, false, false) !=
         AWS_OP_SUCCESS) {
         goto error;
     }

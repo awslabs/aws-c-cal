@@ -652,7 +652,7 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     if (ret_val == AWS_OP_SUCCESS) {
         aws_byte_buf_clean_up_secure(&cipher->tag);
         aws_byte_buf_init_copy_from_cursor(&cipher->tag, cipher->allocator, 
-            aws_byte_cursor_from_array(cipher->auth_info_ptr->pbTag, cipher->auth_info_ptr->cbTag));
+            aws_byte_cursor_from_array(cipher_impl->auth_info_ptr->pbTag, cipher->auth_info_ptr->cbTag));
     }
     aws_byte_buf_secure_zero(&cipher_impl->overflow);
     aws_byte_buf_secure_zero(&cipher_impl->working_iv);
@@ -907,7 +907,7 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     cipher->alg_handle = s_aes_ctr_algorithm_handle;
     cipher->cipher.vtable = &s_aes_ctr_vtable;
 
-    if (s_initialize_cipher_materials(cipher, key, iv, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, true, false) !=
+    if (s_initialize_cipher_materials(cipher, key, iv, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, true, false) !=
         AWS_OP_SUCCESS) {
         goto error;
     }
@@ -1071,7 +1071,7 @@ static int s_reset_keywrap_cipher(struct aws_symmetric_cipher *cipher) {
 
     s_clear_reusable_components(cipher);
 
-    return s_initialize_cipher_materials(cipher_impl, NULL, NULL, NULL, NULL, 0, false, false);
+    return s_initialize_cipher_materials(cipher_impl, NULL, NULL, NULL, 0, false, false);
 }
 
 static struct aws_symmetric_cipher_vtable s_aes_keywrap_vtable = {
@@ -1098,7 +1098,7 @@ struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
     cipher->alg_handle = s_aes_keywrap_algorithm_handle;
     cipher->cipher.vtable = &s_aes_keywrap_vtable;
 
-    if (s_initialize_cipher_materials(cipher, key, NULL, NULL, NULL, 0, false, false) != AWS_OP_SUCCESS) {
+    if (s_initialize_cipher_materials(cipher, key, NULL, NULL, 0, false, false) != AWS_OP_SUCCESS) {
         goto error;
     }
 

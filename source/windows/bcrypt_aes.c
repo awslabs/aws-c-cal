@@ -663,7 +663,7 @@ static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, st
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
     cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
-    cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
+    cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.capacity;
     /* take whatever is remaining, make the final decrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_default_aes_decrypt(cipher, &remaining_cur, out);

@@ -349,6 +349,8 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
 }
 
 static int s_finalize_gcm_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    struct openssl_aes_cipher *openssl_cipher = cipher->impl;
+
     if (openssl_cipher->cipher_base.tag.len) {
         if (!EVP_CIPHER_CTX_ctrl(
                 openssl_cipher->decryptor_ctx,

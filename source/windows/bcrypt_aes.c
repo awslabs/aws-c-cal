@@ -656,8 +656,10 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     int ret_val = s_aes_default_encrypt(cipher, &remaining_cur, out);
     if (ret_val == AWS_OP_SUCCESS) {
         aws_byte_buf_clean_up_secure(&cipher->tag);
-        aws_byte_buf_init_copy_from_cursor(&cipher->tag, cipher->allocator, 
-            aws_byte_cursor_from_array(cipher_impl->auth_info_ptr->pbTag, cipher_impl->auth_info_ptr->cbTag));
+        struct aws_byte_cursor foo = aws_byte_cursor_from_array(cipher_impl->auth_info_ptr->pbTag, 
+            cipher_impl->auth_info_ptr->cbTag);
+        AWS_LOGF_DEBUG(0, "Foo tag size %zu" PRInSTR, foo.len, AWS_BYTE_CURSOR_PRI(foo));
+        aws_byte_buf_init_copy_from_cursor(&cipher->tag, cipher->allocator, foo);
     }
     aws_byte_buf_secure_zero(&cipher_impl->overflow);
     aws_byte_buf_secure_zero(&cipher_impl->working_iv);

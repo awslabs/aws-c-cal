@@ -232,7 +232,7 @@ static int s_initialize_cipher_materials(
         cipher->auth_info_ptr->cbNonce = (ULONG)cipher->cipher.iv.len;
         cipher->auth_info_ptr->dwFlags = BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
         cipher->auth_info_ptr->pbTag = NULL;
-        cipher->auth_info_ptr->cbTag = AWS_AES_256_CIPHER_BLOCK_SIZE;
+        cipher->auth_info_ptr->cbTag = 0;
         cipher->auth_info_ptr->pbMacContext = cipher->working_mac_buffer.buffer;
         cipher->auth_info_ptr->cbMacContext = (ULONG)cipher->working_mac_buffer.len;
 

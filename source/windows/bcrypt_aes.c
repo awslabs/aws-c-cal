@@ -156,7 +156,6 @@ static int s_initialize_cipher_materials(
     struct aes_bcrypt_cipher *cipher,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *tag,
     const struct aws_byte_cursor *aad,
     size_t iv_size,
     bool is_ctr_mode,
@@ -180,19 +179,10 @@ static int s_initialize_cipher_materials(
         }
     }
 
+    aws_byte_buf_clean_up_secure(&cipher->tag);
+
     /* these fields are only used in GCM mode. */
     if (is_gcm) {
-        if (!cipher->cipher.tag.len) {
-            if (tag) {
-                aws_byte_buf_init_copy_from_cursor(&cipher->cipher.tag, cipher->cipher.allocator, *tag);
-            } else {
-                aws_byte_buf_init(&cipher->cipher.tag, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-                aws_byte_buf_secure_zero(&cipher->cipher.tag);
-                /* windows handles this, just go ahead and tell the API it's got a length. */
-                cipher->cipher.tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
-            }
-        }
-
         if (!cipher->cipher.aad.len) {
             if (aad) {
                 aws_byte_buf_init_copy_from_cursor(&cipher->cipher.aad, cipher->cipher.allocator, *aad);
@@ -241,8 +231,6 @@ static int s_initialize_cipher_materials(
         cipher->auth_info_ptr->pbNonce = cipher->cipher.iv.buffer;
         cipher->auth_info_ptr->cbNonce = (ULONG)cipher->cipher.iv.len;
         cipher->auth_info_ptr->dwFlags = BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
-        cipher->auth_info_ptr->pbTag = cipher->cipher.tag.buffer;
-        cipher->auth_info_ptr->cbTag = (ULONG)cipher->cipher.tag.len;
         cipher->auth_info_ptr->pbMacContext = cipher->working_mac_buffer.buffer;
         cipher->auth_info_ptr->cbMacContext = (ULONG)cipher->working_mac_buffer.len;
 
@@ -661,6 +649,11 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     /* take whatever is remaining, make the final encrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_aes_default_encrypt(cipher, &remaining_cur, out);
+    if (ret_val == AWS_OP_SUCCESS) {
+        aws_byte_buf_clean_up_secure(&cipher->tag);
+        aws_byte_buf_init_copy_from_cursor(&cipher->tag, cipher->allocator, 
+            aws_byte_cursor_from_array(cipher->auth_info_ptr->pbTag, cipher->auth_info_ptr->cbTag));
+    }
     aws_byte_buf_secure_zero(&cipher_impl->overflow);
     aws_byte_buf_secure_zero(&cipher_impl->working_iv);
     return ret_val;
@@ -669,6 +662,8 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
+    cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
+    cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     /* take whatever is remaining, make the final decrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_default_aes_decrypt(cipher, &remaining_cur, out);
@@ -692,8 +687,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag) {
+    const struct aws_byte_cursor *aad) {
 
     aws_thread_call_once(&s_aes_thread_once, s_load_alg_handles, NULL);
     struct aes_bcrypt_cipher *cipher = aws_mem_calloc(allocator, 1, sizeof(struct aes_bcrypt_cipher));
@@ -706,7 +700,7 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
 
     /* GCM does the counting under the hood, so we let it handle the final 4 bytes of the IV. */
     if (s_initialize_cipher_materials(
-            cipher, key, iv, decryption_tag, aad, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true) != AWS_OP_SUCCESS) {
+            cipher, key, iv, aad, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true) != AWS_OP_SUCCESS) {
         goto error;
     }
 

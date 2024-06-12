@@ -179,7 +179,7 @@ static int s_initialize_cipher_materials(
         }
     }
 
-    aws_byte_buf_clean_up_secure(&cipher->tag);
+    aws_byte_buf_clean_up_secure(&cipher->cipher.tag);
 
     /* these fields are only used in GCM mode. */
     if (is_gcm) {
@@ -278,7 +278,7 @@ static int s_reset_cbc_cipher(struct aws_symmetric_cipher *cipher) {
 
     s_clear_reusable_components(cipher);
     return s_initialize_cipher_materials(
-        cipher_impl, NULL, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, false, false);
+        cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, false, false);
 }
 
 static int s_reset_ctr_cipher(struct aws_symmetric_cipher *cipher) {
@@ -290,7 +290,7 @@ static int s_reset_ctr_cipher(struct aws_symmetric_cipher *cipher) {
        we're manually maintaining the counter. */
     aws_byte_buf_append_dynamic(&cipher_impl->working_iv, &iv_cur);
     return s_initialize_cipher_materials(
-        cipher_impl, NULL, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, true, false);
+        cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, true, false);
 }
 
 static int s_reset_gcm_cipher(struct aws_symmetric_cipher *cipher) {
@@ -298,7 +298,7 @@ static int s_reset_gcm_cipher(struct aws_symmetric_cipher *cipher) {
 
     s_clear_reusable_components(cipher);
     return s_initialize_cipher_materials(
-        cipher_impl, NULL, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true);
+        cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true);
 }
 
 static int s_aes_default_encrypt(

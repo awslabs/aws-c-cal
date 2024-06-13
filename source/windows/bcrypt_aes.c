@@ -309,10 +309,6 @@ static int s_aes_default_encrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_encrypt->len == 0) {
-        return AWS_OP_SUCCESS;
-    }
-
     size_t predicted_write_length =
         cipher_impl->cipher_flags & BCRYPT_BLOCK_PADDING
             ? to_encrypt->len + (AWS_AES_256_CIPHER_BLOCK_SIZE - (to_encrypt->len % AWS_AES_256_CIPHER_BLOCK_SIZE))

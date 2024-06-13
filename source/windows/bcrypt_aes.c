@@ -566,7 +566,7 @@ static int s_aes_gcm_encrypt(
             aws_byte_buf_reserve(&cipher->tag, AWS_AES_256_CIPHER_BLOCK_SIZE);
         }
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
-        cipher_impl->auth_info_ptr->cbTag = cipher->tag.capacity;
+        cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.capacity;
         /* bcrypt will either endup filling full tag buffer or in an error state,
         /* in which tag will not be correct */
         cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
@@ -625,7 +625,7 @@ static int s_aes_gcm_decrypt(
             return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
-        cipher_impl->auth_info_ptr->cbTag = cipher->tag.len;
+        cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }
 
     struct aws_byte_buf working_buffer;

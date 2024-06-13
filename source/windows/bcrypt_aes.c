@@ -554,10 +554,6 @@ static int s_aes_gcm_encrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_encrypt.len == 0) {
-        return AWS_OP_SUCCESS;
-    }
-
     if (cipher_impl->auth_info_ptr->pbTag == NULL) {
         if (cipher->tag.buffer == NULL) {
             aws_byte_buf_init(&cipher->tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
@@ -615,10 +611,6 @@ static int s_aes_gcm_decrypt(
     struct aws_byte_cursor to_decrypt,
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
-
-    if (to_decrypt.len == 0) {
-        return AWS_OP_SUCCESS;
-    }
 
     if (cipher_impl->auth_info_ptr->pbTag == NULL) {
         if (cipher->tag.buffer == NULL) {

@@ -206,9 +206,6 @@ static int s_initialize_cipher_materials(
 
     cipher->cipher_flags = 0;
 
-    aws_byte_buf_init(&cipher->cipher.tag, cipher->cipher.allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-    aws_byte_buf_secure_zero(&cipher->cipher.tag);
-
     /* In GCM mode, the IV is set on the auth info pointer and a working copy
        is passed to each encryt call. CBC and CTR mode function differently here
        and the IV is set on the key itself. */
@@ -234,8 +231,8 @@ static int s_initialize_cipher_materials(
         cipher->auth_info_ptr->pbNonce = cipher->cipher.iv.buffer;
         cipher->auth_info_ptr->cbNonce = (ULONG)cipher->cipher.iv.len;
         cipher->auth_info_ptr->dwFlags = BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
-        cipher->auth_info_ptr->pbTag = cipher->cipher.tag.buffer;
-        cipher->auth_info_ptr->cbTag = (ULONG)cipher->cipher.tag.capacity;
+        cipher->auth_info_ptr->pbTag = NULL;
+        cipher->auth_info_ptr->cbTag = 0;
         cipher->auth_info_ptr->pbMacContext = cipher->working_mac_buffer.buffer;
         cipher->auth_info_ptr->cbMacContext = (ULONG)cipher->working_mac_buffer.len;
 
@@ -561,6 +558,20 @@ static int s_aes_gcm_encrypt(
         return AWS_OP_SUCCESS;
     }
 
+    if (cipher_impl->auth_info_ptr.pbTag == NULL) {
+        if (cipher->tag.buffer == NULL) {
+            aws_byte_buf_init(&cipher->tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+        } else {
+            aws_byte_buf_secure_zero(&cipher->tag);
+            aws_byte_buf_reserve(&cipher->tag, AWS_AES_256_CIPHER_BLOCK_SIZE);
+        }
+        cipher_impl->auth_info_ptr.pbTag = cipher->tag.buffer;
+        cipher_impl->auth_info_ptr.cbTag = cipher->tag.capacity;
+        /* bcrypt will either endup filling full tag buffer or in an error state,
+        /* in which tag will not be correct */
+        cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
+    }
+
     struct aws_byte_buf working_buffer;
     AWS_ZERO_STRUCT(working_buffer);
 
@@ -609,6 +620,14 @@ static int s_aes_gcm_decrypt(
         return AWS_OP_SUCCESS;
     }
 
+    if (cipher_impl->auth_info_ptr.pbTag == NULL) {
+        if (cipher->tag.buffer == NULL) {
+            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        }
+        cipher_impl->auth_info_ptr.pbTag = cipher->tag.buffer;
+        cipher_impl->auth_info_ptr.cbTag = cipher->tag.len;
+    }
+
     struct aws_byte_buf working_buffer;
     AWS_ZERO_STRUCT(working_buffer);
 
@@ -655,14 +674,6 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_aes_default_encrypt(cipher, &remaining_cur, out);
 
-    AWS_LOGF_ERROR(0, "finalize enc returned %d", ret_val);
-    if (ret_val == AWS_OP_SUCCESS) {
-        aws_byte_buf_clean_up_secure(&cipher->tag);
-        struct aws_byte_cursor foo = aws_byte_cursor_from_array(cipher_impl->auth_info_ptr->pbTag, 
-            cipher_impl->auth_info_ptr->cbTag);
-        AWS_LOGF_DEBUG(0, "Foo tag size %p %zu" PRInSTR, foo.ptr, foo.len, AWS_BYTE_CURSOR_PRI(foo));
-        aws_byte_buf_init_copy_from_cursor(&cipher->tag, cipher->allocator, foo);
-    }
     aws_byte_buf_secure_zero(&cipher_impl->overflow);
     aws_byte_buf_secure_zero(&cipher_impl->working_iv);
     return ret_val;
@@ -671,8 +682,6 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
-    cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
-    cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     /* take whatever is remaining, make the final decrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_default_aes_decrypt(cipher, &remaining_cur, out);

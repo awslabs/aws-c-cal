@@ -569,6 +569,7 @@ static int s_check_multi_block_gcm(
     /* slice on a weird boundary to hit boundary conditions. */
     while (data_cpy.len) {
         struct aws_byte_cursor to_encrypt = aws_byte_cursor_advance(&data_cpy, (size_t)aws_min_i64(24, data_cpy.len));
+        AWS_LOGF_DEBUG(0, "to encrypt test size %zu", to_encrypt.len);
         ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, to_encrypt, &encrypted_buf));
     }
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &encrypted_buf));

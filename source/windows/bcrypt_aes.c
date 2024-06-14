@@ -309,6 +309,10 @@ static int s_aes_default_encrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
+    if (to_encrypt->len == 0) {
+        return AWS_OP_SUCCESS;
+    }
+
     size_t predicted_write_length =
         cipher_impl->cipher_flags & BCRYPT_BLOCK_PADDING
             ? to_encrypt->len + (AWS_AES_256_CIPHER_BLOCK_SIZE - (to_encrypt->len % AWS_AES_256_CIPHER_BLOCK_SIZE))
@@ -640,7 +644,7 @@ static int s_aes_gcm_decrypt(
         struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
         struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
         /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
-           new overfloew should be. */
+           new overflow should be. */
         struct aws_byte_cursor new_overflow_cur = working_buf_cur;
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &new_overflow_cur);
 

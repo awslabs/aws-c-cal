@@ -592,9 +592,11 @@ static int s_aes_gcm_encrypt(
         struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
         struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
         /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
-           new overfloew should be. */
+           new overflow should be. */
         struct aws_byte_cursor new_overflow_cur = working_buf_cur;
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &new_overflow_cur);
+
+        AWS_LOGF_DEBUG(0, "gcm aes default encrypt with size %zu", working_slice);
 
         ret_val = s_aes_default_encrypt(cipher, &working_slice, out);
     } else {

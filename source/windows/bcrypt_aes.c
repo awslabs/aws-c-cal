@@ -309,7 +309,7 @@ static int s_aes_default_encrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_encrypt->len == 0 && cipher_impl->auth_info_ptr != NULL) {
+    if (to_encrypt->len == 0 && cipher_impl->auth_info_ptr == NULL) {
         return AWS_OP_SUCCESS;
     }
 
@@ -430,7 +430,7 @@ static int s_default_aes_decrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_decrypt->len == 0 && cipher_impl->auth_info_ptr != NULL) {
+    if (to_decrypt->len == 0 && cipher_impl->auth_info_ptr == NULL) {
         return AWS_OP_SUCCESS;
     }
 
@@ -696,7 +696,7 @@ static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, st
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }
-    
+
     /* take whatever is remaining, make the final decrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_default_aes_decrypt(cipher, &remaining_cur, out);

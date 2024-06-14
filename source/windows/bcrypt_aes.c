@@ -207,7 +207,7 @@ static int s_initialize_cipher_materials(
     cipher->cipher_flags = 0;
 
     /* In GCM mode, the IV is set on the auth info pointer and a working copy
-       is passed to each encryt call. CBC and CTR mode function differently here
+       is passed to each encrypt call. CBC and CTR mode function differently here
        and the IV is set on the key itself. */
     if (!is_gcm && cipher->cipher.iv.len) {
         NTSTATUS status = BCryptSetProperty(
@@ -309,7 +309,7 @@ static int s_aes_default_encrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_encrypt->len == 0) {
+    if (to_encrypt->len == 0 && cipher_impl->auth_info_ptr != NULL) {
         return AWS_OP_SUCCESS;
     }
 
@@ -430,7 +430,7 @@ static int s_default_aes_decrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_decrypt->len == 0) {
+    if (to_decrypt->len == 0 && cipher_impl->auth_info_ptr != NULL) {
         return AWS_OP_SUCCESS;
     }
 
@@ -563,7 +563,7 @@ static int s_aes_gcm_encrypt(
         }
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.capacity;
-        /* bcrypt will either endup filling full tag buffer or in an error state,
+        /* bcrypt will either end up filling full tag buffer or in an error state,
         /* in which tag will not be correct */
         cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
     }
@@ -661,6 +661,20 @@ static int s_aes_gcm_decrypt(
 static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
+    if (cipher_impl->auth_info_ptr->pbTag == NULL) {
+        if (cipher->tag.buffer == NULL) {
+            aws_byte_buf_init(&cipher->tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+        } else {
+            aws_byte_buf_secure_zero(&cipher->tag);
+            aws_byte_buf_reserve(&cipher->tag, AWS_AES_256_CIPHER_BLOCK_SIZE);
+        }
+        cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
+        cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.capacity;
+        /* bcrypt will either end up filling full tag buffer or in an error state,
+        /* in which tag will not be correct */
+        cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
+    }
+
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
     /* take whatever is remaining, make the final encrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
@@ -674,6 +688,15 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
+
+    if (cipher_impl->auth_info_ptr->pbTag == NULL) {
+        if (cipher->tag.buffer == NULL) {
+            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        }
+        cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
+        cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
+    }
+    
     /* take whatever is remaining, make the final decrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_default_aes_decrypt(cipher, &remaining_cur, out);
@@ -1056,7 +1079,7 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
             AWS_FATAL_ASSERT(
                 aws_byte_buf_write(
                     out, key_data_blob.buffer + sizeof(BCRYPT_KEY_DATA_BLOB_HEADER), stream_header->cbKeyData) &&
-                "Copying key data failed but the allocation should have already occured successfully");
+                "Copying key data failed but the allocation should have already occurred successfully");
             ret_val = AWS_OP_SUCCESS;
 
         } else {

@@ -598,7 +598,7 @@ static int s_aes_gcm_encrypt(
         struct aws_byte_cursor new_overflow_cur = working_buf_cur;
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &new_overflow_cur);
 
-        AWS_LOGF_DEBUG(0, "gcm aes default encrypt with size %zu ", working_slice.len);
+        AWS_LOGF_DEBUG(0, "gcm aes default encrypt with size %zu offset %zu seek_to %zu", working_slice.len, offset, seek_to);
 
         ret_val = s_aes_default_encrypt(cipher, &working_slice, out);
     } else {

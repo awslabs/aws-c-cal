@@ -614,7 +614,7 @@ static int s_aes_gcm_encrypt(
     
     int ret_val = AWS_OP_SUCCESS;
     if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {
-        ret_val = s_aes_default_encrypt(cipher, &working_slice, out);
+        ret_val = s_aes_default_encrypt(cipher, &working_cur, out);
     }
 
     aws_byte_buf_clean_up_secure(&working_buffer);

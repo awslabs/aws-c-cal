@@ -620,10 +620,7 @@ static int s_aes_gcm_decrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (cipher_impl->auth_info_ptr->pbTag == NULL) {
-        if (cipher->tag.buffer == NULL) {
-            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-        }
+    if (cipher_impl->auth_info_ptr->pbTag == NULL && cipher->tag.buffer != NULL) {
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }
@@ -701,10 +698,7 @@ static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, st
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
 
-    if (cipher_impl->auth_info_ptr->pbTag == NULL) {
-        if (cipher->tag.buffer == NULL) {
-            return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
-        }
+    if (cipher_impl->auth_info_ptr->pbTag == NULL && cipher->tag.buffer != NULL) {
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }

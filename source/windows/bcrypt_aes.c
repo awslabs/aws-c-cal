@@ -563,7 +563,7 @@ static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aw
         aws_byte_buf_init_copy_from_cursor(working_buf, overflow->allocator, data);
     }
 
-    struct aws_byte_cur working_cur;
+    struct aws_byte_cursor working_cur;
     AWS_ZERO_STRUCT(working_cur);
 
     if (working_buf->len > AWS_AES_256_CIPHER_BLOCK_SIZE) {

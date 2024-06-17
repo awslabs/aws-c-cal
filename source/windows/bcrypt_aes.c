@@ -545,7 +545,8 @@ error:
     return NULL;
 }
 
-static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aws_byte_cursor data, 
+static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aws_allocator allocator, 
+    struct aws_byte_cursor data, 
     struct aws_byte_buf *overflow, struct aws_byte_buf *working_buf) {
     AWS_PRECONDITION(overflow);
     AWS_PRECONDITION(working_buf);
@@ -556,11 +557,11 @@ static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aw
     if (overflow->len) {
         struct aws_byte_cursor overflow_cur = aws_byte_cursor_from_buf(overflow);
 
-        aws_byte_buf_init_copy_from_cursor(working_buf, overflow->allocator, overflow_cur);
+        aws_byte_buf_init_copy_from_cursor(working_buf, allocator, overflow_cur);
         aws_byte_buf_reset(overflow, true);
         aws_byte_buf_append_dynamic(working_buf, &data);
     } else {
-        aws_byte_buf_init_copy_from_cursor(working_buf, overflow->allocator, data);
+        aws_byte_buf_init_copy_from_cursor(working_buf, allocator, data);
     }
 
     struct aws_byte_cursor working_cur;
@@ -610,7 +611,8 @@ static int s_aes_gcm_encrypt(
 
     struct aws_byte_buf working_buffer;
     
-    struct aws_byte_cursor working_cur = s_gcm_working_cur_from_data_and_overflow(to_encrypt, &cipher_impl->overflow, &working_buffer);
+    struct aws_byte_cursor working_cur = s_gcm_working_cur_from_data_and_overflow(cipher->allocator,
+        to_encrypt, &cipher_impl->overflow, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
     if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {

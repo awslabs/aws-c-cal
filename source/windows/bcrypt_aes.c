@@ -570,6 +570,10 @@ static int s_aes_gcm_encrypt(
         cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
     }
 
+    if (to_encrypt.len == 0) {
+        return AWS_OP_SUCCESS;
+    }
+
     struct aws_byte_buf working_buffer;
     AWS_ZERO_STRUCT(working_buffer);
 
@@ -622,6 +626,10 @@ static int s_aes_gcm_decrypt(
         }
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
+    }
+
+    if (to_decrypt.len == 0) {
+        return AWS_OP_SUCCESS;
     }
 
     struct aws_byte_buf working_buffer;

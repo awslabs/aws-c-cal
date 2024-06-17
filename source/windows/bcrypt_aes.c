@@ -545,9 +545,10 @@ error:
     return NULL;
 }
 
-static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aws_allocator allocator, 
+static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aws_allocator *allocator, 
     struct aws_byte_cursor data, 
-    struct aws_byte_buf *overflow, struct aws_byte_buf *working_buf) {
+    struct aws_byte_buf *overflow, 
+    struct aws_byte_buf *working_buf) {
     AWS_PRECONDITION(overflow);
     AWS_PRECONDITION(working_buf);
 

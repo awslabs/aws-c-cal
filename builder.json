@@ -15,7 +15,8 @@
         "linux": {
             "upstream": [
                 {
-                    "name": "aws-lc"
+                    "name": "aws-lc",
+                    "revision": "97ee225a8b302fc58da6faad3046e1534c6230d7"
                 }
             ]
         },

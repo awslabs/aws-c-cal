@@ -553,7 +553,7 @@ static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aw
     AWS_ZERO_STRUCT(working_buf);
 
     /* If there's overflow, prepend it to the working buffer, then append the data to encrypt */
-    if (cipher_impl->overflow.len) {
+    if (overflow->len) {
         struct aws_byte_cursor overflow_cur = aws_byte_cursor_from_buf(overflow);
 
         aws_byte_buf_init_copy_from_cursor(working_buf, overflow->allocator, overflow_cur);
@@ -566,11 +566,11 @@ static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aw
     struct aws_byte_cur working_cur;
     AWS_ZERO_STRUCT(working_cur);
 
-    if (working_buf.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
+    if (working_buf->len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
         size_t offset = working_buf->len % AWS_AES_256_CIPHER_BLOCK_SIZE;
         size_t seek_to = working_buf->len - offset;
         struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(working_buf);
-        struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
+        working_cur = aws_byte_cursor_advance(&working_buf_cur, seek_to);
         /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
            new overflow should be. */
         struct aws_byte_cursor new_overflow_cur = working_buf_cur;

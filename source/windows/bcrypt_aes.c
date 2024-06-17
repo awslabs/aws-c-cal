@@ -590,7 +590,7 @@ static int s_aes_gcm_encrypt(
        wait til next time or for the finalize call. */
     if (working_buffer.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
         size_t offset = working_buffer.len % AWS_AES_256_CIPHER_BLOCK_SIZE;
-        size_t seek_to = working_buffer.len - (AWS_AES_256_CIPHER_BLOCK_SIZE + offset);
+        size_t seek_to = working_buffer.len - offset;
         struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
         struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
         /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
@@ -644,7 +644,7 @@ static int s_aes_gcm_decrypt(
        wait til next time or for the finalize call. */
     if (working_buffer.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
         size_t offset = working_buffer.len % AWS_AES_256_CIPHER_BLOCK_SIZE;
-        size_t seek_to = working_buffer.len - (AWS_AES_256_CIPHER_BLOCK_SIZE + offset);
+        size_t seek_to = working_buffer.len - offset;
         struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
         struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
         /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the

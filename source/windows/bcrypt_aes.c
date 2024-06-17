@@ -550,35 +550,35 @@ static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aw
     AWS_PRECONDITION(overflow);
     AWS_PRECONDITION(working_buf);
 
-    AWS_ZERO_STRUCT(working_buffer);
+    AWS_ZERO_STRUCT(working_buf);
 
     /* If there's overflow, prepend it to the working buffer, then append the data to encrypt */
     if (cipher_impl->overflow.len) {
-        struct aws_byte_cursor overflow_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
+        struct aws_byte_cursor overflow_cur = aws_byte_cursor_from_buf(overflow);
 
-        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, overflow_cur);
-        aws_byte_buf_reset(&cipher_impl->overflow, true);
-        aws_byte_buf_append_dynamic(&working_buffer, &to_encrypt);
+        aws_byte_buf_init_copy_from_cursor(working_buf, overflow->allocator, overflow_cur);
+        aws_byte_buf_reset(overflow, true);
+        aws_byte_buf_append_dynamic(working_buf, &data);
     } else {
-        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_encrypt);
+        aws_byte_buf_init_copy_from_cursor(working_buf, overflow->allocator, data);
     }
 
     struct aws_byte_cur working_cur;
     AWS_ZERO_STRUCT(working_cur);
 
-    if (working_buffer.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
-        size_t offset = working_buffer.len % AWS_AES_256_CIPHER_BLOCK_SIZE;
-        size_t seek_to = working_buffer.len - offset;
-        struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
+    if (working_buf.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
+        size_t offset = working_buf->len % AWS_AES_256_CIPHER_BLOCK_SIZE;
+        size_t seek_to = working_buf->len - offset;
+        struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(working_buf);
         struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
         /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
            new overflow should be. */
         struct aws_byte_cursor new_overflow_cur = working_buf_cur;
-        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &new_overflow_cur);
+        aws_byte_buf_append_dynamic(overflow, &new_overflow_cur);
 
     } else {
-        struct aws_byte_cursor working_buffer_cur = aws_byte_cursor_from_buf(&working_buffer);
-        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_buffer_cur);
+        struct aws_byte_cursor working_buffer_cur = aws_byte_cursor_from_buf(working_buf);
+        aws_byte_buf_append_dynamic(overflow, &working_buffer_cur);
     }
 
     return working_cur;

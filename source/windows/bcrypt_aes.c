@@ -638,7 +638,7 @@ static int s_aes_gcm_decrypt(
     struct aws_byte_buf working_buffer;
 
     struct aws_byte_cursor working_cur = s_gcm_working_cur_from_data_and_overflow(cipher->allocator,
-        to_encrypt, &cipher_impl->overflow, &working_buffer);
+        to_decrypt, &cipher_impl->overflow, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
     if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {

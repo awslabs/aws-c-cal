@@ -555,7 +555,7 @@ error:
  * Note: this function takes a scratch buffer that might be used for to back data returned by the cursor.
  * It is on caller to cleanup that scratch buffer. 
  */
-static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *cipher_impl 
+static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *cipher_impl,
     struct aws_byte_cursor data,
     struct aws_byte_buf *scratch) {
     AWS_PRECONDITION(working_buf);
@@ -613,7 +613,7 @@ static int s_aes_gcm_encrypt(
 
     struct aws_byte_buf working_buffer;
     
-    struct aws_byte_cursor working_cur = s_gcm_working_cur_from_data_and_overflow(cipher_impl, to_encrypt, &working_buffer);
+    struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_encrypt, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
     if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {
@@ -637,7 +637,7 @@ static int s_aes_gcm_decrypt(
 
     struct aws_byte_buf working_buffer;
 
-    struct aws_byte_cursor working_cur = s_gcm_working_cur_from_data_and_overflow(cipher_impl, to_decrypt, &working_buffer);
+    struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_decrypt, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
     if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {

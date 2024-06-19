@@ -567,7 +567,7 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
     /* If there's overflow, prepend it to the working buffer, then append the data to encrypt */
     if (cipher_impl->overflow.len) {
         aws_byte_buf_init_copy(scratch, cipher_impl->cipher.allocator, &cipher_impl->overflow);
-        aws_byte_buf_reset(cipher_impl->overflow, true);
+        aws_byte_buf_reset(&cipher_impl->overflow, true);
         aws_byte_buf_append_dynamic(scratch, &data);
         working_cur = aws_byte_cursor_from_buf(scratch);
     } else {
@@ -581,11 +581,11 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
         size_t seek_to = scratch->len - (scratch->len % AWS_AES_256_CIPHER_BLOCK_SIZE);
 
         return_cur = aws_byte_cursor_advance(&working_cur, seek_to);
-        aws_byte_buf_append_dynamic(cipher_impl->overflow, &working_cur);
+        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_cur);
 
     } else {
         struct aws_byte_cursor working_buffer_cur = aws_byte_cursor_from_buf(scratch);
-        aws_byte_buf_append_dynamic(cipher_impl->overflow, &working_buffer_cur);
+        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_buffer_cur);
     }
 
     return return_cur;

@@ -9,8 +9,6 @@
 /* keep the space to prevent formatters from reordering this with the Windows.h header. */
 #include <bcrypt.h>
 
-#define NT_SUCCESS(status) ((NTSTATUS)status >= 0)
-
 /* handles for AES modes and algorithms we'll be using. These are initialized once and allowed to leak. */
 static aws_thread_once s_aes_thread_once = AWS_THREAD_ONCE_STATIC_INIT;
 static BCRYPT_ALG_HANDLE s_aes_cbc_algorithm_handle = NULL;
@@ -32,7 +30,7 @@ struct aes_bcrypt_cipher {
     struct aws_byte_buf overflow;
     /* This gets updated as the algorithms run so it isn't the original IV. That's why its separate */
     struct aws_byte_buf working_iv;
-    /* A buffer to keep around for the GMAC for GCM. */
+    /* A buffer to keep around for the GMAC for GCM. Purely for BCrypt needs, we dont touch it. */
     struct aws_byte_buf working_mac_buffer;
 };
 
@@ -50,7 +48,7 @@ static void s_load_alg_handles(void *user_data) {
         (ULONG)(wcslen(BCRYPT_CHAIN_MODE_CBC) + 1),
         0);
 
-    AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for CBC chaining mode failed");
+    AWS_FATAL_ASSERT(BCRYPT_SUCCESS(status) && "BCryptSetProperty for CBC chaining mode failed");
 
     /* Set up GCM algorithm */
     status = BCryptOpenAlgorithmProvider(&s_aes_gcm_algorithm_handle, BCRYPT_AES_ALGORITHM, NULL, 0);
@@ -63,7 +61,7 @@ static void s_load_alg_handles(void *user_data) {
         (ULONG)(wcslen(BCRYPT_CHAIN_MODE_GCM) + 1),
         0);
 
-    AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for GCM chaining mode failed");
+    AWS_FATAL_ASSERT(BCRYPT_SUCCESS(status) && "BCryptSetProperty for GCM chaining mode failed");
 
     /* Setup CTR algorithm */
     status = BCryptOpenAlgorithmProvider(&s_aes_ctr_algorithm_handle, BCRYPT_AES_ALGORITHM, NULL, 0);
@@ -78,13 +76,13 @@ static void s_load_alg_handles(void *user_data) {
         (ULONG)(wcslen(BCRYPT_CHAIN_MODE_ECB) + 1),
         0);
 
-    AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for ECB chaining mode failed");
+    AWS_FATAL_ASSERT(BCRYPT_SUCCESS(status) && "BCryptSetProperty for ECB chaining mode failed");
 
     /* Setup KEYWRAP algorithm */
     status = BCryptOpenAlgorithmProvider(&s_aes_keywrap_algorithm_handle, BCRYPT_AES_ALGORITHM, NULL, 0);
     AWS_FATAL_ASSERT(s_aes_ctr_algorithm_handle && "BCryptOpenAlgorithmProvider() failed");
 
-    AWS_FATAL_ASSERT(NT_SUCCESS(status) && "BCryptSetProperty for KeyWrap failed");
+    AWS_FATAL_ASSERT(BCRYPT_SUCCESS(status) && "BCryptSetProperty for KeyWrap failed");
 }
 
 static BCRYPT_KEY_HANDLE s_import_key_blob(
@@ -109,7 +107,7 @@ static BCRYPT_KEY_HANDLE s_import_key_blob(
 
     aws_byte_buf_clean_up_secure(&key_data_buf);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         return NULL;
     }
@@ -217,7 +215,7 @@ static int s_initialize_cipher_materials(
             (ULONG)cipher->cipher.iv.len,
             0);
 
-        if (!NT_SUCCESS(status)) {
+        if (!BCRYPT_SUCCESS(status)) {
             cipher->cipher.state = AWS_SYMMETRIC_CIPHER_ERROR;
             return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }
@@ -347,7 +345,7 @@ static int s_aes_default_encrypt(
         &length_written,
         cipher_impl->cipher_flags);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -464,7 +462,7 @@ static int s_default_aes_decrypt(
         &length_written,
         cipher_impl->cipher_flags);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
@@ -553,7 +551,7 @@ error:
  * it will return what data can be sent to bcrypt now and as side effect will update the cipher state
  * with any leftover data.
  * Note: this function takes a scratch buffer that might be used for to back data returned by the cursor.
- * It is on caller to cleanup that scratch buffer. 
+ * It is on caller to cleanup that scratch buffer.
  */
 static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *cipher_impl,
     struct aws_byte_cursor data,
@@ -565,7 +563,7 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
 
     struct aws_byte_cursor working_cur;
     AWS_ZERO_STRUCT(working_cur);
-    /* If there's overflow, prepend it to the working buffer, then append the data to encrypt */
+    /* If there's overflow, prepend it to the working buffer, then append the data */
     if (cipher_impl->overflow.len) {
         aws_byte_buf_init_copy(scratch, cipher_impl->cipher.allocator, &cipher_impl->overflow);
         aws_byte_buf_reset(&cipher_impl->overflow, true);
@@ -580,7 +578,6 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
 
     if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {
         size_t seek_to = working_cur.len - (working_cur.len % AWS_AES_256_CIPHER_BLOCK_SIZE);
-
         return_cur = aws_byte_cursor_advance(&working_cur, seek_to);
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_cur);
 
@@ -591,10 +588,15 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
     return return_cur;
 }
 
-static int s_aes_gcm_encrypt(
-    struct aws_symmetric_cipher *cipher,
-    struct aws_byte_cursor to_encrypt,
-    struct aws_byte_buf *out) {
+/*
+ * bcrypt requires pbTag and cbTag initialized before starting chained encrypt or decrypt.
+ * why bcrypt needs it initialized early and every other lib can wait until is a mystery.
+ * following function is a helper to init the state correctly for encrypt (and decrypt has a similar function later). 
+ * For encrypt this blows away whatever tag user might have set and ensures that its atleast block size.
+ * Note: gcm supports shorter tags, but bcrypt always generates block sized one 
+ * (caller can decide to make them shorter by removing bytes from the end).
+ */
+static void s_gcm_ensure_tag_setup_for_encrypt(struct aws_symmetric_cipher *cipher) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
     if (cipher_impl->auth_info_ptr->pbTag == NULL) {
@@ -610,9 +612,17 @@ static int s_aes_gcm_encrypt(
         /* in which tag will not be correct */
         cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
     }
+}
 
-    struct aws_byte_buf working_buffer;
-    
+static int s_aes_gcm_encrypt(
+    struct aws_symmetric_cipher *cipher,
+    struct aws_byte_cursor to_encrypt,
+    struct aws_byte_buf *out) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    s_gcm_ensure_tag_setup_for_encrypt(cipher);
+
+    struct aws_byte_buf working_buffer; 
     struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_encrypt, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
@@ -624,22 +634,28 @@ static int s_aes_gcm_encrypt(
     return ret_val;
 }
 
-static int s_aes_gcm_decrypt(
-    struct aws_symmetric_cipher *cipher,
-    struct aws_byte_cursor to_decrypt,
-    struct aws_byte_buf *out) {
+static void s_gcm_ensure_tag_setup_for_decrypt(struct aws_symmetric_cipher *cipher) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
     if (cipher_impl->auth_info_ptr->pbTag == NULL && cipher->tag.buffer != NULL) {
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }
+}
+
+static int s_aes_gcm_decrypt(
+    struct aws_symmetric_cipher *cipher,
+    struct aws_byte_cursor to_decrypt,
+    struct aws_byte_buf *out) {
+    struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    s_gcm_ensure_tag_setup_for_decrypt(cipher);
 
     struct aws_byte_buf working_buffer;
     struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_decrypt, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
-    if (working_cur.len >0) {
+    if (working_cur.len > 0) {
         ret_val = s_default_aes_decrypt(cipher, &working_cur, out);
     }
 
@@ -651,7 +667,10 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     AWS_PRECONDITION(cipher_impl->auth_info_ptr->pbTag);
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
+    s_gcm_ensure_tag_setup_for_encrypt(cipher);
+
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
+
     /* take whatever is remaining, make the final encrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
     int ret_val = s_aes_default_encrypt(cipher, &remaining_cur, out);
@@ -663,8 +682,10 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 
 static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     AWS_PRECONDITION(cipher_impl->auth_info_ptr->pbTag);
-
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
+
+    s_gcm_ensure_tag_setup_for_decrypt(cipher);
+
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
 
     /* take whatever is remaining, make the final decrypt call with the auth chain flag turned off. */
@@ -827,7 +848,7 @@ static int s_aes_ctr_encrypt(
                 &lengthWritten,
                 cipher_impl->cipher_flags);
 
-            if (!NT_SUCCESS(status)) {
+            if (!BCRYPT_SUCCESS(status)) {
                 cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
                 ret_val = aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
                 goto clean_up;
@@ -960,7 +981,7 @@ static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, st
     status = BCryptExportKey(
         key_handle_to_encrypt, cipher_impl->key_handle, BCRYPT_AES_WRAP_KEY_BLOB, NULL, 0, &output_size, 0);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
@@ -982,7 +1003,7 @@ static int s_keywrap_finalize_encryption(struct aws_symmetric_cipher *cipher, st
         &len_written,
         0);
 
-    if (!NT_SUCCESS(status)) {
+    if (!BCRYPT_SUCCESS(status)) {
         cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
         goto clean_up;
     }
@@ -1019,7 +1040,7 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
         0);
     int ret_val = AWS_OP_ERR;
 
-    if (NT_SUCCESS(status) && import_key) {
+    if (BCRYPT_SUCCESS(status) && import_key) {
         ULONG export_size = 0;
 
         struct aws_byte_buf key_data_blob;
@@ -1038,7 +1059,7 @@ static int s_keywrap_finalize_decryption(struct aws_symmetric_cipher *cipher, st
 
         key_data_blob.len += export_size;
 
-        if (NT_SUCCESS(status)) {
+        if (BCRYPT_SUCCESS(status)) {
 
             if (aws_symmetric_cipher_try_ensure_sufficient_buffer_space(out, export_size)) {
                 goto clean_up;

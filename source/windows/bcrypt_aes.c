@@ -635,44 +635,16 @@ static int s_aes_gcm_decrypt(
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }
 
-    if (to_decrypt.len == 0) {
-        return AWS_OP_SUCCESS;
-    }
-
     struct aws_byte_buf working_buffer;
-    AWS_ZERO_STRUCT(working_buffer);
 
-    /* If there's overflow, prepend it to the working buffer, then append the data to encrypt */
-    if (cipher_impl->overflow.len) {
-        struct aws_byte_cursor overflow_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);
-
-        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, overflow_cur);
-        aws_byte_buf_reset(&cipher_impl->overflow, true);
-        aws_byte_buf_append_dynamic(&working_buffer, &to_decrypt);
-    } else {
-        aws_byte_buf_init_copy_from_cursor(&working_buffer, cipher->allocator, to_decrypt);
+    struct aws_byte_cursor working_cur = s_gcm_working_cur_from_data_and_overflow(cipher->allocator,
+        to_encrypt, &cipher_impl->overflow, &working_buffer);
+    
+    int ret_val = AWS_OP_SUCCESS;
+    if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {
+        ret_val = s_default_aes_decrypt(cipher, &working_cur, out);
     }
 
-    int ret_val = AWS_OP_ERR;
-
-    /* whatever is remaining in an incomplete block, copy it to the overflow. If we don't have a full block
-       wait til next time or for the finalize call. */
-    if (working_buffer.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
-        size_t offset = working_buffer.len % AWS_AES_256_CIPHER_BLOCK_SIZE;
-        size_t seek_to = working_buffer.len - offset;
-        struct aws_byte_cursor working_buf_cur = aws_byte_cursor_from_buf(&working_buffer);
-        struct aws_byte_cursor working_slice = aws_byte_cursor_advance(&working_buf_cur, seek_to);
-        /* this is just here to make it obvious. The previous line advanced working_buf_cur to where the
-           new overflow should be. */
-        struct aws_byte_cursor new_overflow_cur = working_buf_cur;
-        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &new_overflow_cur);
-
-        ret_val = s_default_aes_decrypt(cipher, &working_slice, out);
-    } else {
-        struct aws_byte_cursor working_buffer_cur = aws_byte_cursor_from_buf(&working_buffer);
-        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_buffer_cur);
-        ret_val = AWS_OP_SUCCESS;
-    }
     aws_byte_buf_clean_up_secure(&working_buffer);
     return ret_val;
 }

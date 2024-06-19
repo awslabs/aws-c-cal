@@ -558,6 +558,7 @@ error:
 static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *cipher_impl,
     struct aws_byte_cursor data,
     struct aws_byte_buf *scratch) {
+    AWS_PRECONDITION(cipher_impl);
     AWS_PRECONDITION(working_buf);
 
     AWS_ZERO_STRUCT(*scratch);
@@ -577,15 +578,14 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
     struct aws_byte_cursor return_cur;
     AWS_ZERO_STRUCT(return_cur);
 
-    if (scratch->len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
-        size_t seek_to = scratch->len - (scratch->len % AWS_AES_256_CIPHER_BLOCK_SIZE);
+    if (working_cur.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
+        size_t seek_to = working_cur.len - (working_cur.len % AWS_AES_256_CIPHER_BLOCK_SIZE);
 
         return_cur = aws_byte_cursor_advance(&working_cur, seek_to);
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_cur);
 
     } else {
-        struct aws_byte_cursor working_buffer_cur = aws_byte_cursor_from_buf(scratch);
-        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_buffer_cur);
+        aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_cur);
     }
 
     return return_cur;

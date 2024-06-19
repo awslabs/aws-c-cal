@@ -588,7 +588,6 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_cur);
     }
 
-    AWS_LOGF_DEBUG(0, "processing %zu bytes", return_cur.len);
     return return_cur;
 }
 
@@ -617,7 +616,7 @@ static int s_aes_gcm_encrypt(
     struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_encrypt, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
-    if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {
+    if (working_cur.len > 0) {
         ret_val = s_aes_default_encrypt(cipher, &working_cur, out);
     }
 
@@ -637,11 +636,10 @@ static int s_aes_gcm_decrypt(
     }
 
     struct aws_byte_buf working_buffer;
-
     struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_decrypt, &working_buffer);
     
     int ret_val = AWS_OP_SUCCESS;
-    if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {
+    if (working_cur.len >0) {
         ret_val = s_default_aes_decrypt(cipher, &working_cur, out);
     }
 
@@ -650,21 +648,8 @@ static int s_aes_gcm_decrypt(
 }
 
 static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    AWS_PRECONDITION(cipher_impl->auth_info_ptr->pbTag);
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
-
-    if (cipher_impl->auth_info_ptr->pbTag == NULL) {
-        if (cipher->tag.buffer == NULL) {
-            aws_byte_buf_init(&cipher->tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-        } else {
-            aws_byte_buf_secure_zero(&cipher->tag);
-            aws_byte_buf_reserve(&cipher->tag, AWS_AES_256_CIPHER_BLOCK_SIZE);
-        }
-        cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
-        cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.capacity;
-        /* bcrypt will either end up filling full tag buffer or in an error state,
-        /* in which tag will not be correct */
-        cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
-    }
 
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
     /* take whatever is remaining, make the final encrypt call with the auth chain flag turned off. */
@@ -677,13 +662,10 @@ static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, st
 }
 
 static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
+    AWS_PRECONDITION(cipher_impl->auth_info_ptr->pbTag);
+
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
-
-    if (cipher_impl->auth_info_ptr->pbTag == NULL && cipher->tag.buffer != NULL) {
-        cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
-        cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
-    }
 
     /* take whatever is remaining, make the final decrypt call with the auth chain flag turned off. */
     struct aws_byte_cursor remaining_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);

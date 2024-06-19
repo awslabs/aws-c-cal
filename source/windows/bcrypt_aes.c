@@ -552,7 +552,7 @@ static struct aws_byte_cursor s_gcm_working_cur_from_data_and_overflow(struct aw
     AWS_PRECONDITION(overflow);
     AWS_PRECONDITION(working_buf);
 
-    AWS_ZERO_STRUCT(working_buf);
+    AWS_ZERO_STRUCT(*working_buf);
 
     /* If there's overflow, prepend it to the working buffer, then append the data to encrypt */
     if (overflow->len) {

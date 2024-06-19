@@ -578,7 +578,7 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
     struct aws_byte_cursor return_cur;
     AWS_ZERO_STRUCT(return_cur);
 
-    if (working_cur.len > AWS_AES_256_CIPHER_BLOCK_SIZE) {
+    if (working_cur.len >= AWS_AES_256_CIPHER_BLOCK_SIZE) {
         size_t seek_to = working_cur.len - (working_cur.len % AWS_AES_256_CIPHER_BLOCK_SIZE);
 
         return_cur = aws_byte_cursor_advance(&working_cur, seek_to);
@@ -588,6 +588,7 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
         aws_byte_buf_append_dynamic(&cipher_impl->overflow, &working_cur);
     }
 
+    AWS_LOGF_DEBUG(0, "processing %zu bytes", return_cur.len);
     return return_cur;
 }
 

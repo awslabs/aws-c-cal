@@ -559,8 +559,9 @@ static struct aws_byte_cursor s_gcm_get_working_slice(
     AWS_ZERO_STRUCT(working_cur);
     /* If there's overflow, prepend it to the working buffer, then append the data */
     if (cipher_impl->overflow.len) {
-        aws_byte_buf_init(scratch, cipher_impl->cipher.allocator, cipher_impl->overflow.len + data.len);        
-        aws_byte_buf_append(scratch, &cipher_impl->overflow);
+        aws_byte_buf_init(scratch, cipher_impl->cipher.allocator, cipher_impl->overflow.len + data.len);
+        struct aws_byte_cursor overflow_cur = aws_byte_cursor_from_buf(&cipher_impl->overflow);      
+        aws_byte_buf_append(scratch, &overflow_cur);
         aws_byte_buf_reset(&cipher_impl->overflow, true);
         aws_byte_buf_append(scratch, &data);
         working_cur = aws_byte_cursor_from_buf(scratch);

@@ -474,7 +474,7 @@ static int s_aes_cbc_decrypt(
     if (final_cur.len > 0) {
         ret_val = s_default_aes_decrypt(cipher, &final_cur, out);
     }
-    
+
     aws_byte_buf_clean_up_secure(&final_to_decrypt);
 
     return ret_val;

@@ -401,7 +401,11 @@ static int s_aes_cbc_encrypt(
 
     struct aws_byte_buf final_to_encrypt = s_fill_in_overflow(cipher, &to_encrypt);
     struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_encrypt);
-    int ret_val = s_aes_default_encrypt(cipher, &final_cur, out);
+    int ret_val = AWS_OP_SUCCESS;
+    if (final_cur.len > 0) {
+        s_aes_default_encrypt(cipher, &final_cur, out);
+    }
+
     aws_byte_buf_clean_up_secure(&final_to_encrypt);
 
     return ret_val;
@@ -429,9 +433,9 @@ static int s_default_aes_decrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_decrypt->len == 0 && cipher_impl->auth_info_ptr == NULL) {
-        return AWS_OP_SUCCESS;
-    }
+    //if (to_decrypt->len == 0 && cipher_impl->auth_info_ptr == NULL) {
+    //    return AWS_OP_SUCCESS;
+    //}
 
     PUCHAR iv = NULL;
     ULONG iv_size = 0;

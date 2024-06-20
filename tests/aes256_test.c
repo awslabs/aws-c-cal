@@ -1559,7 +1559,7 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
 AWS_TEST_CASE(aes_test_encrypt_empty_input, s_aes_test_encrypt_empty_input)
 
 
-static int s_aes_test_init_corner_cases(struct aws_allocator *allocator, void *ctx) {
+static int s_aes_test_empty_input_gcm_tag(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
     uint8_t iv[] = {0xFB, 0x7B, 0x4A, 0x82, 0x4E, 0x82, 0xDA, 0xA6, 0xC8, 0xBC, 0x12, 0x51};
@@ -1639,4 +1639,86 @@ static int s_aes_test_init_corner_cases(struct aws_allocator *allocator, void *c
     aws_symmetric_cipher_destroy(cipher);
     return AWS_OP_SUCCESS;
 }
-AWS_TEST_CASE(aes_test_init_corner_cases, s_aes_test_init_corner_cases)
+AWS_TEST_CASE(aes_test_empty_input_gcm_tag, s_aes_test_empty_input_gcm_tag)
+
+static int s_aes_test_gcm_tag(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t iv[] = {0xFB, 0x7B, 0x4A, 0x82, 0x4E, 0x82, 0xDA, 0xA6, 0xC8, 0xBC, 0x12, 0x51};
+
+    uint8_t key[] = {0x20, 0x14, 0x2E, 0x89, 0x8C, 0xD2, 0xFD, 0x98, 0x0F, 0xBF, 0x34, 0xDE, 0x6B, 0xC8, 0x5C, 0x14,
+                     0xDA, 0x7D, 0x57, 0xBD, 0x28, 0xF4, 0xAA, 0x5C, 0xF1, 0x72, 0x8A, 0xB6, 0x4E, 0x84, 0x31, 0x42};
+
+    uint8_t aad[] = {0x16, 0x7B, 0x5C, 0x22, 0x61, 0x77, 0x73, 0x3A, 0x78, 0x2D, 0x61, 0x6D, 0x7A, 0x2D, 0x63, 0x65,
+                     0x6B, 0x2D, 0x61, 0x6C, 0x67, 0x5C, 0x22, 0x3A, 0x20, 0x5C, 0x22, 0x41, 0x45, 0x53, 0x2F, 0x47,
+                     0x43, 0x4D, 0x2F, 0x4E, 0x6F, 0x50, 0x61, 0x64, 0x64, 0x69, 0x6E, 0x67, 0x5C, 0x22, 0x7D};
+
+    uint8_t data[] = {0x84, 0x99, 0x89, 0x3E, 0x16, 0xB0, 0xBA, 0x8B, 0x00, 0x7D, 0x54, 0x66, 0x5A, 0x84, 0x99, 0x89, 0x3E};
+
+    uint8_t wrong_tag[] = {
+        0x83, 0xC0, 0xE4, 0x2B, 0xB1, 0x95, 0xE2, 0x62, 0xCB, 0x3B, 0x3A, 0x74, 0xA0, 0xDA, 0xE1, 0xC8};
+
+    uint8_t expected_tag[] = {
+        0x76, 0x4D, 0x21, 0xD6, 0xC0, 0xD8, 0xC7, 0xF9, 0xCA, 0x6D, 0xF2, 0x19, 0xAE, 0x56, 0xDC, 0x1F};
+
+    struct aws_byte_cursor key_cur = aws_byte_cursor_from_array(key, sizeof(key));
+    struct aws_byte_cursor iv_cur = aws_byte_cursor_from_array(iv, sizeof(iv));
+    struct aws_byte_cursor aad_cur = aws_byte_cursor_from_array(aad, sizeof(aad));
+    struct aws_byte_cursor expected_tag_cur = aws_byte_cursor_from_array(expected_tag, sizeof(expected_tag));
+    struct aws_byte_cursor wrong_tag_cur = aws_byte_cursor_from_array(wrong_tag, sizeof(wrong_tag));
+
+    struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key_cur, &iv_cur, &aad_cur);
+
+    struct aws_byte_cursor tag = aws_symmetric_cipher_get_tag(cipher);
+
+    ASSERT_TRUE(tag.len == 0 && tag.ptr == NULL);
+
+    aws_symmetric_cipher_set_tag(cipher, wrong_tag_cur);
+
+    // encrypt
+    struct aws_byte_cursor data_cur = aws_byte_cursor_from_array(data, sizeof(data));
+    struct aws_byte_buf encrypt_buf = {0};
+    aws_byte_buf_init(&encrypt_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE * 2);
+    ASSERT_SUCCESS(aws_symmetric_cipher_encrypt(cipher, data_cur, &encrypt_buf));
+
+    // finalize
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_encryption(cipher, &encrypt_buf));
+
+    struct aws_byte_cursor encryption_tag = aws_symmetric_cipher_get_tag(cipher);
+
+    ASSERT_BIN_ARRAYS_EQUALS(expected_tag, AWS_ARRAY_SIZE(expected_tag), encryption_tag.ptr, encryption_tag.len);
+
+    aws_symmetric_cipher_reset(cipher);
+    tag = aws_symmetric_cipher_get_tag(cipher);
+
+    ASSERT_TRUE(tag.len == 0 && tag.ptr == NULL);
+
+    aws_symmetric_cipher_set_tag(cipher, expected_tag_cur);
+
+    struct aws_byte_buf decrypted_buf = {0};
+    aws_byte_buf_init(&decrypted_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
+    struct aws_byte_cursor ciphertext_cur = aws_byte_cursor_from_buf(&encrypt_buf);
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+
+    aws_symmetric_cipher_reset(cipher);
+    aws_byte_buf_reset(&decrypted_buf, true);
+    aws_symmetric_cipher_set_tag(cipher, wrong_tag_cur);
+    ciphertext_cur = aws_byte_cursor_from_buf(&encrypt_buf);
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
+    ASSERT_ERROR(AWS_ERROR_INVALID_ARGUMENT,
+        aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+
+    aws_symmetric_cipher_reset(cipher);
+    aws_byte_buf_reset(&decrypted_buf, true);
+    ciphertext_cur = aws_byte_cursor_from_buf(&encrypt_buf);
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
+    ASSERT_ERROR(AWS_ERROR_INVALID_ARGUMENT,
+        aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+
+    aws_byte_buf_clean_up(&encrypt_buf);
+    aws_byte_buf_clean_up(&decrypted_buf);
+    aws_symmetric_cipher_destroy(cipher);
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(aes_test_gcm_tag, s_aes_test_gcm_tag)

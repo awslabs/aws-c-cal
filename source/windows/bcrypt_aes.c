@@ -650,6 +650,8 @@ static int s_gcm_ensure_tag_setup_for_decrypt(struct aws_symmetric_cipher *ciphe
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }
+
+    return AWS_OP_SUCCESS;
 }
 
 static int s_aes_gcm_decrypt(

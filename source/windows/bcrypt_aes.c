@@ -395,7 +395,7 @@ static int s_aes_cbc_encrypt(
     struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_encrypt);
     int ret_val = AWS_OP_SUCCESS;
     if (final_cur.len > 0) {
-        s_aes_default_encrypt(cipher, &final_cur, out);
+        ret_val = s_aes_default_encrypt(cipher, &final_cur, out);
     }
 
     aws_byte_buf_clean_up_secure(&final_to_encrypt);

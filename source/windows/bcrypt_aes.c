@@ -667,7 +667,6 @@ static int s_aes_gcm_decrypt(
 
 static int s_aes_gcm_finalize_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
-    AWS_PRECONDITION(cipher_impl->auth_info_ptr->pbTag);
 
     s_gcm_ensure_tag_setup_for_encrypt(cipher);
 

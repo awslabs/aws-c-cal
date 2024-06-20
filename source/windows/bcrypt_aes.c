@@ -537,7 +537,7 @@ error:
 }
 
 /*
- * The buffer management for this mode is a good deal easier because we don't care about padding.
+ * The buffer management for gcm mode is a good deal easier than ctr and cbc modes because we don't care about padding.
  * In chained mode, BCrypt expects the data to be passed in in multiples of block size,
  * followed by a finalize call that turns off chaining and provides any remaining data.
  * This function takes care of managing this state - you give it data to work and cipher state and
@@ -559,9 +559,10 @@ static struct aws_byte_cursor s_gcm_get_working_slice(
     AWS_ZERO_STRUCT(working_cur);
     /* If there's overflow, prepend it to the working buffer, then append the data */
     if (cipher_impl->overflow.len) {
-        aws_byte_buf_init_copy(scratch, cipher_impl->cipher.allocator, &cipher_impl->overflow);
+        aws_byte_buf_init(scratch, cipher_impl->cipher.allocator, cipher_impl->overflow.len + data.len);        
+        aws_byte_buf_append(scratch, &cipher_impl->overflow);
         aws_byte_buf_reset(&cipher_impl->overflow, true);
-        aws_byte_buf_append_dynamic(scratch, &data);
+        aws_byte_buf_append(scratch, &data);
         working_cur = aws_byte_cursor_from_buf(scratch);
     } else {
         working_cur = data;

@@ -335,7 +335,7 @@ static int s_gcm_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cu
 static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
-    if (!cipher->tag.len) {
+    if (cipher->tag.buffer == NULL) {
         aws_byte_buf_init(&cipher->tag, cipher->allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
     }
 

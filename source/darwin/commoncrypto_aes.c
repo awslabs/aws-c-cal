@@ -511,8 +511,6 @@ static int s_initialize_gcm_cipher_materials(
         }
     }
 
-    aws_byte_buf_clean_up_secure(&cc_cipher->cipher_base.tag);
-
     status = CCCryptorCreateWithMode(
         kCCDecrypt,
         kCCModeGCM,
@@ -553,6 +551,7 @@ static int s_gcm_reset(struct aws_symmetric_cipher *cipher) {
     struct cc_aes_cipher *cc_cipher = cipher->impl;
 
     int ret_val = s_reset(cipher);
+    aws_byte_buf_clean_up_secure(&cc_cipher->cipher_base.tag);
 
     if (ret_val == AWS_OP_SUCCESS) {
         ret_val = s_initialize_gcm_cipher_materials(cc_cipher, NULL, NULL, NULL);

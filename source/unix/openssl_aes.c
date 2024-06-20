@@ -324,6 +324,14 @@ error:
     return NULL;
 }
 
+static int s_gcm_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
+    if (cipher->tag.buffer == NULL) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    return s_decrypt(cipher, input, out);
+}
+
 static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct aws_byte_buf *out) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
@@ -424,7 +432,7 @@ static struct aws_symmetric_cipher_vtable s_gcm_vtable = {
     .provider = "OpenSSL Compatible LibCrypto",
     .destroy = s_destroy,
     .reset = s_reset_gcm_cipher_materials,
-    .decrypt = s_decrypt,
+    .decrypt = s_gcm_decrypt,
     .encrypt = s_encrypt,
     .finalize_decryption = s_finalize_gcm_decryption,
     .finalize_encryption = s_finalize_gcm_encryption,

@@ -360,6 +360,14 @@ struct aws_symmetric_cipher *aws_aes_ctr_256_new_impl(
     return &cc_cipher->cipher_base;
 }
 
+static int s_gcm_decrypt(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor input, struct aws_byte_buf *out) {
+    if (cipher->tag.buffer == NULL) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    return s_decrypt(cipher, input, out);
+}
+
 #ifdef SUPPORT_AES_GCM_VIA_SPI
 
 /*
@@ -556,7 +564,7 @@ static int s_gcm_reset(struct aws_symmetric_cipher *cipher) {
 static struct aws_symmetric_cipher_vtable s_aes_gcm_vtable = {
     .finalize_decryption = s_finalize_gcm_decryption,
     .finalize_encryption = s_finalize_gcm_encryption,
-    .decrypt = s_decrypt,
+    .decrypt = s_gcm_decrypt,
     .encrypt = s_encrypt,
     .provider = "CommonCrypto",
     .alg_name = "AES-GCM 256",

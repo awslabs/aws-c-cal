@@ -639,10 +639,14 @@ static int s_aes_gcm_encrypt(
     return ret_val;
 }
 
-static void s_gcm_ensure_tag_setup_for_decrypt(struct aws_symmetric_cipher *cipher) {
+static int s_gcm_ensure_tag_setup_for_decrypt(struct aws_symmetric_cipher *cipher) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (cipher_impl->auth_info_ptr->pbTag == NULL && cipher->tag.buffer != NULL) {
+    if (cipher->tag.buffer == NULL) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    if (cipher_impl->auth_info_ptr->pbTag == NULL) {
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.len;
     }
@@ -654,7 +658,9 @@ static int s_aes_gcm_decrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    s_gcm_ensure_tag_setup_for_decrypt(cipher);
+    if (s_gcm_ensure_tag_setup_for_decrypt(cipher)) {
+        return AWS_OP_ERR;
+    }
 
     struct aws_byte_buf working_buffer;
     struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_decrypt, &working_buffer);
@@ -689,7 +695,9 @@ static int s_aes_gcm_finalize_decryption(struct aws_symmetric_cipher *cipher, st
     AWS_PRECONDITION(cipher_impl->auth_info_ptr->pbTag);
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    s_gcm_ensure_tag_setup_for_decrypt(cipher);
+    if (s_gcm_ensure_tag_setup_for_decrypt(cipher)) {
+        return AWS_OP_ERR;
+    }
 
     cipher_impl->auth_info_ptr->dwFlags &= ~BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG;
 

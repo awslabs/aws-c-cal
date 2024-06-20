@@ -89,16 +89,16 @@ AWS_CAL_API struct aws_symmetric_cipher *aws_aes_ctr_256_new(
  * aws_symmetric_cipher_get_initialization_vector()
  *
  * respectively.
+ * 
+ * If aad is set it will be copied and applied to the cipher.
  *
  * If they are set, that key and iv will be copied internally and used by the cipher.
  *
- * If tag and aad are set they will be copied internally and used by the cipher.
- * decryption_tag would most likely be used for a decrypt operation to detect tampering or corruption.
- * The Tag for the most recent encrypt operation will be available in:
- *
- * aws_symmetric_cipher_get_tag()
- *
- * If aad is set it will be copied and applied to the cipher.
+ * For decryption purposes tag can be provided via aws_symmetric_cipher_set_tag method.
+ * Note: for decrypt operations, tag must be provided before first decrypt is called.
+ * (this is a windows bcrypt limitations, but for consistency sake same limitation is extended to other platforms)
+ * Tag generated during encryption can be retrieved using aws_symmetric_cipher_get_tag method
+ * after finalize is called.
  *
  * Returns NULL on failure. You can check aws_last_error() to get the error code indicating the failure cause.
  */
@@ -192,6 +192,12 @@ AWS_CAL_API int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_ci
  * Resets the cipher state for starting a new encrypt or decrypt operation. Note encrypt/decrypt cannot be mixed on the
  * same cipher without a call to reset in between them. However, this leaves the key, iv etc... materials setup for
  * immediate reuse.
+ * Note: GCM tag is not preserved between operations. If you intend to do encrypt followed directly by decrypt, make sure
+ * to make a copy of tag before reseting the cipher and pass that copy for decryption.
+ * 
+ * Warning: In most cases its a really bad idea to reset a cipher and perform another operation using that cipher. 
+ * Key and IV should not be reused for different operations. Instead of reseting the cipher, destroy the cipher 
+ * and create new one with a new key/iv pair. Use reset at your own risk, and only after careful consideration.
  *
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
  * AWS_OP_ERR;
@@ -210,7 +216,7 @@ AWS_CAL_API int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher);
 AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_tag(const struct aws_symmetric_cipher *cipher);
 
 /**
- * Sets the GMAC tag on the cipher. Does nothing for cipphers that do not support tag.
+ * Sets the GMAC tag on the cipher. Does nothing for ciphers that do not support tag.
  */
 AWS_CAL_API void aws_symmetric_cipher_set_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor tag);
 
@@ -247,7 +253,7 @@ AWS_CAL_API bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher 
 
 /**
  * Retuns the current state of the cipher. Ther state of the cipher can be ready for use, finalized, or has encountered
- * an error. if the cipher is in a finished or eror state, it must be reset before further use.
+ * an error. if the cipher is in a finished or error state, it must be reset before further use.
  */
 AWS_CAL_API enum aws_symmetric_cipher_state aws_symmetric_cipher_get_state(const struct aws_symmetric_cipher *cipher);
 

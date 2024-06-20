@@ -26,8 +26,7 @@ typedef struct aws_symmetric_cipher *(aws_aes_ctr_256_new_fn)(struct aws_allocat
 typedef struct aws_symmetric_cipher *(aws_aes_gcm_256_new_fn)(struct aws_allocator *allocator,
                                                               const struct aws_byte_cursor *key,
                                                               const struct aws_byte_cursor *iv,
-                                                              const struct aws_byte_cursor *aad,
-                                                              const struct aws_byte_cursor *decryption_tag);
+                                                              const struct aws_byte_cursor *aad);
 
 typedef struct aws_symmetric_cipher *(aws_aes_keywrap_256_new_fn)(struct aws_allocator *allocator,
                                                                   const struct aws_byte_cursor *key);

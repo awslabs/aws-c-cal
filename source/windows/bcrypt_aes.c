@@ -307,9 +307,9 @@ static int s_aes_default_encrypt(
     struct aws_byte_buf *out) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
-    if (to_encrypt->len == 0 && cipher_impl->auth_info_ptr == NULL) {
-        return AWS_OP_SUCCESS;
-    }
+    //if (to_encrypt->len == 0 && cipher_impl->auth_info_ptr == NULL) {
+    //    return AWS_OP_SUCCESS;
+    //}
 
     size_t predicted_write_length =
         cipher_impl->cipher_flags & BCRYPT_BLOCK_PADDING

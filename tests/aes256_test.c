@@ -1099,9 +1099,9 @@ static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocat
 
     struct aws_byte_buf decrypted_buf;
     aws_byte_buf_init(&decrypted_buf, allocator, AWS_AES_256_CIPHER_BLOCK_SIZE);
-    struct aws_byte_cursor encryted_cur = aws_byte_cursor_from_buf(&encrypted_buf);
+    struct aws_byte_cursor encrypted_cur = aws_byte_cursor_from_buf(&encrypted_buf);
     ASSERT_INT_EQUALS(AWS_SYMMETRIC_CIPHER_READY, aws_symmetric_cipher_get_state(cipher));
-    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, encryted_cur, &decrypted_buf));
+    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, encrypted_cur, &decrypted_buf));
     ASSERT_INT_EQUALS(AWS_SYMMETRIC_CIPHER_READY, aws_symmetric_cipher_get_state(cipher));
     ASSERT_SUCCESS(aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
     ASSERT_INT_EQUALS(AWS_SYMMETRIC_CIPHER_FINALIZED, aws_symmetric_cipher_get_state(cipher));

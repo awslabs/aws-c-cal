@@ -34,9 +34,9 @@ struct aws_symmetric_cipher {
     /**
      deprecated for use, only for backwards compat.
      Use state to represent current state of cipher.
-     good represented if the ciphter was initialized
+     good represented if the cipher was initialized
      without any errors, ready to process input,
-     and not finialized yet. This corresponds to
+     and not finalized yet. This corresponds to
      the state AWS_SYMMETRIC_CIPHER_READY.
     */
     bool good;

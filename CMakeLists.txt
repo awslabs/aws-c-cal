@@ -13,6 +13,7 @@ set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
 option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
+option(AWS_USE_CRYPTO_SHARED_LIBS "Force c-cal to use shared libs in Findcrypto" OFF)
 
 if (DEFINED CMAKE_PREFIX_PATH)
     file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
@@ -56,9 +57,9 @@ if (WIN32)
             "source/windows/*.c"
         )
         if (AWS_SUPPORT_WIN7)
-            set(PLATFORM_LIBS BCrypt)
+            set(PLATFORM_LIBS bcrypt)
         else()
-            set(PLATFORM_LIBS NCrypt)
+            set(PLATFORM_LIBS ncrypt)
         endif()
     endif()
 
@@ -79,7 +80,13 @@ elseif (APPLE)
            message(FATAL_ERROR "Security Framework not found")
         endif ()
 
-        list(APPEND PLATFORM_LIBS "-framework Security")
+        
+        find_library(COREFOUNDATION_LIB CoreFoundation)
+        if(NOT COREFOUNDATION_LIB)
+           message(FATAL_ERROR "CoreFoundation Framework not found")
+        endif()
+
+        list(APPEND PLATFORM_LIBS "-framework Security -framework CoreFoundation")
     endif()
 else ()
     if (NOT BYO_CRYPTO)

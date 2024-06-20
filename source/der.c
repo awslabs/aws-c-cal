@@ -70,10 +70,10 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
     uint8_t len_bytes = 0;
     uint32_t len = 0;
     if (!aws_byte_cursor_read_u8(cur, &tag)) {
-        return AWS_OP_ERR;
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
     if (!aws_byte_cursor_read_u8(cur, &len_bytes)) {
-        return AWS_OP_ERR;
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
     /* if the sign bit is set, then the first byte is the number of bytes required to store
      * the length */

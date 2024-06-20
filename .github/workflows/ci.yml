@@ -6,7 +6,7 @@ on:
       - 'main'
 
 env:
-  BUILDER_VERSION: v0.9.49
+  BUILDER_VERSION: v0.9.57
   BUILDER_SOURCE: releases
   BUILDER_HOST: https://d19elf31gohf1l.cloudfront.net
   PACKAGE_NAME: aws-c-cal
@@ -93,7 +93,7 @@ jobs:
         ./linux-container-ci.sh ${{ env.BUILDER_VERSION }} aws-crt-${{env.LINUX_BASE_IMAGE }} build -p ${{ env.PACKAGE_NAME }} --variant=openssl --cmake-extra=-DUSE_OPENSSL=ON
 
   #ubuntu 22.04 defaults to openssl3 version by default when installing
-  #libssl-dev package. Hence we can rely on OS version to pull in openssl3.     
+  #libssl-dev package. Hence we can rely on OS version to pull in openssl3.
   linux-openssl3-static:
     runs-on: ubuntu-22.04 # latest
     steps:
@@ -177,16 +177,33 @@ jobs:
         chmod a+x builder
         ./builder build -p ${{ env.PACKAGE_NAME }} --cmake-extra=-DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
 
-  openbsd:
-    runs-on: macos-12 # macos's virtual machine is faster than ubuntu's
+  freebsd:
+    runs-on: ubuntu-22.04 # latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build ${{ env.PACKAGE_NAME }} + consumers
-        uses: cross-platform-actions/action@v0.10.0
+        uses: cross-platform-actions/action@v0.23.0
+        with:
+          operating_system: freebsd
+          architecture: x86-64
+          version: '14.0'
+          shell: bash
+          run: |
+            sudo pkg install -y python3 py39-urllib3
+            python3 -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz', 'builder')"
+            chmod a+x builder
+            ./builder build -p ${{ env.PACKAGE_NAME }}
+
+  openbsd:
+    runs-on: ubuntu-22.04 # latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ env.PACKAGE_NAME }} + consumers
+        uses: cross-platform-actions/action@v0.23.0
         with:
           operating_system: openbsd
           architecture: x86-64
-          version: '7.2'
+          version: '7.4'
           shell: bash
           run: |
             sudo pkg_add py3-urllib3

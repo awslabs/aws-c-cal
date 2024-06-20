@@ -1630,9 +1630,7 @@ static int s_aes_test_empty_input_gcm_tag(struct aws_allocator *allocator, void 
     aws_symmetric_cipher_reset(cipher);
     aws_byte_buf_reset(&decrypted_buf, true);
     ciphertext_cur = aws_byte_cursor_from_buf(&encrypt_buf);
-    ASSERT_SUCCESS(aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
-    ASSERT_ERROR(AWS_ERROR_INVALID_ARGUMENT,
-        aws_symmetric_cipher_finalize_decryption(cipher, &decrypted_buf));
+    ASSERT_ERROR(AWS_ERROR_INVALID_ARGUMENT, aws_symmetric_cipher_decrypt(cipher, ciphertext_cur, &decrypted_buf));
 
     aws_byte_buf_clean_up(&encrypt_buf);
     aws_byte_buf_clean_up(&decrypted_buf);

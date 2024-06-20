@@ -470,7 +470,11 @@ static int s_aes_cbc_decrypt(
     struct aws_byte_buf *out) {
     struct aws_byte_buf final_to_decrypt = s_fill_in_overflow(cipher, &to_decrypt);
     struct aws_byte_cursor final_cur = aws_byte_cursor_from_buf(&final_to_decrypt);
-    int ret_val = s_default_aes_decrypt(cipher, &final_cur, out);
+    int ret_val = AWS_OP_SUCCESS;
+    if (final_cur.len > 0) {
+        ret_val = s_default_aes_decrypt(cipher, &final_cur, out);
+    }
+    
     aws_byte_buf_clean_up_secure(&final_to_decrypt);
 
     return ret_val;

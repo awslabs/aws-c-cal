@@ -586,7 +586,7 @@ static struct aws_byte_cursor s_gcm_get_working_slice(
  * bcrypt requires pbTag and cbTag initialized before starting chained encrypt or decrypt.
  * why bcrypt needs it initialized early and every other lib can wait until is a mystery.
  * following function is a helper to init the state correctly for encrypt (and decrypt has a similar function later).
- * For encrypt this blows away whatever tag user might have set and ensures that its atleast block size.
+ * For encrypt this blows away whatever tag user might have set and ensures that it's at least block size.
  * Note: gcm supports shorter tags, but bcrypt always generates block sized one
  * (caller can decide to make them shorter by removing bytes from the end).
  */

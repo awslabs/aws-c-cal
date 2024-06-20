@@ -192,7 +192,7 @@ AWS_CAL_API int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_ci
  * Note: GCM tag is not preserved between operations. If you intend to do encrypt followed directly by decrypt, make
  * sure to make a copy of tag before reseting the cipher and pass that copy for decryption.
  *
- * Warning: In most cases its a really bad idea to reset a cipher and perform another operation using that cipher.
+ * Warning: In most cases it's a really bad idea to reset a cipher and perform another operation using that cipher.
  * Key and IV should not be reused for different operations. Instead of reseting the cipher, destroy the cipher
  * and create new one with a new key/iv pair. Use reset at your own risk, and only after careful consideration.
  *

@@ -277,8 +277,7 @@ static int s_reset_cbc_cipher(struct aws_symmetric_cipher *cipher) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
     s_clear_reusable_components(cipher);
-    return s_initialize_cipher_materials(
-        cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, false, false);
+    return s_initialize_cipher_materials(cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, false, false);
 }
 
 static int s_reset_ctr_cipher(struct aws_symmetric_cipher *cipher) {
@@ -289,16 +288,14 @@ static int s_reset_ctr_cipher(struct aws_symmetric_cipher *cipher) {
     /* reset the working iv back to the original IV. We do this because
        we're manually maintaining the counter. */
     aws_byte_buf_append_dynamic(&cipher_impl->working_iv, &iv_cur);
-    return s_initialize_cipher_materials(
-        cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, true, false);
+    return s_initialize_cipher_materials(cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE, true, false);
 }
 
 static int s_reset_gcm_cipher(struct aws_symmetric_cipher *cipher) {
     struct aes_bcrypt_cipher *cipher_impl = cipher->impl;
 
     s_clear_reusable_components(cipher);
-    return s_initialize_cipher_materials(
-        cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true);
+    return s_initialize_cipher_materials(cipher_impl, NULL, NULL, NULL, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true);
 }
 
 static int s_aes_default_encrypt(
@@ -539,17 +536,18 @@ error:
     return NULL;
 }
 
-/* 
+/*
  * The buffer management for this mode is a good deal easier because we don't care about padding.
  * In chained mode, BCrypt expects the data to be passed in in multiples of block size,
  * followed by a finalize call that turns off chaining and provides any remaining data.
- * This function takes care of managing this state - you give it data to work and cipher state and 
+ * This function takes care of managing this state - you give it data to work and cipher state and
  * it will return what data can be sent to bcrypt now and as side effect will update the cipher state
  * with any leftover data.
  * Note: this function takes a scratch buffer that might be used for to back data returned by the cursor.
  * It is on caller to cleanup that scratch buffer.
  */
-static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *cipher_impl,
+static struct aws_byte_cursor s_gcm_get_working_slice(
+    struct aes_bcrypt_cipher *cipher_impl,
     struct aws_byte_cursor data,
     struct aws_byte_buf *scratch) {
     AWS_PRECONDITION(cipher_impl);
@@ -587,9 +585,9 @@ static struct aws_byte_cursor s_gcm_get_working_slice(struct aes_bcrypt_cipher *
 /*
  * bcrypt requires pbTag and cbTag initialized before starting chained encrypt or decrypt.
  * why bcrypt needs it initialized early and every other lib can wait until is a mystery.
- * following function is a helper to init the state correctly for encrypt (and decrypt has a similar function later). 
+ * following function is a helper to init the state correctly for encrypt (and decrypt has a similar function later).
  * For encrypt this blows away whatever tag user might have set and ensures that its atleast block size.
- * Note: gcm supports shorter tags, but bcrypt always generates block sized one 
+ * Note: gcm supports shorter tags, but bcrypt always generates block sized one
  * (caller can decide to make them shorter by removing bytes from the end).
  */
 static void s_gcm_ensure_tag_setup_for_encrypt(struct aws_symmetric_cipher *cipher) {
@@ -618,9 +616,9 @@ static int s_aes_gcm_encrypt(
 
     s_gcm_ensure_tag_setup_for_encrypt(cipher);
 
-    struct aws_byte_buf working_buffer; 
+    struct aws_byte_buf working_buffer;
     struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_encrypt, &working_buffer);
-    
+
     int ret_val = AWS_OP_SUCCESS;
     if (working_cur.len > 0) {
         ret_val = s_aes_default_encrypt(cipher, &working_cur, out);
@@ -657,7 +655,7 @@ static int s_aes_gcm_decrypt(
 
     struct aws_byte_buf working_buffer;
     struct aws_byte_cursor working_cur = s_gcm_get_working_slice(cipher_impl, to_decrypt, &working_buffer);
-    
+
     int ret_val = AWS_OP_SUCCESS;
     if (working_cur.len > 0) {
         ret_val = s_default_aes_decrypt(cipher, &working_cur, out);
@@ -729,8 +727,8 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     cipher->cipher.vtable = &s_aes_gcm_vtable;
 
     /* GCM does the counting under the hood, so we let it handle the final 4 bytes of the IV. */
-    if (s_initialize_cipher_materials(
-            cipher, key, iv, aad, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true) != AWS_OP_SUCCESS) {
+    if (s_initialize_cipher_materials(cipher, key, iv, aad, AWS_AES_256_CIPHER_BLOCK_SIZE - 4, false, true) !=
+        AWS_OP_SUCCESS) {
         goto error;
     }
 

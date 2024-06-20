@@ -343,10 +343,7 @@ static int s_finalize_gcm_encryption(struct aws_symmetric_cipher *cipher, struct
 
     if (ret_val == AWS_OP_SUCCESS) {
         if (!EVP_CIPHER_CTX_ctrl(
-                openssl_cipher->encryptor_ctx,
-                EVP_CTRL_GCM_GET_TAG,
-                (int)cipher->tag.capacity,
-                cipher->tag.buffer)) {
+                openssl_cipher->encryptor_ctx, EVP_CTRL_GCM_GET_TAG, (int)cipher->tag.capacity, cipher->tag.buffer)) {
             cipher->state = AWS_SYMMETRIC_CIPHER_ERROR;
             return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         }

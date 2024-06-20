@@ -87,7 +87,7 @@ AWS_CAL_API struct aws_symmetric_cipher *aws_aes_ctr_256_new(
  * aws_symmetric_cipher_get_initialization_vector()
  *
  * respectively.
- * 
+ *
  * If aad is set it will be copied and applied to the cipher.
  *
  * If they are set, that key and iv will be copied internally and used by the cipher.
@@ -190,11 +190,11 @@ AWS_CAL_API int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_ci
  * Resets the cipher state for starting a new encrypt or decrypt operation. Note encrypt/decrypt cannot be mixed on the
  * same cipher without a call to reset in between them. However, this leaves the key, iv etc... materials setup for
  * immediate reuse.
- * Note: GCM tag is not preserved between operations. If you intend to do encrypt followed directly by decrypt, make sure
- * to make a copy of tag before reseting the cipher and pass that copy for decryption.
- * 
- * Warning: In most cases its a really bad idea to reset a cipher and perform another operation using that cipher. 
- * Key and IV should not be reused for different operations. Instead of reseting the cipher, destroy the cipher 
+ * Note: GCM tag is not preserved between operations. If you intend to do encrypt followed directly by decrypt, make
+ * sure to make a copy of tag before reseting the cipher and pass that copy for decryption.
+ *
+ * Warning: In most cases its a really bad idea to reset a cipher and perform another operation using that cipher.
+ * Key and IV should not be reused for different operations. Instead of reseting the cipher, destroy the cipher
  * and create new one with a new key/iv pair. Use reset at your own risk, and only after careful consideration.
  *
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns

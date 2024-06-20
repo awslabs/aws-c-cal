@@ -551,7 +551,7 @@ static struct aws_byte_cursor s_gcm_get_working_slice(
     struct aws_byte_cursor data,
     struct aws_byte_buf *scratch) {
     AWS_PRECONDITION(cipher_impl);
-    AWS_PRECONDITION(working_buf);
+    AWS_PRECONDITION(scratch);
 
     AWS_ZERO_STRUCT(*scratch);
 

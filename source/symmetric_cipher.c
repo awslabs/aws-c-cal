@@ -22,8 +22,7 @@ extern struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag);
+    const struct aws_byte_cursor *aad);
 
 extern struct aws_symmetric_cipher *aws_aes_keywrap_256_new_impl(
     struct aws_allocator *allocator,
@@ -54,13 +53,11 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag) {
+    const struct aws_byte_cursor *aad) {
     (void)allocator;
     (void)key;
     (void)iv;
     (void)aad;
-    (void)decryption_tag;
     abort();
 }
 
@@ -127,13 +124,12 @@ struct aws_symmetric_cipher *aws_aes_gcm_256_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *key,
     const struct aws_byte_cursor *iv,
-    const struct aws_byte_cursor *aad,
-    const struct aws_byte_cursor *decryption_tag) {
+    const struct aws_byte_cursor *aad) {
     if (s_validate_key_materials(key, AWS_AES_256_KEY_BYTE_LEN, iv, AWS_AES_256_CIPHER_BLOCK_SIZE - sizeof(uint32_t)) !=
         AWS_OP_SUCCESS) {
         return NULL;
     }
-    return s_aes_gcm_new_fn(allocator, key, iv, aad, decryption_tag);
+    return s_aes_gcm_new_fn(allocator, key, iv, aad);
 }
 
 struct aws_symmetric_cipher *aws_aes_keywrap_256_new(
@@ -221,6 +217,12 @@ int aws_symmetric_cipher_reset(struct aws_symmetric_cipher *cipher) {
 
 struct aws_byte_cursor aws_symmetric_cipher_get_tag(const struct aws_symmetric_cipher *cipher) {
     return aws_byte_cursor_from_buf(&cipher->tag);
+}
+
+void aws_symmetric_cipher_set_tag(struct aws_symmetric_cipher *cipher, struct aws_byte_cursor tag) {
+    AWS_PRECONDITION(aws_byte_cursor_is_valid(&tag));
+    aws_byte_buf_clean_up_secure(&cipher->tag);
+    aws_byte_buf_init_copy_from_cursor(&cipher->tag, cipher->allocator, tag);
 }
 
 struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vector(const struct aws_symmetric_cipher *cipher) {

@@ -15,8 +15,7 @@
         "linux": {
             "upstream": [
                 {
-                    "name": "aws-lc",
-                    "revision": "v1.29.0", "_comment": "avoid commit a0d636e7 which breaks manylinux1"
+                    "name": "aws-lc"
                 }
             ]
         },

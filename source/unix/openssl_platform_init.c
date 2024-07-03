@@ -22,10 +22,6 @@
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/crypto.h>
 
-#if defined(OPENSSL_IS_AWSLC)
-#    include <openssl/service_indicator.h>
-#endif
-
 static struct openssl_hmac_ctx_table hmac_ctx_table;
 static struct openssl_evp_md_ctx_table evp_md_ctx_table;
 
@@ -559,47 +555,6 @@ static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
     return AWS_LIBCRYPTO_NONE;
 }
 
-/* Validate at runtime that we're linked against the same libcrypto we compiled against. */
-static void s_validate_libcrypto_linkage(void) {
-    /* NOTE: the choice of stack buffer size is somewhat arbitrary. it's
-     * possible, but unlikely, that libcrypto version strings may exceed this in
-     * the future. we guard against buffer overflow by limiting write size in
-     * snprintf with the size of the buffer itself. if libcrypto version strings
-     * do eventually exceed the chosen size, this runtime check will fail and
-     * will need to be addressed by increasing buffer size.*/
-    char expected_version[64] = {0};
-#if defined(OPENSSL_IS_AWSLC)
-    /* get FIPS mode at runtime becuase headers don't give any indication of
-     * AWS-LC's FIPSness at aws-c-cal compile time. version number can still be
-     * captured at preprocess/compile time from AWSLC_VERSION_NUMBER_STRING.*/
-    const char *mode = FIPS_mode() ? "AWS-LC FIPS" : "AWS-LC";
-    snprintf(expected_version, sizeof(expected_version), "%s %s", mode, AWSLC_VERSION_NUMBER_STRING);
-#elif defined(OPENSSL_IS_BORINGSSL)
-    snprintf(expected_version, sizeof(expected_version), "BoringSSL");
-#elif defined(OPENSSL_IS_OPENSSL)
-    snprintf(expected_version, sizeof(expected_version), OPENSSL_VERSION_TEXT);
-#elif !defined(BYO_CRYPTO)
-#    error Unsupported libcrypto!
-#endif
-    const char *runtime_version = SSLeay_version(SSLEAY_VERSION);
-    AWS_LOGF_DEBUG(
-        AWS_LS_CAL_LIBCRYPTO_RESOLVE,
-        "Compiled with libcrypto %s, linked to libcrypto %s",
-        expected_version,
-        runtime_version);
-#if defined(OPENSSL_IS_OPENSSL)
-    /* Validate that the string "AWS-LC" doesn't appear in OpenSSL version str. */
-    AWS_FATAL_ASSERT(strstr("AWS-LC", expected_version) == NULL);
-    AWS_FATAL_ASSERT(strstr("AWS-LC", runtime_version) == NULL);
-    /* Validate both expected and runtime versions begin with OpenSSL's version str prefix. */
-    const char *openssl_prefix = "OpenSSL ";
-    AWS_FATAL_ASSERT(strncmp(openssl_prefix, expected_version, strlen(openssl_prefix)) == 0);
-    AWS_FATAL_ASSERT(strncmp(openssl_prefix, runtime_version, strlen(openssl_prefix)) == 0);
-#else
-    AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
-#endif
-}
-
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
@@ -627,8 +582,6 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
             "libcrypto symbols were not statically linked, searching for shared libraries");
         result = s_resolve_libcrypto_lib();
     }
-
-    s_validate_libcrypto_linkage();
 
     return result;
 }

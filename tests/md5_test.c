@@ -5,7 +5,7 @@
 #include <aws/cal/hash.h>
 #include <aws/testing/aws_test_harness.h>
 
-#include <test_case_helper.h>
+#include "test_case_helper.h"
 
 /*
  * these are the rfc1321 test vectors
@@ -241,7 +241,7 @@ AWS_TEST_CASE(md5_rfc1321_test_case_7_truncated, s_md5_rfc1321_test_case_7_trunc
 static int s_md5_verify_known_collision_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     uint8_t message_1[] = {
         0xd1, 0x31, 0xdd, 0x02, 0xc5, 0xe6, 0xee, 0xc4, 0x69, 0x3d, 0x9a, 0x06, 0x98, 0xaf, 0xf9, 0x5c,
@@ -312,7 +312,7 @@ AWS_TEST_CASE(md5_verify_known_collision, s_md5_verify_known_collision_fn)
 static int s_md5_invalid_buffer_size_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
                                                               "67890123456789012345678901234567890");
@@ -333,7 +333,7 @@ AWS_TEST_CASE(md5_invalid_buffer_size, s_md5_invalid_buffer_size_fn)
 static int s_md5_test_invalid_state_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
                                                               "67890123456789012345678901234567890");
@@ -361,7 +361,7 @@ AWS_TEST_CASE(md5_test_invalid_state, s_md5_test_invalid_state_fn)
 static int s_md5_test_extra_buffer_space_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
                                                               "67890123456789012345678901234567890");

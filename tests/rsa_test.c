@@ -10,6 +10,8 @@
 #include <aws/common/encoding.h>
 #include <aws/testing/aws_test_harness.h>
 
+#include "test_case_helper.h"
+
 /*
  * TODO: Need better test vectors. NIST ones are a pain to use.
  * For now using manually generated vectors and relying on round tripping.
@@ -123,7 +125,7 @@ static int s_rsa_encryption_roundtrip_from_user(
 static int s_rsa_encryption_roundtrip_pkcs1_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     ASSERT_SUCCESS(s_rsa_encryption_roundtrip_from_user(allocator, AWS_CAL_RSA_ENCRYPTION_PKCS1_5));
 
@@ -136,7 +138,7 @@ AWS_TEST_CASE(rsa_encryption_roundtrip_pkcs1_from_user, s_rsa_encryption_roundtr
 static int s_rsa_encryption_roundtrip_oaep_sha256_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     ASSERT_SUCCESS(s_rsa_encryption_roundtrip_from_user(allocator, AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256));
 
@@ -149,7 +151,7 @@ AWS_TEST_CASE(rsa_encryption_roundtrip_oaep_sha256_from_user, s_rsa_encryption_r
 static int s_rsa_encryption_roundtrip_oaep_sha512_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     ASSERT_SUCCESS(s_rsa_encryption_roundtrip_from_user(allocator, AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512));
 
@@ -211,7 +213,7 @@ static int s_rsa_verify_signing_pkcs1_sha256(struct aws_allocator *allocator, vo
     (void)ctx;
     struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf public_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -249,7 +251,7 @@ static int s_rsa_verify_signing_pss_sha256(struct aws_allocator *allocator, void
     (void)ctx;
     struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf public_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -286,7 +288,7 @@ AWS_TEST_CASE(rsa_verify_signing_pss_sha256, s_rsa_verify_signing_pss_sha256);
 static int s_rsa_decrypt_pkcs1(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf private_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -324,7 +326,7 @@ AWS_TEST_CASE(rsa_decrypt_pkcs1, s_rsa_decrypt_pkcs1);
 static int s_rsa_decrypt_oaep256(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf private_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -362,7 +364,7 @@ AWS_TEST_CASE(rsa_decrypt_oaep256, s_rsa_decrypt_oaep256);
 static int s_rsa_decrypt_oaep512(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf private_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -481,7 +483,7 @@ static int s_rsa_signing_roundtrip_from_user(
 static int s_rsa_signing_roundtrip_pkcs1_sha256_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     ASSERT_SUCCESS(
         s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256, TEST_RSA_SIGNATURE_PKCS1));
@@ -495,7 +497,7 @@ AWS_TEST_CASE(rsa_signing_roundtrip_pkcs1_sha256_from_user, s_rsa_signing_roundt
 static int s_rsa_signing_roundtrip_pss_sha256_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
 #if defined(AWS_OS_MACOS)
     if (__builtin_available(macOS 10.12, *)) {
@@ -518,7 +520,7 @@ AWS_TEST_CASE(rsa_signing_roundtrip_pss_sha256_from_user, s_rsa_signing_roundtri
 static int s_rsa_getters(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf private_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -615,7 +617,7 @@ static int s_rsa_private_pkcs1_der_parsing(struct aws_allocator *allocator, void
                              0x6e, 0xc1, 0x19, 0x6a, 0x82, 0xaf, 0xdc, 0xbd, 0x9c, 0x1b, 0x7d, 0x2a, 0xec,
                              0x8d, 0xd5, 0x59, 0x4d, 0x6f, 0x38, 0x89, 0xa7, 0xe5, 0x1c, 0x29, 0x57};
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf private_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -665,7 +667,7 @@ static int s_rsa_public_pkcs1_der_parsing(struct aws_allocator *allocator, void 
 
     static uint8_t e[] = {0x01, 0x00, 0x01};
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf public_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
@@ -694,7 +696,7 @@ static int s_rsa_signing_mismatch_pkcs1_sha256(struct aws_allocator *allocator, 
     (void)ctx;
     struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_buf public_key_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(

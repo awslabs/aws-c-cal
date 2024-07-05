@@ -6,6 +6,8 @@
 
 #include <aws/testing/aws_test_harness.h>
 
+#include "test_case_helper.h"
+
 static int s_check_single_block_cbc(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor key,

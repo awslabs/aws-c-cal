@@ -8,6 +8,8 @@
 
 #include <aws/testing/aws_test_harness.h>
 
+#include "test_case_helper.h"
+
 /* clang-format off */
 /* note that this int is unsigned, with the high bit set, so needs to be encoded specially */
 static uint8_t s_bigint[] = {

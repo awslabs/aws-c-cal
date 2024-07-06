@@ -19,6 +19,8 @@ static int s_test_key_derivation(
     struct aws_byte_cursor expected_pub_x,
     struct aws_byte_cursor expected_pub_y) {
 
+    aws_cal_library_test_init(allocator);
+
     struct aws_ecc_key_pair *private_key_pair =
         aws_ecc_key_pair_new_from_private_key(allocator, curve_name, &private_key);
 
@@ -43,6 +45,7 @@ static int s_test_key_derivation(
 complete:
     aws_ecc_key_pair_release(private_key_pair);
 
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 
@@ -919,6 +922,7 @@ done:
 
 static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     struct aws_ecc_key_pair *key = aws_ecc_key_new_from_hex_coordinates(
         allocator, AWS_CAL_ECDSA_P256, aws_byte_cursor_from_string(s_pub_x), aws_byte_cursor_from_string(s_pub_y));
@@ -928,6 +932,7 @@ static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator 
 
     aws_ecc_key_pair_release(key);
 
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(ecdsa_p256_test_small_coordinate_verification, s_ecdsa_p256_test_small_coordinate_verification);

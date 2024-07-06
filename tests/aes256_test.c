@@ -14,6 +14,8 @@ static int s_check_single_block_cbc(
     const struct aws_byte_cursor iv,
     const struct aws_byte_cursor data,
     const struct aws_byte_cursor expected) {
+
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_cbc_256_new(allocator, &key, &iv);
     ASSERT_NOT_NULL(cipher);
 
@@ -48,6 +50,7 @@ static int s_check_single_block_cbc(
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 
@@ -124,7 +127,9 @@ static int s_check_multiple_block_cbc(
     const struct aws_byte_cursor iv,
     const struct aws_byte_cursor data,
     const struct aws_byte_cursor expected) {
+
     (void)expected;
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_cbc_256_new(allocator, &key, &iv);
     ASSERT_NOT_NULL(cipher);
 
@@ -161,6 +166,7 @@ static int s_check_multiple_block_cbc(
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 
@@ -239,6 +245,7 @@ static const char *TEST_ENCRYPTION_STRING =
 
 static int s_aes_cbc_test_with_generated_key_iv_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_cbc_256_new(allocator, NULL, NULL);
     ASSERT_NOT_NULL(cipher);
 
@@ -267,12 +274,14 @@ static int s_aes_cbc_test_with_generated_key_iv_fn(struct aws_allocator *allocat
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_cbc_test_with_generated_key_iv, s_aes_cbc_test_with_generated_key_iv_fn)
 
 static int s_aes_cbc_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t iv_too_small[AWS_AES_256_CIPHER_BLOCK_SIZE - 1] = {0};
     uint8_t iv_too_large[AWS_AES_256_CIPHER_BLOCK_SIZE + 1] = {0};
@@ -303,6 +312,7 @@ static int s_aes_cbc_validate_materials_fails_fn(struct aws_allocator *allocator
     ASSERT_NULL(aws_aes_cbc_256_new(allocator, &key, &iv));
     ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
 
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_cbc_validate_materials_fails, s_aes_cbc_validate_materials_fails_fn)
@@ -313,6 +323,8 @@ static int s_check_single_block_ctr(
     const struct aws_byte_cursor iv,
     const struct aws_byte_cursor data,
     const struct aws_byte_cursor expected) {
+
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_ctr_256_new(allocator, &key, &iv);
     ASSERT_NOT_NULL(cipher);
 
@@ -338,6 +350,7 @@ static int s_check_single_block_ctr(
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 
@@ -347,6 +360,8 @@ static int s_check_multi_block_ctr(
     const struct aws_byte_cursor iv,
     const struct aws_byte_cursor data,
     const struct aws_byte_cursor expected) {
+
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_ctr_256_new(allocator, &key, &iv);
     ASSERT_NOT_NULL(cipher);
 
@@ -381,6 +396,7 @@ static int s_check_multi_block_ctr(
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 
@@ -488,6 +504,7 @@ AWS_TEST_CASE(aes_ctr_RFC3686_Case_9, s_ctr_RFC3686_Case_9_fn)
 
 static int s_aes_ctr_test_with_generated_key_iv_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_ctr_256_new(allocator, NULL, NULL);
     ASSERT_NOT_NULL(cipher);
 
@@ -514,12 +531,14 @@ static int s_aes_ctr_test_with_generated_key_iv_fn(struct aws_allocator *allocat
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_ctr_test_with_generated_key_iv, s_aes_ctr_test_with_generated_key_iv_fn)
 
 static int s_aes_ctr_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t iv_too_small[AWS_AES_256_CIPHER_BLOCK_SIZE - 1] = {0};
     uint8_t iv_too_large[AWS_AES_256_CIPHER_BLOCK_SIZE + 1] = {0};
@@ -550,6 +569,7 @@ static int s_aes_ctr_validate_materials_fails_fn(struct aws_allocator *allocator
     ASSERT_NULL(aws_aes_ctr_256_new(allocator, &key, &iv));
     ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
 
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_ctr_validate_materials_fails, s_aes_ctr_validate_materials_fails_fn)
@@ -562,6 +582,8 @@ static int s_check_multi_block_gcm(
     const struct aws_byte_cursor expected,
     const struct aws_byte_cursor tag,
     const struct aws_byte_cursor *aad) {
+
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, &key, &iv, aad);
     ASSERT_NOT_NULL(cipher);
 
@@ -603,6 +625,7 @@ static int s_check_multi_block_gcm(
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 
@@ -1082,6 +1105,7 @@ AWS_TEST_CASE(gcm_256_KAT_3, s_gcm_256_KAT_3_fn)
 
 static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
     struct aws_symmetric_cipher *cipher = aws_aes_gcm_256_new(allocator, NULL, NULL, NULL);
     ASSERT_NOT_NULL(cipher);
 
@@ -1114,12 +1138,14 @@ static int s_aes_gcm_test_with_generated_key_iv_fn(struct aws_allocator *allocat
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_byte_buf_clean_up(&encrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(gcm_test_with_generated_key_iv, s_aes_gcm_test_with_generated_key_iv_fn)
 
 static int s_aes_gcm_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t iv_too_small[AWS_AES_256_CIPHER_BLOCK_SIZE - 5] = {0};
     uint8_t iv_too_large[AWS_AES_256_CIPHER_BLOCK_SIZE - 3] = {0};
@@ -1150,12 +1176,14 @@ static int s_aes_gcm_validate_materials_fails_fn(struct aws_allocator *allocator
     ASSERT_NULL(aws_aes_gcm_256_new(allocator, &key, &iv, NULL));
     ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
 
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_gcm_validate_materials_fails, s_aes_gcm_validate_materials_fails_fn)
 
 static int s_test_aes_keywrap_RFC3394_256BitKey256CekTestVector(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t key[] = {
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -1200,6 +1228,7 @@ static int s_test_aes_keywrap_RFC3394_256BitKey256CekTestVector(struct aws_alloc
     aws_symmetric_cipher_destroy(cipher);
     aws_byte_buf_clean_up(&output_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -1208,6 +1237,7 @@ AWS_TEST_CASE(aes_keywrap_RFC3394_256BitKey256CekTestVector, s_test_aes_keywrap_
 
 static int s_test_Rfc3394_256BitKey_TestIntegrityCheckFailed(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
                        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
@@ -1253,6 +1283,7 @@ static int s_test_Rfc3394_256BitKey_TestIntegrityCheckFailed(struct aws_allocato
     aws_symmetric_cipher_destroy(cipher);
     aws_byte_buf_clean_up(&output_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -1263,6 +1294,7 @@ AWS_TEST_CASE(
 
 static int s_test_RFC3394_256BitKeyTestBadPayload(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
                        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
@@ -1305,6 +1337,7 @@ static int s_test_RFC3394_256BitKeyTestBadPayload(struct aws_allocator *allocato
     aws_symmetric_cipher_destroy(cipher);
     aws_byte_buf_clean_up(&output_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -1313,6 +1346,7 @@ AWS_TEST_CASE(aes_keywrap_RFC3394_256BitKeyTestBadPayload, s_test_RFC3394_256Bit
 
 static int s_test_RFC3394_256BitKey128BitCekTestVector(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
     size_t input_length = sizeof(input);
@@ -1352,6 +1386,7 @@ static int s_test_RFC3394_256BitKey128BitCekTestVector(struct aws_allocator *all
     aws_symmetric_cipher_destroy(cipher);
     aws_byte_buf_clean_up(&output_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -1360,6 +1395,7 @@ AWS_TEST_CASE(aes_keywrap_RFC3394_256BitKey128BitCekTestVector, s_test_RFC3394_2
 
 static int s_test_RFC3394_256BitKey128BitCekIntegrityCheckFailedTestVector(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
     size_t input_length = sizeof(input);
@@ -1401,6 +1437,7 @@ static int s_test_RFC3394_256BitKey128BitCekIntegrityCheckFailedTestVector(struc
     aws_symmetric_cipher_destroy(cipher);
     aws_byte_buf_clean_up(&output_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -1411,6 +1448,7 @@ AWS_TEST_CASE(
 
 static int s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t input[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
     size_t input_length = sizeof(input);
@@ -1452,6 +1490,7 @@ static int s_test_RFC3394_256BitKey128BitCekPayloadCheckFailedTestVector(struct 
     aws_symmetric_cipher_destroy(cipher);
     aws_byte_buf_clean_up(&output_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -1462,6 +1501,7 @@ AWS_TEST_CASE(
 
 static int s_aes_keywrap_validate_materials_fails_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t key_too_small[AWS_AES_256_KEY_BYTE_LEN - 1] = {0};
     uint8_t key_too_large[AWS_AES_256_KEY_BYTE_LEN + 1] = {0};
@@ -1474,12 +1514,14 @@ static int s_aes_keywrap_validate_materials_fails_fn(struct aws_allocator *alloc
     ASSERT_NULL(aws_aes_keywrap_256_new(allocator, &key));
     ASSERT_UINT_EQUALS(AWS_ERROR_CAL_INVALID_KEY_LENGTH_FOR_ALGORITHM, aws_last_error());
 
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_keywrap_validate_materials_fails, s_aes_keywrap_validate_materials_fails_fn)
 
 static int s_test_input_too_large_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t iv[AWS_AES_256_CIPHER_BLOCK_SIZE] = {0};
     uint8_t key[AWS_AES_256_KEY_BYTE_LEN] = {0};
@@ -1505,12 +1547,14 @@ static int s_test_input_too_large_fn(struct aws_allocator *allocator, void *ctx)
     ASSERT_TRUE(aws_symmetric_cipher_is_good(cipher));
 
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(aes_test_input_too_large, s_test_input_too_large_fn)
 
 static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    aws_cal_library_test_init(allocator);
 
     uint8_t iv[] = {0xFB, 0x7B, 0x4A, 0x82, 0x4E, 0x82, 0xDA, 0xA6, 0xC8, 0xBC, 0x12, 0x51};
 
@@ -1555,6 +1599,7 @@ static int s_aes_test_encrypt_empty_input(struct aws_allocator *allocator, void 
     aws_byte_buf_clean_up(&encrypt_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
 }
@@ -1567,6 +1612,8 @@ static int s_aes_gcm_corner_case_checker(
     struct aws_byte_cursor aad_cur,
     struct aws_byte_cursor data_cur,
     struct aws_byte_cursor expected_tag_cur) {
+
+    aws_cal_library_test_init(allocator);
 
     /* just a random tag value which should not match anything*/
     uint8_t wrong_tag[] = {
@@ -1630,6 +1677,7 @@ static int s_aes_gcm_corner_case_checker(
     aws_byte_buf_clean_up(&encrypt_buf);
     aws_byte_buf_clean_up(&decrypted_buf);
     aws_symmetric_cipher_destroy(cipher);
+    aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;
 }
 

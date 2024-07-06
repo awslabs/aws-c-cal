@@ -30,7 +30,7 @@ static inline void aws_cal_library_test_init(struct aws_allocator *allocator) {
 #if defined(OPENSSL_IS_AWSLC)
         AWS_FATAL_ASSERT(FIPS_mode_set(1) == 1 && "FIPS_mode_set(1) must succeed");
 #else
-        AWS_FATAL_ASSERT(!fips_desired && "AWS_TEST_FIPS is currently only supported with AWS-LC");
+        AWS_FATAL_ASSERT(!is_fips_desired && "AWS_TEST_FIPS is currently only supported with AWS-LC");
 #endif
     }
 

@@ -81,7 +81,7 @@
                         },
                         {
                             "name": "boringssl",
-                            "commit": "9939e14"
+                            "revision": "9939e14"
                         }
                     ]
                 }
@@ -97,7 +97,7 @@
                         {
                             "name": "aws-lc",
                             "_comment": "FIPS releases are currently cut from this branch",
-                            "commit": "fips-2022-11-02"
+                            "revision": "fips-2022-11-02"
                         }
                     ]
                 }

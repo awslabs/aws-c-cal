@@ -87,6 +87,22 @@
                 }
             }
         },
+        "aws-lc-fips": {
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        {
+                            "name": "aws-c-common"
+                        },
+                        {
+                            "name": "aws-lc",
+                            "_comment": "FIPS releases are currently cut from this branch",
+                            "commit": "fips-2022-11-02"
+                        }
+                    ]
+                }
+            }
+        },
         "no-tests": {
             "!test_steps": []
         },

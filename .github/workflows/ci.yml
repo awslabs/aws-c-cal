@@ -121,6 +121,15 @@ jobs:
         python -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz?run=${{ env.RUN }}', 'builder.pyz')"
         python builder.pyz build -p ${{ env.PACKAGE_NAME }} --variant=boringssl --cmake-extra=-DUSE_OPENSSL=ON
 
+  linux-aws-lc-fips:
+    runs-on: ubuntu-22.04 # latest
+    steps:
+        # We can't use the `uses: docker://image` version yet, GitHub lacks authentication for actions -> packages
+    - name: Build ${{ env.PACKAGE_NAME }}
+      run: |
+        python -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz?run=${{ env.RUN }}', 'builder.pyz')"
+        AWS_TEST_FIPS=1 python builder.pyz build -p ${{ env.PACKAGE_NAME }} --variant=aws-lc-fips --cmake-extra=-DFIPS=ON --cmake-extra=-DPERL_EXECUTABLE=perl --cmake-extra=-DGO_EXECUTABLE=go
+
   windows:
     runs-on: windows-2022 # latest
     steps:

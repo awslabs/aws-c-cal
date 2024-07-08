@@ -6,7 +6,7 @@
 #include <aws/common/byte_buf.h>
 #include <aws/testing/aws_test_harness.h>
 
-#include <test_case_helper.h>
+#include "test_case_helper.h"
 /*
  * these are the NIST test vectors, as compiled here:
  * https://www.di-mgt.com.au/sha_testvectors.html
@@ -78,7 +78,7 @@ AWS_TEST_CASE(sha1_nist_test_case_4, s_sha1_nist_test_case_4_fn)
 static int s_sha1_nist_test_case_5_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_hash *hash = aws_sha1_new(allocator);
     ASSERT_NOT_NULL(hash);
@@ -112,7 +112,7 @@ AWS_TEST_CASE(sha1_nist_test_case_5, s_sha1_nist_test_case_5_fn)
 static int s_sha1_nist_test_case_5_truncated_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_hash *hash = aws_sha1_new(allocator);
     ASSERT_NOT_NULL(hash);
@@ -144,7 +144,7 @@ AWS_TEST_CASE(sha1_nist_test_case_5_truncated, s_sha1_nist_test_case_5_truncated
 static int s_sha1_nist_test_case_6_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_hash *hash = aws_sha1_new(allocator);
     ASSERT_NOT_NULL(hash);
@@ -180,7 +180,7 @@ AWS_TEST_CASE(sha1_nist_test_case_6, s_sha1_nist_test_case_6_fn)
 static int s_sha1_test_invalid_buffer_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("abcdefghbcdefghicdefghijdefghijkefghijklfghij"
                                                               "klmghijklmnhijklmnoijklmnopjklmnopqklm"
@@ -201,7 +201,7 @@ AWS_TEST_CASE(sha1_test_invalid_buffer, s_sha1_test_invalid_buffer_fn)
 static int s_sha1_test_oneshot_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("abcdefghbcdefghicdefghijdefghijkefghijklfghij"
                                                               "klmghijklmnhijklmnoijklmnopjklmnopqklm"
@@ -228,7 +228,7 @@ AWS_TEST_CASE(sha1_test_oneshot, s_sha1_test_oneshot_fn)
 static int s_sha1_test_invalid_state_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("abcdefghbcdefghicdefghijdefghijkefghijklfghij"
                                                               "klmghijklmnhijklmnoijklmnopjklmnopqklm"
@@ -257,7 +257,7 @@ AWS_TEST_CASE(sha1_test_invalid_state, s_sha1_test_invalid_state_fn)
 static int s_sha1_test_extra_buffer_space_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     struct aws_byte_cursor input = aws_byte_cursor_from_c_str("123456789012345678901234567890123456789012345"
                                                               "67890123456789012345678901234567890");

@@ -6,7 +6,7 @@
 #include <aws/common/byte_buf.h>
 #include <aws/testing/aws_test_harness.h>
 
-#include <test_case_helper.h>
+#include "test_case_helper.h"
 
 /*
  * these are the rfc4231  test vectors, as compiled here:
@@ -212,7 +212,7 @@ AWS_TEST_CASE(sha256_hmac_rfc4231_test_case_7, s_sha256_hmac_rfc4231_test_case_7
 static int s_sha256_hmac_test_oneshot_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     uint8_t secret[] = {
         0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -253,7 +253,7 @@ AWS_TEST_CASE(sha256_hmac_test_oneshot, s_sha256_hmac_test_oneshot_fn)
 static int s_sha256_hmac_test_invalid_buffer_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     uint8_t secret[] = {
         0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -288,7 +288,7 @@ AWS_TEST_CASE(sha256_hmac_test_invalid_buffer, s_sha256_hmac_test_invalid_buffer
 static int s_sha256_hmac_test_invalid_state_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     uint8_t secret[] = {
         0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -330,7 +330,7 @@ AWS_TEST_CASE(sha256_hmac_test_invalid_state, s_sha256_hmac_test_invalid_state_f
 static int s_sha256_hmac_test_extra_buffer_space_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
-    aws_cal_library_init(allocator);
+    aws_cal_library_test_init(allocator);
 
     uint8_t secret[] = {
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,

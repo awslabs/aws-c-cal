@@ -81,7 +81,23 @@
                         },
                         {
                             "name": "boringssl",
-                            "commit": "9939e14"
+                            "revision": "9939e14"
+                        }
+                    ]
+                }
+            }
+        },
+        "aws-lc-fips": {
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        {
+                            "name": "aws-c-common"
+                        },
+                        {
+                            "name": "aws-lc",
+                            "_comment": "FIPS releases are currently cut from this branch",
+                            "revision": "fips-2022-11-02"
                         }
                     ]
                 }

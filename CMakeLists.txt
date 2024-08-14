@@ -5,10 +5,6 @@ cmake_minimum_required(VERSION 3.0)
 
 project(aws-c-cal LANGUAGES C VERSION 0.1.0)
 
-if (POLICY CMP0069)
-    cmake_policy(SET CMP0069 NEW) # Enable LTO/IPO if available in the compiler, see AwsCFlags
-endif()
-
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
@@ -131,6 +127,7 @@ file(GLOB CAL_SRC
         ${AWS_CAL_OS_SRC}
 )
 
+aws_set_common_policies()
 add_library(${PROJECT_NAME} ${CAL_SRC})
 aws_set_common_properties(${PROJECT_NAME} NO_WEXTRA)
 aws_prepare_symbol_visibility_args(${PROJECT_NAME} "AWS_CAL")

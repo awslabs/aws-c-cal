@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0.
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.13)
 
 project(aws-c-cal LANGUAGES C VERSION 0.1.0)
 
@@ -76,7 +76,7 @@ elseif (APPLE)
            message(FATAL_ERROR "Security Framework not found")
         endif ()
 
-        
+
         find_library(COREFOUNDATION_LIB CoreFoundation)
         if(NOT COREFOUNDATION_LIB)
            message(FATAL_ERROR "CoreFoundation Framework not found")
@@ -127,7 +127,6 @@ file(GLOB CAL_SRC
         ${AWS_CAL_OS_SRC}
 )
 
-aws_set_common_policies()
 add_library(${PROJECT_NAME} ${CAL_SRC})
 aws_set_common_properties(${PROJECT_NAME} NO_WEXTRA)
 aws_prepare_symbol_visibility_args(${PROJECT_NAME} "AWS_CAL")

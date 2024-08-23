@@ -555,14 +555,14 @@ static enum aws_libcrypto_version s_resolve_libcrypto_sharedlib(void) {
 
     /* If compiled_version is AWS_LIBCRYPTO_1_1_1, we have already tried to load it and failed. So, skip it here. */
     if (compiled_version != AWS_LIBCRYPTO_1_1_1) {
-        if (s_libcrypto_version_at_compile_time(AWS_LIBCRYPTO_1_1_1)) {
+        if (s_load_libcrypto_sharedlib(AWS_LIBCRYPTO_1_1_1)) {
             return AWS_LIBCRYPTO_1_1_1;
         }
     }
 
     /* If compiled_version is AWS_LIBCRYPTO_1_0_2, we have already tried to load it and failed. So, skip it here. */
     if (compiled_version != AWS_LIBCRYPTO_1_0_2) {
-        if (s_libcrypto_version_at_compile_time(AWS_LIBCRYPTO_1_0_2)) {
+        if (s_load_libcrypto_sharedlib(AWS_LIBCRYPTO_1_0_2)) {
             return AWS_LIBCRYPTO_1_0_2;
         }
     }

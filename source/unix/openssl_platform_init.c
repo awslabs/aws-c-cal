@@ -525,7 +525,7 @@ static char *s_libcrypto_lib_filename(enum aws_libcrypto_version version) {
     }
 }
 
-static bool s_libcrypto_version s_load_libcrypto_sharedlib(enum aws_libcrypto_version version) {
+static bool s_load_libcrypto_sharedlib(enum aws_libcrypto_version version) {
     const char *libcrypto_version = s_libcrypto_lib_filename(version);
 
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "loading %s", libcrypto_version);

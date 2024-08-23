@@ -493,7 +493,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto_symbols(enum aws_libcrypto
     return found_version;
 }
 
-static enum aws_libcrypto_version s_resolve_libcrypto_compile_version(void) {
+static enum aws_libcrypto_version s_libcrypto_version_at_compile_time(void) {
 #ifdef OPENSSL_IS_OPENSSL
     /*
      * Currently, this only checks for 1.0.2 vs 1.1. As a future optimization, we can also add a branch for OpenSSL 3.0.
@@ -513,7 +513,8 @@ static enum aws_libcrypto_version s_resolve_libcrypto_compile_version(void) {
     return AWS_LIBCRYPTO_NONE;
 }
 
-static char *s_resolve_libcrypto_path_from_enum(enum aws_libcrypto_version version) {
+/* Given libcrypto version, return the filename of the .so */
+static char *s_libcrypto_lib_filename(enum aws_libcrypto_version version) {
     switch (version) {
         case AWS_LIBCRYPTO_1_0_2:
             return "libcrypto.so.1.0.0";
@@ -524,8 +525,8 @@ static char *s_resolve_libcrypto_path_from_enum(enum aws_libcrypto_version versi
     }
 }
 
-static enum aws_libcrypto_version s_resolve_libcrypto_lib_impl(enum aws_libcrypto_version version) {
-    const char *libcrypto_version = s_resolve_libcrypto_path_from_enum(version);
+static bool s_libcrypto_version s_load_libcrypto_sharedlib(enum aws_libcrypto_version version) {
+    const char *libcrypto_version = s_libcrypto_lib_filename(version);
 
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "loading %s", libcrypto_version);
     void *module = dlopen(libcrypto_version, RTLD_NOW);
@@ -533,21 +534,21 @@ static enum aws_libcrypto_version s_resolve_libcrypto_lib_impl(enum aws_libcrypt
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "resolving against %s", libcrypto_version);
         enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(version, module);
         if (result == version) {
-            return result;
+            return true;
         }
         dlclose(module);
     } else {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "%s not found", libcrypto_version);
     }
 
-    return AWS_LIBCRYPTO_NONE;
+    return false;
 }
 
-static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
+static enum aws_libcrypto_version s_resolve_libcrypto_sharedlib(void) {
     /* First try to load the same version as the compiled libcrypto version */
-    const enum aws_libcrypto_version compiled_version = s_resolve_libcrypto_compile_version();
+    const enum aws_libcrypto_version compiled_version = s_libcrypto_version_at_compile_time();
     if (compiled_version != AWS_LIBCRYPTO_NONE) {
-        enum aws_libcrypto_version result = s_resolve_libcrypto_lib_impl(compiled_version);
+        enum aws_libcrypto_version result = s_load_libcrypto_sharedlib(compiled_version);
         if (result == compiled_version) {
             return result;
         }
@@ -555,17 +556,15 @@ static enum aws_libcrypto_version s_resolve_libcrypto_lib(void) {
 
     /* If compiled_version is AWS_LIBCRYPTO_1_1_1, we have already tried to load it and failed. So, skip it here. */
     if (compiled_version != AWS_LIBCRYPTO_1_1_1) {
-        enum aws_libcrypto_version result = s_resolve_libcrypto_lib_impl(AWS_LIBCRYPTO_1_1_1);
-        if (result == AWS_LIBCRYPTO_1_1_1) {
-            return result;
+        if (s_libcrypto_version_at_compile_time(AWS_LIBCRYPTO_1_1_1)) {
+            return AWS_LIBCRYPTO_1_1_1;
         }
     }
 
     /* If compiled_version is AWS_LIBCRYPTO_1_0_2, we have already tried to load it and failed. So, skip it here. */
     if (compiled_version != AWS_LIBCRYPTO_1_0_2) {
-        enum aws_libcrypto_version result = s_resolve_libcrypto_lib_impl(AWS_LIBCRYPTO_1_0_2);
-        if (result == AWS_LIBCRYPTO_1_0_2) {
-            return result;
+        if (s_libcrypto_version_at_compile_time(AWS_LIBCRYPTO_1_0_2)) {
+            return AWS_LIBCRYPTO_1_0_2;
         }
     }
 
@@ -671,7 +670,7 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
         AWS_LOGF_DEBUG(
             AWS_LS_CAL_LIBCRYPTO_RESOLVE,
             "libcrypto symbols were not statically linked, searching for shared libraries");
-        result = s_resolve_libcrypto_lib();
+        result = s_resolve_libcrypto_sharedlib();
     }
 
     s_validate_libcrypto_linkage();

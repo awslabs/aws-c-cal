@@ -548,9 +548,8 @@ static enum aws_libcrypto_version s_resolve_libcrypto_sharedlib(void) {
     /* First try to load the same version as the compiled libcrypto version */
     const enum aws_libcrypto_version compiled_version = s_libcrypto_version_at_compile_time();
     if (compiled_version != AWS_LIBCRYPTO_NONE) {
-        enum aws_libcrypto_version result = s_load_libcrypto_sharedlib(compiled_version);
-        if (result == compiled_version) {
-            return result;
+        if (s_load_libcrypto_sharedlib(compiled_version)) {
+            return compiled_version;
         }
     }
 

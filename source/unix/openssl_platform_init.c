@@ -514,7 +514,7 @@ static enum aws_libcrypto_version s_libcrypto_version_at_compile_time(void) {
 }
 
 /* Given libcrypto version, return the filename of the .so */
-static char *s_libcrypto_lib_filename(enum aws_libcrypto_version version) {
+static char *s_libcrypto_sharedlib_filename(enum aws_libcrypto_version version) {
     switch (version) {
         case AWS_LIBCRYPTO_1_0_2:
             return "libcrypto.so.1.0.0";
@@ -526,7 +526,7 @@ static char *s_libcrypto_lib_filename(enum aws_libcrypto_version version) {
 }
 
 static bool s_load_libcrypto_sharedlib(enum aws_libcrypto_version version) {
-    const char *libcrypto_version = s_libcrypto_lib_filename(version);
+    const char *libcrypto_version = s_libcrypto_sharedlib_filename(version);
 
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "loading %s", libcrypto_version);
     void *module = dlopen(libcrypto_version, RTLD_NOW);

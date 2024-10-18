@@ -1,13 +1,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0.
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.9)
 
 project(aws-c-cal LANGUAGES C VERSION 0.1.0)
-
-if (POLICY CMP0069)
-    cmake_policy(SET CMP0069 NEW) # Enable LTO/IPO if available in the compiler, see AwsCFlags
-endif()
 
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 
@@ -80,7 +76,7 @@ elseif (APPLE)
            message(FATAL_ERROR "Security Framework not found")
         endif ()
 
-        
+
         find_library(COREFOUNDATION_LIB CoreFoundation)
         if(NOT COREFOUNDATION_LIB)
            message(FATAL_ERROR "CoreFoundation Framework not found")

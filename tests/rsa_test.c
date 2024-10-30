@@ -186,9 +186,10 @@ static const char *TEST_RSA_SIGNATURE_PKCS1 = "Gqu9pLlPvSFIW+5ZFo9ZCxMmPR8LnAeiu
                                               "TYJ45P3c94lQIQD3SVJ3XMSAyAEWTE2pcj0F/oPzzxLcXK9cyv2Iphe4XuBjWCOVdHgFg"
                                               "rD/yAA8b+B94AqE9U/B2+k9/C3Bz2YApo=";
 
-static const char *TEST_RSA_SIGNATURE_PKCS1_SHA1 = "h63KoYsKaTCFfvc+VzI6jwR8+PgVGuGidxsl8JLGQ/gypNkc7NrFcGdpHbWBYnHfyAY8x"
-                                                    "20+rn3ZFlVgw3VnjUKXKObkkt8rFrDj43ZWNGzzrZvZ4LsNPIkxuzOKAgC4czsEczIYmy"
-                                                    "Vd8TMU2AVzMgKerqfoC+IGKB+R5DOi410=";
+static const char *TEST_RSA_SIGNATURE_PKCS1_SHA1 =
+    "h63KoYsKaTCFfvc+VzI6jwR8+PgVGuGidxsl8JLGQ/gypNkc7NrFcGdpHbWBYnHfyAY8x"
+    "20+rn3ZFlVgw3VnjUKXKObkkt8rFrDj43ZWNGzzrZvZ4LsNPIkxuzOKAgC4czsEczIYmy"
+    "Vd8TMU2AVzMgKerqfoC+IGKB+R5DOi410=";
 
 static const char *TEST_RSA_SIGNATURE_PSS = "j//04sVoqQVSmUgH+Id0oad7OgW+hGnIqx6hjr28VnVk75Obig+n3tJGWd0r+3S4ARxf2fK"
                                             "7taVvJXISQ5aWJAYx6QRgR+25rcE96eOfi6L7ShIZIUYFzGxhc9wpUMGbqHEIhm+8QP7uNo4D"
@@ -541,8 +542,8 @@ static int s_rsa_signing_roundtrip_pkcs1_sha1_from_user(struct aws_allocator *al
 
     aws_cal_library_init(allocator);
 
-    ASSERT_SUCCESS(
-        s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, TEST_RSA_SIGNATURE_PKCS1_SHA1));
+    ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(
+        allocator, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, TEST_RSA_SIGNATURE_PKCS1_SHA1));
 
     aws_cal_library_clean_up();
 

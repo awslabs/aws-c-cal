@@ -276,6 +276,8 @@ static int s_rsa_verify_signing_pkcs1_sha1(struct aws_allocator *allocator, void
         allocator, aws_byte_cursor_from_c_str(TEST_RSA_SIGNATURE_PKCS1_SHA1), &signature_buf));
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
 
+    AWS_LOGF_DEBUG(0, "foo " PRInSTR " bar " PRInSTR, AWS_BYTE_CURSOR_PRI(signature_cur), AWS_BYTE_CURSOR_PRI(hash_cur));
+
     ASSERT_SUCCESS(aws_rsa_key_pair_verify_signature(
         key_pair_public, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, signature_cur));
 

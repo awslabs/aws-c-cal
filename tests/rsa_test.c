@@ -247,6 +247,44 @@ static int s_rsa_verify_signing_pkcs1_sha256(struct aws_allocator *allocator, vo
 }
 AWS_TEST_CASE(rsa_verify_signing_pkcs1_sha256, s_rsa_verify_signing_pkcs1_sha256);
 
+static int s_rsa_verify_signing_pkcs1_sha1(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
+
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_buf public_key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PUBLIC_KEY_1024), &public_key_buf));
+    struct aws_rsa_key_pair *key_pair_public =
+        aws_rsa_key_pair_new_from_public_key_pkcs1(allocator, aws_byte_cursor_from_buf(&public_key_buf));
+    ASSERT_NOT_NULL(key_pair_public);
+
+    uint8_t hash[AWS_SHA1_LEN];
+    AWS_ZERO_ARRAY(hash);
+    struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
+    aws_sha1_compute(allocator, &message, &hash_value, 0);
+    struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
+
+    struct aws_byte_buf signature_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_RSA_SIGNATURE_PKCS1), &signature_buf));
+    struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
+
+    ASSERT_SUCCESS(aws_rsa_key_pair_verify_signature(
+        key_pair_public, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, signature_cur));
+
+    aws_byte_buf_clean_up(&hash_value);
+    aws_byte_buf_clean_up(&signature_buf);
+    aws_byte_buf_clean_up(&public_key_buf);
+    aws_rsa_key_pair_release(key_pair_public);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_verify_signing_pkcs1_sha1, s_rsa_verify_signing_pkcs1_sha1);
+
 static int s_rsa_verify_signing_pss_sha256(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
     struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
@@ -493,6 +531,20 @@ static int s_rsa_signing_roundtrip_pkcs1_sha256_from_user(struct aws_allocator *
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(rsa_signing_roundtrip_pkcs1_sha256_from_user, s_rsa_signing_roundtrip_pkcs1_sha256_from_user);
+
+static int s_rsa_signing_roundtrip_pkcs1_sha1_from_user(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    aws_cal_library_init(allocator);
+
+    ASSERT_SUCCESS(
+        s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, TEST_RSA_SIGNATURE_PKCS1));
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_signing_roundtrip_pkcs1_sha1_from_user, s_rsa_signing_roundtrip_pkcs1_sha1_from_user);
 
 static int s_rsa_signing_roundtrip_pss_sha256_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -747,3 +799,59 @@ static int s_rsa_signing_mismatch_pkcs1_sha256(struct aws_allocator *allocator, 
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(rsa_signing_mismatch_pkcs1_sha256, s_rsa_signing_mismatch_pkcs1_sha256);
+
+static int s_rsa_signing_mismatch_pkcs1_sha1(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
+
+    aws_cal_library_init(allocator);
+
+    struct aws_byte_buf public_key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PRIVATE_KEY_1024), &public_key_buf));
+    struct aws_rsa_key_pair *key_pair_private =
+        aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, aws_byte_cursor_from_buf(&public_key_buf));
+    ASSERT_NOT_NULL(key_pair_private);
+
+    uint8_t hash[AWS_SHA1_LEN];
+    AWS_ZERO_ARRAY(hash);
+    struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
+    aws_sha1_compute(allocator, &message, &hash_value, 0);
+    struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
+
+    struct aws_byte_buf signature_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&signature_buf, allocator, aws_rsa_key_pair_signature_length(key_pair_private)));
+    ASSERT_SUCCESS(aws_rsa_key_pair_sign_message(
+        key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, &signature_buf));
+    struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
+
+    hash[5] += 59; /* modify digest to force signature mismatch */
+
+    ASSERT_ERROR(
+        AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED,
+        aws_rsa_key_pair_verify_signature(
+            key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, signature_cur));
+
+    hash[5] -= 59; /* undo digest modification and corrupt signature */
+    signature_buf.buffer[5] += 59;
+    ASSERT_ERROR(
+        AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED,
+        aws_rsa_key_pair_verify_signature(
+            key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, signature_cur));
+
+    struct aws_byte_cursor short_signature_cur = aws_byte_cursor_from_c_str("bad signature");
+    ASSERT_ERROR(
+        AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED,
+        aws_rsa_key_pair_verify_signature(
+            key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, short_signature_cur));
+
+    aws_byte_buf_clean_up(&hash_value);
+    aws_byte_buf_clean_up(&signature_buf);
+    aws_byte_buf_clean_up(&public_key_buf);
+    aws_rsa_key_pair_release(key_pair_private);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_signing_mismatch_pkcs1_sha1, s_rsa_signing_mismatch_pkcs1_sha1);

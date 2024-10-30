@@ -132,6 +132,9 @@ static int s_map_rsa_signing_algo_to_sec(enum aws_rsa_signature_algorithm algori
         case AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256:
             *out = kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA256;
             return AWS_OP_SUCCESS;
+        case AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1:
+            *out = kSecKeyAlgorithmRSASignatureDigestPKCS1v15SHA1;
+            return AWS_OP_SUCCESS;
         case AWS_CAL_RSA_SIGNATURE_PSS_SHA256:
 #if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101300 /* macOS 10.13 */)) ||       \
     (defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* iOS v11 */)) ||         \

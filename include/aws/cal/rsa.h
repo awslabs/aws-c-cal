@@ -19,6 +19,7 @@ enum aws_rsa_encryption_algorithm {
 
 enum aws_rsa_signature_algorithm {
     AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256,
+    AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1,
     AWS_CAL_RSA_SIGNATURE_PSS_SHA256,
 };
 

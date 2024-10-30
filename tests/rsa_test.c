@@ -821,8 +821,8 @@ static int s_rsa_signing_mismatch_pkcs1_sha1(struct aws_allocator *allocator, vo
 
     struct aws_byte_buf signature_buf;
     ASSERT_SUCCESS(aws_byte_buf_init(&signature_buf, allocator, aws_rsa_key_pair_signature_length(key_pair_private)));
-    ASSERT_SUCCESS(aws_rsa_key_pair_sign_message(
-        key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, &signature_buf));
+    ASSERT_SUCCESS(
+        aws_rsa_key_pair_sign_message(key_pair_private, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, &signature_buf));
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
 
     hash[5] += 59; /* modify digest to force signature mismatch */

@@ -206,7 +206,8 @@ static int s_rsa_sign(
     }
 
     ULONG length_written = 0;
-    bool is_pkcs1_padding = (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1);
+    bool is_pkcs1_padding =
+        (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1);
     NTSTATUS status = BCryptSignHash(
         key_pair_impl->key_handle,
         &padding_info,
@@ -248,7 +249,8 @@ static int s_rsa_verify(
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
     /* okay, now we've got a windows compatible signature, let's verify it. */
-    bool is_pkcs1_padding = (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1);
+    bool is_pkcs1_padding =
+        (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1);
     NTSTATUS status = BCryptVerifySignature(
         key_pair_impl->key_handle,
         &padding_info,

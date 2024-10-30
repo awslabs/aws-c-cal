@@ -186,6 +186,10 @@ static const char *TEST_RSA_SIGNATURE_PKCS1 = "Gqu9pLlPvSFIW+5ZFo9ZCxMmPR8LnAeiu
                                               "TYJ45P3c94lQIQD3SVJ3XMSAyAEWTE2pcj0F/oPzzxLcXK9cyv2Iphe4XuBjWCOVdHgFg"
                                               "rD/yAA8b+B94AqE9U/B2+k9/C3Bz2YApo=";
 
+static const char *TEST_RSA_SIGNATURE_PKCS1_SHA1 = "h63KoYsKaTCFfvc+VzI6jwR8+PgVGuGidxsl8JLGQ/gypNkc7NrFcGdpHbWBYnHfyAY8x"
+                                                    "20+rn3ZFlVgw3VnjUKXKObkkt8rFrDj43ZWNGzzrZvZ4LsNPIkxuzOKAgC4czsEczIYmy"
+                                                    "Vd8TMU2AVzMgKerqfoC+IGKB+R5DOi410=";
+
 static const char *TEST_RSA_SIGNATURE_PSS = "j//04sVoqQVSmUgH+Id0oad7OgW+hGnIqx6hjr28VnVk75Obig+n3tJGWd0r+3S4ARxf2fK"
                                             "7taVvJXISQ5aWJAYx6QRgR+25rcE96eOfi6L7ShIZIUYFzGxhc9wpUMGbqHEIhm+8QP7uNo4D"
                                             "FmaPzJMgGDKL2qhedxnjtg3p8E4=";
@@ -268,7 +272,7 @@ static int s_rsa_verify_signing_pkcs1_sha1(struct aws_allocator *allocator, void
 
     struct aws_byte_buf signature_buf;
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
-        allocator, aws_byte_cursor_from_c_str(TEST_RSA_SIGNATURE_PKCS1), &signature_buf));
+        allocator, aws_byte_cursor_from_c_str(TEST_RSA_SIGNATURE_PKCS1_SHA1), &signature_buf));
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
 
     ASSERT_SUCCESS(aws_rsa_key_pair_verify_signature(
@@ -538,7 +542,7 @@ static int s_rsa_signing_roundtrip_pkcs1_sha1_from_user(struct aws_allocator *al
     aws_cal_library_init(allocator);
 
     ASSERT_SUCCESS(
-        s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, TEST_RSA_SIGNATURE_PKCS1));
+        s_rsa_signing_roundtrip_from_user(allocator, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, TEST_RSA_SIGNATURE_PKCS1_SHA1));
 
     aws_cal_library_clean_up();
 

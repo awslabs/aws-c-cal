@@ -241,16 +241,10 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
             s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md")) {
             return AWS_OP_ERR;
-        } else if (
-            algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1 &&
-            s_reinterpret_evp_error_as_crt(
+        } else if(s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha1()), "EVP_PKEY_CTX_set_signature_md")) {
-
-        } else {
-            AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "Unsupported RSA signing algorithm: %d", algorithm);
-            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+            return AWS_OP_ERR;
         }
-
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
         if (s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {

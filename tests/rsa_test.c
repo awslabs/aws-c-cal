@@ -186,10 +186,10 @@ static const char *TEST_RSA_SIGNATURE_PKCS1 = "Gqu9pLlPvSFIW+5ZFo9ZCxMmPR8LnAeiu
                                               "TYJ45P3c94lQIQD3SVJ3XMSAyAEWTE2pcj0F/oPzzxLcXK9cyv2Iphe4XuBjWCOVdHgFg"
                                               "rD/yAA8b+B94AqE9U/B2+k9/C3Bz2YApo=";
 
-static const char *TEST_RSA_SIGNATURE_PKCS1_SHA1 =
-    "h63KoYsKaTCFfvc+VzI6jwR8+PgVGuGidxsl8JLGQ/gypNkc7NrFcGdpHbWBYnHfyAY8x"
-    "20+rn3ZFlVgw3VnjUKXKObkkt8rFrDj43ZWNGzzrZvZ4LsNPIkxuzOKAgC4czsEczIYmy"
-    "Vd8TMU2AVzMgKerqfoC+IGKB+R5DOi410=";
+static const char *TEST_RSA_SIGNATURE_PKCS1_SHA1 = 
+    "QJxUx+4OM+v1wh0z0PJWMeGBdvjhQHxjFCdzDLeNH6zoJpgPtFXNk6i83ff75MgPpW0m33"
+    "zrrzLWfzLojZFi2KFXYu1Y39We3AfREEOyG+porTmxNQ4dJH29joXS0XNf52dJpN04Lw3WN"
+    "XUHDP6eG2K71uXlsus2Tm0uBe4TF0g=";
 
 static const char *TEST_RSA_SIGNATURE_PSS = "j//04sVoqQVSmUgH+Id0oad7OgW+hGnIqx6hjr28VnVk75Obig+n3tJGWd0r+3S4ARxf2fK"
                                             "7taVvJXISQ5aWJAYx6QRgR+25rcE96eOfi6L7ShIZIUYFzGxhc9wpUMGbqHEIhm+8QP7uNo4D"
@@ -275,15 +275,6 @@ static int s_rsa_verify_signing_pkcs1_sha1(struct aws_allocator *allocator, void
     ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
         allocator, aws_byte_cursor_from_c_str(TEST_RSA_SIGNATURE_PKCS1_SHA1), &signature_buf));
     struct aws_byte_cursor signature_cur = aws_byte_cursor_from_buf(&signature_buf);
-
-    size_t encoded_length = 0;
-    struct aws_byte_buf enc_buf;
-    ASSERT_SUCCESS(aws_base64_compute_encoded_len(hash_cur.len, &encoded_length));
-    ASSERT_SUCCESS(aws_byte_buf_init(&enc_buf, allocator, encoded_length));
-    ASSERT_SUCCESS(aws_base64_encode(&hash_cur, &enc_buf));
-    struct aws_byte_cursor enc_cur = aws_byte_cursor_from_buf(&enc_buf);
-
-    AWS_LOGF_DEBUG(0, "foo " PRInSTR, AWS_BYTE_CURSOR_PRI(enc_cur));
 
     ASSERT_SUCCESS(aws_rsa_key_pair_verify_signature(
         key_pair_public, AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1, hash_cur, signature_cur));
@@ -462,7 +453,12 @@ static int s_rsa_signing_roundtrip_helper(
     uint8_t hash[AWS_SHA256_LEN];
     AWS_ZERO_ARRAY(hash);
     struct aws_byte_buf hash_value = aws_byte_buf_from_empty_array(hash, sizeof(hash));
-    aws_sha256_compute(allocator, &message, &hash_value, 0);
+    if (algo == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1) {
+        aws_sha1_compute(allocator, &message, &hash_value, 0);
+    } else {
+        aws_sha256_compute(allocator, &message, &hash_value, 0);
+    }
+    
     struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
 
     /*since our apis work by appending to buffer, lets make sure they dont

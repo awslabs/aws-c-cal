@@ -186,7 +186,7 @@ static const char *TEST_RSA_SIGNATURE_PKCS1 = "Gqu9pLlPvSFIW+5ZFo9ZCxMmPR8LnAeiu
                                               "TYJ45P3c94lQIQD3SVJ3XMSAyAEWTE2pcj0F/oPzzxLcXK9cyv2Iphe4XuBjWCOVdHgFg"
                                               "rD/yAA8b+B94AqE9U/B2+k9/C3Bz2YApo=";
 
-static const char *TEST_RSA_SIGNATURE_PKCS1_SHA1 = 
+static const char *TEST_RSA_SIGNATURE_PKCS1_SHA1 =
     "QJxUx+4OM+v1wh0z0PJWMeGBdvjhQHxjFCdzDLeNH6zoJpgPtFXNk6i83ff75MgPpW0m33"
     "zrrzLWfzLojZFi2KFXYu1Y39We3AfREEOyG+porTmxNQ4dJH29joXS0XNf52dJpN04Lw3WN"
     "XUHDP6eG2K71uXlsus2Tm0uBe4TF0g=";
@@ -458,7 +458,7 @@ static int s_rsa_signing_roundtrip_helper(
     } else {
         aws_sha256_compute(allocator, &message, &hash_value, 0);
     }
-    
+
     struct aws_byte_cursor hash_cur = aws_byte_cursor_from_buf(&hash_value);
 
     /*since our apis work by appending to buffer, lets make sure they dont

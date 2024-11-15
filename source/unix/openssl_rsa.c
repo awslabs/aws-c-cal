@@ -241,6 +241,15 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
                 EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md")) {
             return AWS_OP_ERR;
         }
+    } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1) {
+        if (s_reinterpret_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
+            return AWS_OP_ERR;
+        }
+        if (s_reinterpret_evp_error_as_crt(
+                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha1()), "EVP_PKEY_CTX_set_signature_md")) {
+            return AWS_OP_ERR;
+        }
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
         if (s_reinterpret_evp_error_as_crt(
                 EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {

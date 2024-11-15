@@ -145,7 +145,8 @@ int aws_rsa_key_pair_sign_message(
     AWS_PRECONDITION(aws_byte_cursor_is_valid(&digest));
 
     AWS_FATAL_ASSERT(
-        algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256);
+        algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256 || algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1 ||
+        algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256);
 
     if (digest.len > AWS_SHA256_LEN) {
         AWS_LOGF_ERROR(

@@ -277,9 +277,9 @@ jobs:
     runs-on: ubuntu-24.04 # latest
     steps:
     - uses: aws-actions/configure-aws-credentials@v4  
-    with:
-      role-to-assume: ${{ env.CRT_CI_ROLE }}
-      aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      with:
+        role-to-assume: ${{ env.CRT_CI_ROLE }}
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
     - uses: actions/checkout@v4
     - name: Build ${{ env.PACKAGE_NAME }} + consumers
       uses: cross-platform-actions/action@v0.25.0
@@ -298,12 +298,12 @@ jobs:
     runs-on: ubuntu-24.04 # latest
     steps:
     - uses: aws-actions/configure-aws-credentials@v4  
-    with:
-      role-to-assume: ${{ env.CRT_CI_ROLE }}
-      aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      with:
+        role-to-assume: ${{ env.CRT_CI_ROLE }}
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
     - uses: actions/checkout@v4
     - name: Build ${{ env.PACKAGE_NAME }} + consumers
-      uses: cross-platform-actions/action@v0.23.0
+      uses: cross-platform-actions/action@v0.25.0
       with:
         operating_system: openbsd
         architecture: x86-64

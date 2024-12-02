@@ -44,7 +44,7 @@ jobs:
         ./linux-container-ci.sh ${{ env.BUILDER_VERSION }} aws-crt-${{ matrix.image }} build -p ${{ env.PACKAGE_NAME }}
 
   linux-compiler-compat:
-    runs-on: ubuntu-20.04 # latest
+    runs-on: ubuntu-24.04 # latest
     strategy:
       matrix:
         compiler:
@@ -156,7 +156,7 @@ jobs:
         python builder.pyz build -p ${{ env.PACKAGE_NAME }} --variant=boringssl --cmake-extra=-DUSE_OPENSSL=ON
 
   linux-aws-lc-fips:
-    runs-on: ubuntu-22.04 # latest
+    runs-on: ubuntu-24.04 # latest
     steps:
     - uses: aws-actions/configure-aws-credentials@v4  
       with:

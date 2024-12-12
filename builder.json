@@ -97,7 +97,7 @@
                         {
                             "name": "aws-lc",
                             "_comment": "FIPS releases are currently cut from this branch",
-                            "revision": "fips-2022-11-02"
+                            "revision": "fips-2024-09-27"
                         }
                     ]
                 }

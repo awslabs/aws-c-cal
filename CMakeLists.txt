@@ -141,7 +141,7 @@ configure_file("cmake/${PROJECT_NAME}-config.cmake"
   @ONLY)
 
 aws_check_headers(${PROJECT_NAME} ${AWS_CAL_HEADERS})
-install(FILES ${AWS_CAL_HEADERS} DESTINATION "include/aws/cal" COMPONENT Development)
+install(FILES ${AWS_CAL_HEADERS} DESTINATION "${INCLUDE_DIRECTORY}/aws/cal" COMPONENT Development)
 
 if (BUILD_SHARED_LIBS)
    set (TARGET_DIR "shared")

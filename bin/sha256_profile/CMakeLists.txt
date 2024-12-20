@@ -1,8 +1,6 @@
 
 project(sha256_profile C)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_INSTALL_PREFIX}/lib/cmake")
-
 file(GLOB PROFILE_SRC
         "*.c"
 )

@@ -1,8 +1,6 @@
 
 project(produce_x_platform_fuzz_corpus C)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_INSTALL_PREFIX}/lib/cmake")
-
 file(GLOB PROFILE_SRC
         "*.c"
 )

@@ -16,6 +16,8 @@ if (NOT IN_SOURCE_BUILD)
     find_package(aws-c-common REQUIRED)
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
+
 include(AwsCFlags)
 include(AwsCheckHeaders)
 include(AwsSharedLibSetup)

@@ -104,7 +104,8 @@ elseif (APPLE)
 else ()
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/unix/*.c"
+            "source/unix/*.c",
+            "source/shared/ed25519-lc.c"
         )
         if (USE_OPENSSL AND NOT ANDROID)
             find_package(OpenSSL REQUIRED)

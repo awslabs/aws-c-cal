@@ -27,11 +27,11 @@ include(AwsFindPackage)
 include(GNUInstallDirs)
 
 file(GLOB AWS_CAL_HEADERS
-        "include/aws/cal/*.h"
+    "include/aws/cal/*.h"
 )
 
 file(GLOB AWS_CAL_SRC
-        "source/*.c"
+    "source/*.c"
 )
 
 if (WIN32)
@@ -63,7 +63,7 @@ if (WIN32)
 elseif (APPLE)
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/darwin/*.c",
+            "source/darwin/*.c"
         )
 
         if (AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
@@ -124,12 +124,12 @@ if ((NOT WIN32 AND NOT APPLE) OR AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
 endif()
 
 file(GLOB CAL_HEADERS
-        ${AWS_CAL_HEADERS}
+    ${AWS_CAL_HEADERS}
 )
 
 file(GLOB CAL_SRC
-        ${AWS_CAL_SRC}
-        ${AWS_CAL_OS_SRC}
+    ${AWS_CAL_SRC}
+    ${AWS_CAL_OS_SRC}
 )
 
 add_library(${PROJECT_NAME} ${CAL_SRC})

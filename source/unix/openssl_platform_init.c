@@ -34,10 +34,6 @@ struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table = NULL;
 
 static struct aws_allocator *s_libcrypto_allocator = NULL;
 
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
-#    define OPENSSL_IS_OPENSSL
-#endif
-
 /* weak refs to libcrypto functions to force them to at least try to link
  * and avoid dead-stripping
  */
@@ -613,7 +609,7 @@ static void s_validate_libcrypto_linkage(void) {
      * will need to be addressed by increasing buffer size.*/
     char expected_version[64] = {0};
 #if defined(OPENSSL_IS_AWSLC)
-    /* get FIPS mode at runtime becuase headers don't give any indication of
+    /* get FIPS mode at runtime because headers don't give any indication of
      * AWS-LC's FIPSness at aws-c-cal compile time. version number can still be
      * captured at preprocess/compile time from AWSLC_VERSION_NUMBER_STRING.*/
     const char *mode = FIPS_mode() ? "AWS-LC FIPS" : "AWS-LC";

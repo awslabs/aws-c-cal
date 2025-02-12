@@ -15,8 +15,25 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 
     struct aws_ed25519_key_pair *pair = aws_ed25519_key_pair_new_generate(allocator);
 
+    struct aws_byte_buf buf_pub;
+    aws_byte_buf_init(
+        &buf_pub, allocator, aws_ed25519_key_pair_get_public_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
+
+    ASSERT_SUCCESS(aws_ed25519_key_pair_get_public_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_pub));
+    AWS_LOGF_DEBUG(0, PRInSTR " %d", AWS_BYTE_BUF_PRI(buf_pub), buf_pub.len);
+
+    struct aws_byte_buf buf_priv;
+    aws_byte_buf_init(
+        &buf_priv, allocator, aws_ed25519_key_pair_get_private_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
+
+    ASSERT_SUCCESS(aws_ed25519_key_pair_get_private_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_priv));
+    AWS_LOGF_DEBUG(0, PRInSTR " %d", AWS_BYTE_BUF_PRI(buf_priv), buf_priv.len);
+
     ASSERT_NOT_NULL(pair);
     aws_ed25519_key_pair_release(pair);
+
+    aws_byte_buf_clean_up(&buf_pub);
+    aws_byte_buf_clean_up(&buf_priv);
 
     aws_cal_library_clean_up();
 

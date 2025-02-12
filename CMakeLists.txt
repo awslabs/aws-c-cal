@@ -37,7 +37,9 @@ if (WIN32)
 
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/windows/*.c"
+            "source/windows/*.c",
+            "source/shared/ed25519-noop.c"
+
         )
         if (AWS_SUPPORT_WIN7)
             set(PLATFORM_LIBS bcrypt)
@@ -55,7 +57,8 @@ if (WIN32)
 elseif (APPLE)
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-        "source/darwin/*.c"
+            "source/darwin/*.c",
+            "source/shared/ed25519-lc.c"
         )
 
         find_library(SECURITY_LIB Security)

@@ -10,6 +10,7 @@ set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
 option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
 option(AWS_USE_CRYPTO_SHARED_LIBS "Force c-cal to use shared libs in Findcrypto" OFF)
+option(AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE "Experimental feature to support ED25519 keygen on platforms that do not support it in os libs (i.e. win/mac)" OFF)
 
 if (NOT IN_SOURCE_BUILD)
     # this is required so we can use aws-c-common's CMake modules
@@ -37,10 +38,15 @@ if (WIN32)
 
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
-            "source/windows/*.c",
-            "source/shared/ed25519-noop.c"
-
+            "source/windows/*.c"
         )
+
+        if (AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c"
+        else()
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c"
+        endif()
+
         if (AWS_SUPPORT_WIN7)
             set(PLATFORM_LIBS bcrypt)
         else()
@@ -58,8 +64,13 @@ elseif (APPLE)
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
             "source/darwin/*.c",
-            "source/shared/ed25519-lc.c"
         )
+
+        if (AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c"
+        else()
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c"
+        endif()
 
         find_library(SECURITY_LIB Security)
         if (NOT SECURITY_LIB)
@@ -73,33 +84,6 @@ elseif (APPLE)
         endif()
 
         list(APPEND PLATFORM_LIBS "-framework Security -framework CoreFoundation")
-
-        if (USE_OPENSSL AND NOT ANDROID)
-            find_package(OpenSSL REQUIRED)
-            find_package(Threads REQUIRED)
-            list(APPEND PLATFORM_LIBS OpenSSL::Crypto Threads::Threads)
-            message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
-        elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
-            if (TARGET crypto)
-                message(STATUS "Using libcrypto from AWS-LC")
-                list(APPEND PLATFORM_LIBS  crypto)
-            elseif(AWSLC_PREBUILT)
-                message(STATUS "Using prebuilt libcrypto from AWS-LC")
-                find_package(crypto REQUIRED)
-                list(APPEND PLATFORM_LIBS  AWS::crypto)
-            else()
-                message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
-            endif()
-        else()
-            #  note aws_use_package() does this for you, except it appends to the public link targets
-            # which we probably don't want for this case where we want the crypto dependency private
-            if (IN_SOURCE_BUILD)
-                list(APPEND PLATFORM_LIBS crypto)
-            else()
-                find_package(crypto REQUIRED)
-                list(APPEND PLATFORM_LIBS AWS::crypto)
-            endif()
-        endif()
     endif()
 else ()
     if (NOT BYO_CRYPTO)
@@ -107,31 +91,34 @@ else ()
             "source/unix/*.c",
             "source/shared/ed25519-lc.c"
         )
-        if (USE_OPENSSL AND NOT ANDROID)
-            find_package(OpenSSL REQUIRED)
-            find_package(Threads REQUIRED)
-            set(PLATFORM_LIBS OpenSSL::Crypto Threads::Threads)
-            message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
-        elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
-            if (TARGET crypto)
-                message(STATUS "Using libcrypto from AWS-LC")
-                set(PLATFORM_LIBS crypto)
-            elseif(AWSLC_PREBUILT)
-                message(STATUS "Using prebuilt libcrypto from AWS-LC")
-                find_package(crypto REQUIRED)
-                set(PLATFORM_LIBS AWS::crypto)
-            else()
-                message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
-            endif()
+    endif()
+endif()
+
+if ((NOT WIN32 AND NOT APPLE) OR AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+    if (USE_OPENSSL AND NOT ANDROID)
+        find_package(OpenSSL REQUIRED)
+        find_package(Threads REQUIRED)
+        list(APPEND PLATFORM_LIBS OpenSSL::Crypto Threads::Threads)
+        message(STATUS "Using libcrypto from system: ${OPENSSL_CRYPTO_LIBRARY}")
+    elseif(NOT USE_OPENSSL AND IN_SOURCE_BUILD)
+        if (TARGET crypto)
+            message(STATUS "Using libcrypto from AWS-LC")
+            list(APPEND PLATFORM_LIBS  crypto)
+        elseif(AWSLC_PREBUILT)
+            message(STATUS "Using prebuilt libcrypto from AWS-LC")
+            find_package(crypto REQUIRED)
+            list(APPEND PLATFORM_LIBS  AWS::crypto)
         else()
-            #  note aws_use_package() does this for you, except it appends to the public link targets
-            # which we probably don't want for this case where we want the crypto dependency private
-            if (IN_SOURCE_BUILD)
-                set(PLATFORM_LIBS crypto)
-            else()
-                find_package(crypto REQUIRED)
-                set(PLATFORM_LIBS AWS::crypto)
-            endif()
+            message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
+        endif()
+    else()
+        #  note aws_use_package() does this for you, except it appends to the public link targets
+        # which we probably don't want for this case where we want the crypto dependency private
+        if (IN_SOURCE_BUILD)
+            list(APPEND PLATFORM_LIBS crypto)
+        else()
+            find_package(crypto REQUIRED)
+            list(APPEND PLATFORM_LIBS AWS::crypto)
         endif()
     endif()
 endif()

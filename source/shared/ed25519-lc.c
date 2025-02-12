@@ -100,6 +100,12 @@ int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_p
     return AWS_OP_SUCCESS;
 }
 
+/**
+ * format here is b64 of the following structure
+ * string "ssh-ed25519" #literal
+ * string key
+ * Note: string is always u32 size followed by the data. all multibyte ints are in big-endian
+ */
 int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     uint8_t key_data[4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + 32 /* key */] = {0};
 
@@ -168,6 +174,27 @@ size_t aws_ed25519_key_pair_get_public_key_size(enum aws_ed25519_key_export_form
 static struct aws_byte_cursor s_private_magic = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("openssh-key-v1");
 static struct aws_byte_cursor s_private_none_literal = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("none");
 
+/**
+ * Openssl only added helpers for this format in 3.0 so we are out of luck with lc and boringssl.
+ * Hence lets just implement export ourselves.
+ * Some of the spec features (encryption, comments) are not supported.
+ * High level format is:
+ * string "openssh-key-v1\0" #literal
+ * string cipher #literal none since we dont support enc
+ * string kdf #literal none since we dont support enc
+ * string kdf options #empty since we dont support enc
+ * u32 num keys
+ * string public key #openssh encoded version
+ * string private key blob
+ * - u32 check #random num
+ * - u32 check #same check repeated
+ * - string "ssh-ed25519" #literal
+ * - string raw pub key
+ * - string raw priv key
+ * - string comment # no comment for now
+ * - padding to 8 bytes # just add bytes 1, 2, 3, ... until priv block is divisible by 8
+ * Note: string is always u32 size followed by the data. all multibyte ints are in big-endian
+ */
 int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
 
     struct aws_byte_buf key_buf;
@@ -315,6 +342,8 @@ size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_for
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
             return 64;
         case AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64:
+            /* Note: in practice it should be 312, but our b64 encoder has a weird of
+             * adding a null terminator to the end of the buffer, but not including it in the buffer length. */
             return 313;
         default:
             return 0;

@@ -42,9 +42,9 @@ if (WIN32)
         )
 
         if (AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
-            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c"
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c")
         else()
-            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c"
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c")
         endif()
 
         if (AWS_SUPPORT_WIN7)
@@ -67,9 +67,9 @@ elseif (APPLE)
         )
 
         if (AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
-            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c"
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c")
         else()
-            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c"
+            list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c")
         endif()
 
         find_library(SECURITY_LIB Security)

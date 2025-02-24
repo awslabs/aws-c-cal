@@ -163,9 +163,7 @@ size_t aws_ed25519_key_pair_get_public_key_size(enum aws_ed25519_key_export_form
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
             return 32;
         case AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64:
-            /* Note: in practice it should be 68, but our b64 encoder has a weird of
-             * adding a null terminator to the end of the buffer, but not including it in the buffer length. */
-            return 69;
+            return 68;
         default:
             return 0;
     }
@@ -342,9 +340,7 @@ size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_for
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
             return 64;
         case AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64:
-            /* Note: in practice it should be 312, but our b64 encoder has a weird of
-             * adding a null terminator to the end of the buffer, but not including it in the buffer length. */
-            return 313;
+            return 312;
         default:
             return 0;
     }

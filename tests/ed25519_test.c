@@ -10,10 +10,10 @@
 
 static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    (void)allocator;
 
 #if !defined(AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
     return AWS_OP_SKIP;
-
 #else
     aws_cal_library_test_init(allocator);
 

@@ -13,8 +13,8 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 
 #if !defined(AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
     return AWS_OP_SKIP;
-#endif
 
+#else
     aws_cal_library_test_init(allocator);
 
     struct aws_ed25519_key_pair *pair = aws_ed25519_key_pair_new_generate(allocator);
@@ -40,6 +40,7 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
     aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
+#endif
 }
 
 AWS_TEST_CASE(ed25519_key_pair_generate_test, s_ed25519_key_pair_generate_test)

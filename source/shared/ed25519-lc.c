@@ -60,7 +60,7 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
     aws_ref_count_init(&key_pair->ref_count, key_pair, s_ed25519_destroy_key);
     key_pair->allocator = allocator;
     key_pair->key = pkey;
-    
+
     EVP_PKEY_CTX_free(ctx);
     return key_pair;
 
@@ -314,6 +314,9 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
     if (EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining) <= 0) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
+
+    AWS_LOGF_DEBUG(0, "remaining size %zu", remaining);
+
     AWS_ASSERT(remaining == 64);
     out->len += 64;
 

@@ -6,6 +6,8 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#include <aws/cal/cal.h>
+
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/crypto.h>
 #include <openssl/evp.h>

@@ -73,4 +73,3 @@ on_error:
 
     return aws_raise_error(crt_error);
 }
- 

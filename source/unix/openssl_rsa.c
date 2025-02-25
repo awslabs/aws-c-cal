@@ -9,17 +9,7 @@
 #include <aws/common/encoding.h>
 
 #define OPENSSL_SUPPRESS_DEPRECATED
-#include <openssl/err.h>
 #include <openssl/evp.h>
-
-#if defined(OPENSSL_IS_OPENSSL)
-/*Error defines were part of evp.h in 1.0.x and were moved to evperr.h in 1.1.0*/
-#    if OPENSSL_VERSION_NUMBER >= 0x10100000L
-#        include <openssl/evperr.h>
-#    endif
-#else
-#    include <openssl/evp_errors.h>
-#endif
 
 #include <openssl/rsa.h>
 
@@ -45,76 +35,21 @@ static void s_rsa_destroy_key(void *key_pair) {
     aws_mem_release(base->allocator, impl);
 }
 
-/*
- * Transforms evp error code into crt error code and raises it as necessary.
- * All evp functions follow the same:
- * >= 1 for success
- * <= 0 for failure
- * -2 always indicates incorrect algo for operation
- */
-static int s_reinterpret_evp_error_as_crt(int evp_error, const char *function_name) {
-    if (evp_error > 0) {
-        return AWS_OP_SUCCESS;
-    }
-
-    /* AWS-LC/BoringSSL error code is uint32_t, but OpenSSL uses unsigned long. */
-#if defined(OPENSSL_IS_OPENSSL)
-    uint32_t error = ERR_peek_error();
-#else
-    unsigned long error = ERR_peek_error();
-#endif
-
-    int crt_error = AWS_OP_ERR;
-    const char *error_message = ERR_reason_error_string(error);
-
-    if (evp_error == -2) {
-        crt_error = AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
-        goto on_error;
-    }
-
-    if (ERR_GET_LIB(error) == ERR_LIB_EVP) {
-        switch (ERR_GET_REASON(error)) {
-            case EVP_R_BUFFER_TOO_SMALL: {
-                crt_error = AWS_ERROR_SHORT_BUFFER;
-                goto on_error;
-            }
-            case EVP_R_UNSUPPORTED_ALGORITHM: {
-                crt_error = AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
-                goto on_error;
-            }
-        }
-    }
-
-    crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
-
-on_error:
-    AWS_LOGF_ERROR(
-        AWS_LS_CAL_RSA,
-        "%s() failed. returned: %d extended error:%lu(%s) aws_error:%s",
-        function_name,
-        evp_error,
-        (unsigned long)error,
-        error_message == NULL ? "" : error_message,
-        aws_error_name(crt_error));
-
-    return aws_raise_error(crt_error);
-}
-
 static int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryption_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_ENCRYPTION_PKCS1_5) {
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
 
     } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING), "EVP_PKEY_CTX_set_rsa_padding", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
 
         const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
-        if (s_reinterpret_evp_error_as_crt(EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md), "EVP_PKEY_CTX_set_rsa_oaep_md")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md), "EVP_PKEY_CTX_set_rsa_oaep_md", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
     } else {
@@ -136,7 +71,7 @@ static int s_rsa_encrypt(
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    if (s_reinterpret_evp_error_as_crt(EVP_PKEY_encrypt_init(ctx), "EVP_PKEY_encrypt_init")) {
+    if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_encrypt_init(ctx), "EVP_PKEY_encrypt_init", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -145,9 +80,9 @@ static int s_rsa_encrypt(
     }
 
     size_t needed_buffer_len = 0;
-    if (s_reinterpret_evp_error_as_crt(
+    if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_encrypt(ctx, NULL, &needed_buffer_len, plaintext.ptr, plaintext.len),
-            "EVP_PKEY_encrypt get length")) {
+            "EVP_PKEY_encrypt get length", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -165,8 +100,8 @@ static int s_rsa_encrypt(
         goto on_error;
     }
 
-    if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt")) {
+    if (aws_reinterpret_lc_evp_error_as_crt(
+            EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
     out->len += ct_len;
@@ -191,7 +126,7 @@ static int s_rsa_decrypt(
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    if (s_reinterpret_evp_error_as_crt(EVP_PKEY_decrypt_init(ctx), "EVP_PKEY_decrypt_init")) {
+    if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_decrypt_init(ctx), "EVP_PKEY_decrypt_init", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -200,9 +135,9 @@ static int s_rsa_decrypt(
     }
 
     size_t needed_buffer_len = 0;
-    if (s_reinterpret_evp_error_as_crt(
+    if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_decrypt(ctx, NULL, &needed_buffer_len, ciphertext.ptr, ciphertext.len),
-            "EVP_PKEY_decrypt get length")) {
+            "EVP_PKEY_decrypt get length", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -216,9 +151,9 @@ static int s_rsa_decrypt(
         goto on_error;
     }
 
-    if (s_reinterpret_evp_error_as_crt(
+    if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len),
-            "EVP_PKEY_decrypt")) {
+            "EVP_PKEY_decrypt", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
     out->len += ct_len;
@@ -233,26 +168,26 @@ on_error:
 
 static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signature_algorithm algorithm) {
     if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA256) {
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PKCS1_5_SHA1) {
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING), "EVP_PKEY_CTX_set_rsa_padding", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha1()), "EVP_PKEY_CTX_set_signature_md")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha1()), "EVP_PKEY_CTX_set_signature_md", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING), "EVP_PKEY_CTX_set_rsa_padding")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING), "EVP_PKEY_CTX_set_rsa_padding", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
 
@@ -262,13 +197,13 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
         int saltlen = RSA_PSS_SALTLEN_DIGEST;
 #endif
 
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, saltlen), "EVP_PKEY_CTX_set_rsa_pss_saltlen")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, saltlen), "EVP_PKEY_CTX_set_rsa_pss_saltlen", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
 
-        if (s_reinterpret_evp_error_as_crt(
-                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md")) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md". AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
     } else {
@@ -290,7 +225,7 @@ static int s_rsa_sign(
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    if (s_reinterpret_evp_error_as_crt(EVP_PKEY_sign_init(ctx), "EVP_PKEY_sign_init")) {
+    if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_sign_init(ctx), "EVP_PKEY_sign_init", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -299,8 +234,8 @@ static int s_rsa_sign(
     }
 
     size_t needed_buffer_len = 0;
-    if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len, digest.ptr, digest.len), "EVP_PKEY_sign get length")) {
+    if (aws_reinterpret_lc_evp_error_as_crt(
+            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len, digest.ptr, digest.len), "EVP_PKEY_sign get length", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -318,8 +253,8 @@ static int s_rsa_sign(
         goto on_error;
     }
 
-    if (s_reinterpret_evp_error_as_crt(
-            EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign")) {
+    if (aws_reinterpret_lc_evp_error_as_crt(
+            EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
     out->len += ct_len;
@@ -344,7 +279,7 @@ static int s_rsa_verify(
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    if (s_reinterpret_evp_error_as_crt(EVP_PKEY_verify_init(ctx), "EVP_PKEY_verify_init")) {
+    if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_verify_init(ctx), "EVP_PKEY_verify_init", AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -362,7 +297,7 @@ static int s_rsa_verify(
     } else if (error_code == 0) {
         return aws_raise_error(AWS_ERROR_CAL_SIGNATURE_VALIDATION_FAILED);
     } else {
-        return s_reinterpret_evp_error_as_crt(error_code, "EVP_PKEY_verify");
+        return aws_reinterpret_lc_evp_error_as_crt(error_code, "EVP_PKEY_verify", AWS_LS_CAL_RSA);
     }
 
 on_error:

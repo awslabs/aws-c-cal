@@ -71,7 +71,10 @@ on_error:
 }
 
 struct aws_ed25519_key_pair *aws_ed25519_key_pair_acquire(struct aws_ed25519_key_pair *key_pair) {
-    return aws_ref_count_acquire(&key_pair->ref_count);
+    if (key_pair != NULL) {
+        aws_ref_count_acquire(&key_pair->ref_count);
+    }
+    return key_pair;
 }
 
 struct aws_ed25519_key_pair *aws_ed25519_key_pair_release(struct aws_ed25519_key_pair *key_pair) {

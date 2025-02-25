@@ -67,6 +67,7 @@ static struct aws_log_subject_info s_cal_log_subject_infos[] = {
         "libcrypto_resolve",
         "Subject for libcrypto symbol resolution logging."),
     DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_RSA, "rsa", "Subject for rsa cryptography specific logging."),
+    DEFINE_LOG_SUBJECT_INFO(AWS_LS_CAL_ED25519, "ed25519", "Subject for ed25519 cryptography specific logging."),
 };
 
 static struct aws_log_subject_info_list s_cal_log_subject_list = {

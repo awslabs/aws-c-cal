@@ -10,7 +10,7 @@ set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 option(BYO_CRYPTO "Set this if you want to provide your own cryptography implementation. This will cause the defaults to not be compiled." OFF)
 option(USE_OPENSSL "Set this if you want to use your system's OpenSSL 1.0.2/1.1.1 compatible libcrypto" OFF)
 option(AWS_USE_CRYPTO_SHARED_LIBS "Force c-cal to use shared libs in Findcrypto" OFF)
-option(AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE "Experimental feature to support ED25519 keygen on platforms that do not support it in os libs (i.e. win/mac)" OFF)
+option(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE "Experimental feature to support ED25519 keygen on platforms that do not support it in os libs (i.e. win/mac)" OFF)
 
 if (NOT IN_SOURCE_BUILD)
     # this is required so we can use aws-c-common's CMake modules
@@ -41,7 +41,7 @@ if (WIN32)
             "source/windows/*.c"
         )
 
-        if (AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+        if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c")
         else()
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c")
@@ -66,7 +66,7 @@ elseif (APPLE)
             "source/darwin/*.c"
         )
 
-        if (AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+        if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c")
         else()
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c")
@@ -94,7 +94,7 @@ else ()
     endif()
 endif()
 
-if ((NOT WIN32 AND NOT APPLE) OR AWS_LIB_CRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+if ((NOT WIN32 AND NOT APPLE) OR AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
     if (USE_OPENSSL AND NOT ANDROID)
         find_package(OpenSSL REQUIRED)
         find_package(Threads REQUIRED)

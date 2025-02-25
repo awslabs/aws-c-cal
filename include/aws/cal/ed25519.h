@@ -52,7 +52,8 @@ enum aws_ed25519_key_export_format {
 /*
  * Get public key for the key pair.
  * Key in specified format is appended to the buffer.
- * use aws_ed25519_key_pair_get_public_key_size to figure out how much capacity buffer needs for a given format.
+ * The buffer must be initialized before this call, with sufficient capacity to hold the result.
+ * Use aws_ed25519_key_pair_get_public_key_size to figure out how much capacity buffer needs for a given format.
  */
 AWS_CAL_API int aws_ed25519_key_pair_get_public_key(
     const struct aws_ed25519_key_pair *key_pair,
@@ -67,7 +68,8 @@ AWS_CAL_API size_t aws_ed25519_key_pair_get_public_key_size(enum aws_ed25519_key
 /*
  * Get private key for the key pair.
  * Key in specified format is appended to the buffer.
- * use aws_ed25519_key_pair_get_private_key_size to figure out how much capacity buffer needs for a given format.
+ * The buffer must be initialized before this call, with sufficient capacity to hold the result.
+ * Use aws_ed25519_key_pair_get_private_key_size to figure out how much capacity buffer needs for a given format.
  */
 AWS_CAL_API int aws_ed25519_key_pair_get_private_key(
     const struct aws_ed25519_key_pair *key_pair,

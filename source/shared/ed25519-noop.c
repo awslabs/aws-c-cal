@@ -7,6 +7,7 @@
 
 struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_allocator *allocator) {
     (void)allocator;
+    aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
     return NULL;
 }
 

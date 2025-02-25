@@ -318,7 +318,7 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
 
     AWS_LOGF_DEBUG(0, "remaining size after %zu", remaining);
 
-    AWS_ASSERT(remaining == 64);
+    AWS_ASSERT(remaining == 65);
     out->len += 64;
 
     return AWS_OP_SUCCESS;

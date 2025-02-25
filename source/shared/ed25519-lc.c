@@ -307,6 +307,7 @@ on_error:
 
 int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     size_t remaining = out->capacity - out->len;
+    AWS_LOGF_DEBUG(0, "remaining size before %zu", remaining);
     if (remaining < 64) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
@@ -315,7 +316,7 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    AWS_LOGF_DEBUG(0, "remaining size %zu", remaining);
+    AWS_LOGF_DEBUG(0, "remaining size after %zu", remaining);
 
     AWS_ASSERT(remaining == 64);
     out->len += 64;

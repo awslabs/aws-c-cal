@@ -43,6 +43,7 @@ if (WIN32)
 
         if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c")
+            list(APPEND AWS_CAL_OS_SRC "source/shared/opensslcrypto_common.c")
         else()
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c")
         endif()
@@ -68,6 +69,7 @@ elseif (APPLE)
 
         if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-lc.c")
+            list(APPEND AWS_CAL_OS_SRC "source/shared/opensslcrypto_common.c")
         else()
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519-noop.c")
         endif()
@@ -90,6 +92,7 @@ else ()
         file(GLOB AWS_CAL_OS_SRC
             "source/unix/*.c"
             "source/shared/ed25519-lc.c"
+            "source/shared/opensslcrypto_common.c"
         )
     endif()
 endif()

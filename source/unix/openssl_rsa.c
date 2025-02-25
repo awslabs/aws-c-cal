@@ -203,7 +203,7 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
         }
 
         if (aws_reinterpret_lc_evp_error_as_crt(
-                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md". AWS_LS_CAL_RSA)) {
+                EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()), "EVP_PKEY_CTX_set_signature_md", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
     } else {

@@ -60,7 +60,8 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
     aws_ref_count_init(&key_pair->ref_count, key_pair, s_ed25519_destroy_key);
     key_pair->allocator = allocator;
     key_pair->key = pkey;
-
+    
+    EVP_PKEY_CTX_free(ctx);
     return key_pair;
 
 on_error:

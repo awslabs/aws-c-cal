@@ -58,7 +58,7 @@
                 },
                 "openbsd": {
                     "packages": [
-                        "openssl"
+                        "openssl-3.3.2p0v0"
                     ]
                 }
             },

@@ -239,7 +239,7 @@ jobs:
       matrix:
         image: [macos-14-large, macos-14]
         lc-ed25519: [ON, OFF]
-    name: ${{ matrix.os == 'macos-14' && 'macos' || 'macos-x64' }} with lc ed25519 ${{ matrix.lc-ed25519 }}
+    name: ${{ matrix.image == 'macos-14' && 'macos' || 'macos-x64' }} with lc ed25519 ${{ matrix.lc-ed25519 }}
     runs-on: ${{ matrix.image }}
     steps:
     - uses: aws-actions/configure-aws-credentials@v4  

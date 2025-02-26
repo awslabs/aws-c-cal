@@ -41,23 +41,29 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
 #else
     EVP_PKEY *pkey = NULL;
 
+    AWS_LOGF_DEBUG(0, "here1");
+
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
     if (ctx == NULL) {
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         return NULL;
     }
 
+    AWS_LOGF_DEBUG(0, "here2");
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_keygen_init(ctx),
             "EVP_PKEY_keygen_init", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
 
+    AWS_LOGF_DEBUG(0, "here3");
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_keygen(ctx, &pkey), 
             "EVP_PKEY_keygen", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
+
+    AWS_LOGF_DEBUG(0, "here4");
 
     struct aws_ed25519_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair));
 

@@ -27,12 +27,15 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
         &buf_pub, allocator, aws_ed25519_key_pair_get_public_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
 
     ASSERT_SUCCESS(aws_ed25519_key_pair_get_public_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_pub));
+    ASSERT_EQUALS(buf_pub.len, 68);
 
     struct aws_byte_buf buf_priv;
     aws_byte_buf_init(
         &buf_priv, allocator, aws_ed25519_key_pair_get_private_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
 
     ASSERT_SUCCESS(aws_ed25519_key_pair_get_private_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_priv));
+
+    ASSERT_EQUALS(buf_priv.len, 312);
 
     ASSERT_NOT_NULL(pair);
     aws_ed25519_key_pair_release(pair);

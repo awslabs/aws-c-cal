@@ -57,9 +57,11 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
     }
 
     AWS_LOGF_DEBUG(0, "here3");
+    int err = EVP_PKEY_keygen(ctx, &pkey);
+    AWS_LOGF_DEBUG(0, "here3.5");
     if (aws_reinterpret_lc_evp_error_as_crt(
-            EVP_PKEY_keygen(ctx, &pkey), 
-            "EVP_PKEY_keygen", AWS_LS_CAL_ED25519)) {
+        err, 
+        "EVP_PKEY_keygen", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
 

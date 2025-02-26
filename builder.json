@@ -55,10 +55,20 @@
                     "packages": [
                         "libssl-dev"
                     ]
+                },
+                "openbsd": {
+                    "packages": [
+                        "libssl-dev"
+                    ]
                 }
             },
             "targets": {
                 "linux": {
+                    "!upstream": [
+                        { "name": "aws-c-common" }
+                    ]
+                },
+                "openbsd": {
                     "!upstream": [
                         { "name": "aws-c-common" }
                     ]

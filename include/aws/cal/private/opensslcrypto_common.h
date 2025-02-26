@@ -13,7 +13,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL) && !defined(LIBRESSL_VERSION_NUMBER)
 #    define OPENSSL_IS_OPENSSL
 #endif
 

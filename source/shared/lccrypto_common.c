@@ -10,9 +10,9 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#if defined(OPENSSL_IS_OPENSSL)
+#if defined(OPENSSL_IS_OPENSSL) 
 /*Error defines were part of evp.h in 1.0.x and were moved to evperr.h in 1.1.0*/
-#    if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#    if OPENSSL_VERSION_NUMBER >= 0x10100000L 
 #        include <openssl/evperr.h>
 #    endif
 #else

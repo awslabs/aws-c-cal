@@ -58,7 +58,6 @@
                 },
                 "openbsd": {
                     "packages": [
-                        "libssl-dev"
                     ]
                 }
             },

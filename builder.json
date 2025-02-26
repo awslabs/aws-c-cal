@@ -58,6 +58,7 @@
                 },
                 "openbsd": {
                     "packages": [
+                        "openssl-1.1"
                     ]
                 }
             },

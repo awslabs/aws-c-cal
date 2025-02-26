@@ -272,9 +272,10 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
         goto on_error;
     }
 
-    /* private key (raw) */
+    /* private key - seed + pub (raw) */
     if (!aws_byte_buf_write_be32(&key_buf, 64) ||
-        aws_ed25519_key_pair_get_private_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
+        aws_ed25519_key_pair_get_private_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS ||
+        aws_ed25519_key_pair_get_public_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
         goto on_error;
     }
 
@@ -307,18 +308,23 @@ on_error:
 
 int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     size_t remaining = out->capacity - out->len;
-    AWS_LOGF_DEBUG(0, "remaining size before %zu", remaining);
-    if (remaining < 64) {
+    if (remaining < 32) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
+
+    /**
+     * RFC defines private key to be 64 bytes (seed + pub). 
+     * Old versions of openssl did return it that way, but at some point (seems to be around 1.1.1l) they switched to
+     * just returning seed. So for consistency lets also return just the seed.
+     * Which on older versions of openssl just means reading first 32 bytes.
+     */
+    remaining = 32;
 
     if (EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining) <= 0) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    AWS_LOGF_DEBUG(0, "remaining size after %zu", remaining);
-
-    AWS_FATAL_ASSERT(remaining == 64);
+    AWS_ASSERT(remaining == 32);
     out->len += 64;
 
     return AWS_OP_SUCCESS;
@@ -346,7 +352,7 @@ int aws_ed25519_key_pair_get_private_key(
 size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_format format) {
     switch (format) {
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
-            return 64;
+            return 32;
         case AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64:
             return 312;
         default:

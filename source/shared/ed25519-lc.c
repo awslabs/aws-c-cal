@@ -321,6 +321,7 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
     remaining = 32;
 
     if (EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining) <= 0) {
+        AWS_LOGF_DEBUG(0, "failed here");
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 

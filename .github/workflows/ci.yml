@@ -235,7 +235,12 @@ jobs:
         python .\aws-c-cal\build\deps\aws-c-common\scripts\appverifier_ctest.py --build_directory .\aws-c-cal\build\aws-c-cal
 
   macos:
-    runs-on: macos-14 # latest
+    strategy:
+      matrix:
+        image: [macos-14-large, macos-14]
+        lc-ed25519: [ON, OFF]
+    name: ${{ matrix.os == 'macos-14' && 'macos' || 'macos-x64' }} with lc ed25519 ${{ matrix.lc-ed25519 }}
+    runs-on: ${{ matrix.image }}
     steps:
     - uses: aws-actions/configure-aws-credentials@v4  
       with:
@@ -245,20 +250,7 @@ jobs:
       run: |
         python3 -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz', 'builder')"
         chmod a+x builder
-        ./builder build -p ${{ env.PACKAGE_NAME }}
-
-  macos-x64:
-    runs-on: macos-14-large # latest
-    steps:
-    - uses: aws-actions/configure-aws-credentials@v4  
-      with:
-        role-to-assume: ${{ env.CRT_CI_ROLE }}
-        aws-region: ${{ env.AWS_DEFAULT_REGION }}
-    - name: Build ${{ env.PACKAGE_NAME }} + consumers
-      run: |
-        python3 -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz', 'builder')"
-        chmod a+x builder
-        ./builder build -p ${{ env.PACKAGE_NAME }}
+        ./builder build -p ${{ env.PACKAGE_NAME }} --cmake-extra=-DAWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE=${{ matrix.lc-ed25519 }}
 
   macos-min-deployment-target:
     runs-on: macos-14 # latest

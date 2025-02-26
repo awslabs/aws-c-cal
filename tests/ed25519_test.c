@@ -22,25 +22,41 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 
     ASSERT_NOT_NULL(pair);
 
-    struct aws_byte_buf buf_pub;
+    struct aws_byte_buf buf_pub_ssh;
     aws_byte_buf_init(
-        &buf_pub, allocator, aws_ed25519_key_pair_get_public_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
+        &buf_pub_ssh, allocator, aws_ed25519_key_pair_get_public_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
 
-    ASSERT_SUCCESS(aws_ed25519_key_pair_get_public_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_pub));
-    ASSERT_UINT_EQUALS(buf_pub.len, 68);
+    ASSERT_SUCCESS(aws_ed25519_key_pair_get_public_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_pub_ssh));
+    ASSERT_UINT_EQUALS(buf_pub_ssh.len, 68);
 
-    struct aws_byte_buf buf_priv;
+    struct aws_byte_buf buf_pub_raw;
     aws_byte_buf_init(
-        &buf_priv, allocator, aws_ed25519_key_pair_get_private_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
+        &buf_pub_raw, allocator, aws_ed25519_key_pair_get_public_key_size(AWS_CAL_ED25519_KEY_EXPORT_RAW));
 
-    ASSERT_SUCCESS(aws_ed25519_key_pair_get_private_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_priv));
-    ASSERT_UINT_EQUALS(buf_priv.len, 312);
+    ASSERT_SUCCESS(aws_ed25519_key_pair_get_public_key(pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &buf_pub_raw));
+    ASSERT_UINT_EQUALS(buf_pub_raw.len, 32);
+
+    struct aws_byte_buf buf_priv_ssh;
+    aws_byte_buf_init(
+        &buf_priv_ssh, allocator, aws_ed25519_key_pair_get_private_key_size(AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64));
+
+    ASSERT_SUCCESS(aws_ed25519_key_pair_get_private_key(pair, AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64, &buf_priv_ssh));
+    ASSERT_UINT_EQUALS(buf_priv_ssh.len, 312);
+
+    struct aws_byte_buf buf_priv_raw;
+    aws_byte_buf_init(
+        &buf_priv_raw, allocator, aws_ed25519_key_pair_get_private_key_size(AWS_CAL_ED25519_KEY_EXPORT_RAW));
+
+    ASSERT_SUCCESS(aws_ed25519_key_pair_get_private_key(pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &buf_priv_raw));
+    ASSERT_UINT_EQUALS(buf_priv_raw.len, 32);
 
     ASSERT_NOT_NULL(pair);
     aws_ed25519_key_pair_release(pair);
 
-    aws_byte_buf_clean_up(&buf_pub);
-    aws_byte_buf_clean_up(&buf_priv);
+    aws_byte_buf_clean_up(&buf_pub_ssh);
+    aws_byte_buf_clean_up(&buf_priv_ssh);
+    aws_byte_buf_clean_up(&buf_pub_raw);
+    aws_byte_buf_clean_up(&buf_priv_raw);
 
     aws_cal_library_clean_up();
 

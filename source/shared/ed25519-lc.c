@@ -47,11 +47,15 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
         return NULL;
     }
 
-    if (EVP_PKEY_keygen_init(ctx) <= 0) {
+    if (aws_reinterpret_lc_evp_error_as_crt(
+            EVP_PKEY_keygen_init(ctx),
+            "EVP_PKEY_keygen_init", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
 
-    if (EVP_PKEY_keygen(ctx, &pkey) <= 0) {
+    if (aws_reinterpret_lc_evp_error_as_crt(
+            EVP_PKEY_keygen(ctx, &pkey), 
+            "EVP_PKEY_keygen", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
 
@@ -89,17 +93,14 @@ static struct aws_byte_cursor s_key_type_literal = AWS_BYTE_CUR_INIT_FROM_STRING
 
 int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     if (!aws_byte_buf_write_be32(out, s_key_type_literal.len) ||
-        aws_byte_buf_append(out, &s_key_type_literal) != AWS_OP_SUCCESS || !aws_byte_buf_write_be32(out, 32)) {
+        aws_byte_buf_append(out, &s_key_type_literal) != AWS_OP_SUCCESS) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    size_t pub_len = 32;
-    AWS_FATAL_ASSERT(out->capacity - out->len >= pub_len);
-    if (EVP_PKEY_get_raw_public_key(key_pair->key, out->buffer + out->len, &pub_len) <= 0) {
+    if (!aws_byte_buf_write_be32(out, 32) ||
+        aws_ed25519_key_pair_get_public_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, out) != AWS_OP_SUCCESS) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
-    AWS_ASSERT(pub_len == 32);
-    out->len += 32;
 
     return AWS_OP_SUCCESS;
 }
@@ -112,7 +113,6 @@ int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_p
  */
 int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     uint8_t key_data[4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + 32 /* key */] = {0};
-
     struct aws_byte_buf key_buf = aws_byte_buf_from_empty_array(key_data, AWS_ARRAY_SIZE(key_data));
 
     if (s_ed25519_openssh_encode_public_key(key_pair, &key_buf)) {
@@ -134,7 +134,9 @@ int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair *key_pair, str
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    if (EVP_PKEY_get_raw_public_key(key_pair->key, out->buffer + out->len, &remaining) <= 0) {
+    if (aws_reinterpret_lc_evp_error_as_crt(
+            EVP_PKEY_get_raw_public_key(key_pair->key, out->buffer + out->len, &remaining),
+            "EVP_PKEY_get_raw_public_key", AWS_LS_CAL_ED25519)) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
     AWS_ASSERT(remaining == 32);
@@ -320,13 +322,14 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
      */
     remaining = 32;
 
-    if (EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining) <= 0) {
-        AWS_LOGF_DEBUG(0, "failed here");
+    if (aws_reinterpret_lc_evp_error_as_crt(
+            EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining), 
+            "EVP_PKEY_get_raw_private_key", AWS_LS_CAL_ED25519)) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
     AWS_ASSERT(remaining == 32);
-    out->len += 64;
+    out->len += 32;
 
     return AWS_OP_SUCCESS;
 }

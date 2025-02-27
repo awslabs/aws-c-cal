@@ -12,6 +12,10 @@
 
 #include <openssl/evp.h>
 
+int s_byte_buf_write_be32_with_err(struct aws_byte_buf *buf, uint32_t x) {
+    return aws_byte_buf_write_be32(buf, x) ? AWS_OP_SUCCESS : AWS_ERROR_SHORT_BUFFER;
+}
+
 struct aws_ed25519_key_pair {
     struct aws_allocator *allocator;
     struct aws_ref_count ref_count;
@@ -41,8 +45,6 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
 #else
     EVP_PKEY *pkey = NULL;
 
-    AWS_LOGF_DEBUG(0, "here1");
-
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
     if (ctx == NULL) {
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
@@ -68,7 +70,6 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
 
 on_error:
     EVP_PKEY_CTX_free(ctx);
-    aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     return NULL;
 #endif
 }
@@ -90,14 +91,14 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_release(struct aws_ed25519_key
 static struct aws_byte_cursor s_key_type_literal = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("ssh-ed25519");
 
 int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
-    if (!aws_byte_buf_write_be32(out, (uint32_t)s_key_type_literal.len) ||
+    if (s_byte_buf_write_be32_with_err(out, (uint32_t)s_key_type_literal.len) != AWS_OP_SUCCESS ||
         aws_byte_buf_append(out, &s_key_type_literal) != AWS_OP_SUCCESS) {
-        return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+        return AWS_OP_ERR
     }
 
-    if (!aws_byte_buf_write_be32(out, 32) ||
+    if (s_byte_buf_write_be32_with_err(out, 32) != AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_public_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, out) != AWS_OP_SUCCESS) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return AWS_OP_ERR;
     }
 
     return AWS_OP_SUCCESS;
@@ -204,42 +205,40 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     aws_byte_buf_init(&key_buf, key_pair->allocator, 312);
 
     /* magic */
-    if (aws_byte_buf_append(&key_buf, &s_private_magic) != AWS_OP_SUCCESS || !aws_byte_buf_write_u8(&key_buf, 0)) {
+    if (aws_byte_buf_append(&key_buf, &s_private_magic) != AWS_OP_SUCCESS) {
+        goto on_error;
+    }
+    if(!aws_byte_buf_write_u8(&key_buf, 0)) {
         aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }
 
     /* cipher name (we dont support it now, but still need to write out 0) */
-    if (!aws_byte_buf_write_be32(&key_buf, 4) ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, 4) != AWS_OP_SUCCESS ||
         aws_byte_buf_append(&key_buf, &s_private_none_literal) != AWS_OP_SUCCESS) {
-        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }
 
     /* kdf name (we dont support it now, but still need to write out 0) */
-    if (!aws_byte_buf_write_be32(&key_buf, 4) ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, 4) != AWS_OP_SUCCESS ||
         aws_byte_buf_append(&key_buf, &s_private_none_literal) != AWS_OP_SUCCESS) {
-        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }
 
     /* kdf options (we dont support it now, but still need to write out 0) */
-    if (!aws_byte_buf_write_be32(&key_buf, 0)) {
-        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    if (s_byte_buf_write_be32_with_err(&key_buf, 0) != AWS_OP_SUCCESS) {
         goto on_error;
     }
 
     /* number of keys */
-    if (!aws_byte_buf_write_be32(&key_buf, 1)) {
-        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    if (s_byte_buf_write_be32_with_err(&key_buf, 1) != AWS_OP_SUCCESS) {
         goto on_error;
     }
 
     /* encoded public key */
     const size_t pub_encoded_len = 4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + 32 /* key */;
-    if (!aws_byte_buf_write_be32(&key_buf, (uint32_t)pub_encoded_len) ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, (uint32_t)pub_encoded_len) != AWS_OP_SUCCESS ||
         s_ed25519_openssh_encode_public_key(key_pair, &key_buf) != AWS_OP_SUCCESS) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
@@ -253,8 +252,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     /* pad block to the next multiple of 8 */
     size_t priv_block_padded_len = (priv_block_len + 7) & ~7;
 
-    if (!aws_byte_buf_write_be32(&key_buf, (uint32_t)priv_block_padded_len)) {
-        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    if (s_byte_buf_write_be32_with_err(&key_buf, (uint32_t)priv_block_padded_len) != AWS_OP_SUCCESS) {
         goto on_error;
     }
 
@@ -265,35 +263,32 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     }
 
     /* check (and yeah its written twice on purpose) */
-    if (!aws_byte_buf_write_be32(&key_buf, check) || !aws_byte_buf_write_be32(&key_buf, check)) {
-        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
+    if (s_byte_buf_write_be32_with_err(&key_buf, check) != AWS_OP_SUCCESS || 
+        s_byte_buf_write_be32_with_err(&key_buf, check) != AWS_OP_SUCCESS) {
         goto on_error;
     }
 
     /* key type */
-    if (!aws_byte_buf_write_be32(&key_buf, (uint32_t)s_key_type_literal.len) ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, (uint32_t)s_key_type_literal.len) != AWS_OP_SUCCESS ||
         aws_byte_buf_append(&key_buf, &s_key_type_literal) != AWS_OP_SUCCESS) {
-        aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }
 
     /* public key (raw) */
-    if (!aws_byte_buf_write_be32(&key_buf, 32) ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, 32) != AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_public_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
     /* private key - seed + pub (raw) */
-    if (!aws_byte_buf_write_be32(&key_buf, 64) ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, 64) != AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_private_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_public_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }
 
     /* comment */
-    if (!aws_byte_buf_write_be32(&key_buf, 0)) {
+    if (s_byte_buf_write_be32_with_err(&key_buf, 0) != AWS_OP_SUCCESS) {
         aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }

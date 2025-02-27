@@ -183,8 +183,7 @@ jobs:
   windows-ed25519:
     runs-on: windows-2022 # latest
     steps:
-    - name: Check NASM version
-      run: nasm -v
+    - uses: ilammy/setup-nasm@v1
     - uses: aws-actions/configure-aws-credentials@v4  
       with:
         role-to-assume: ${{ env.CRT_CI_ROLE }}

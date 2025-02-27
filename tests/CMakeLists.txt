@@ -2,10 +2,6 @@ include(AwsLibFuzzer)
 include(AwsTestHarness)
 enable_testing()
 
-if(CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
-    target_link_options(${PROJECT_NAME}-tests PRIVATE "-Wl,--no-execute-only")
-endif()
-
 file(GLOB TEST_HDRS "*.h")
 file(GLOB TEST_SRC "*.c")
 
@@ -161,3 +157,7 @@ add_test_case(ecc_key_gen_from_private_fuzz_test)
 add_test_case(ed25519_key_pair_generate_test)
 
 generate_test_driver(${PROJECT_NAME}-tests)
+
+if(CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
+    target_link_options(${PROJECT_NAME}-tests PRIVATE "-Wl,--no-execute-only")
+endif()

@@ -77,7 +77,7 @@ AWS_CAL_API int aws_ed25519_key_pair_get_private_key(
     struct aws_byte_buf *out);
 
 /**
- * Gets the size of the exported public key.
+ * Gets the size of the exported private key.
  */
 AWS_CAL_API size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_format format);
 

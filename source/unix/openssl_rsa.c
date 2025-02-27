@@ -44,12 +44,15 @@ static int s_set_encryption_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_encryp
 
     } else if (algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 || algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA512) {
         if (aws_reinterpret_lc_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING), "EVP_PKEY_CTX_set_rsa_padding", AWS_LS_CAL_RSA)) {
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING),
+                "EVP_PKEY_CTX_set_rsa_padding",
+                AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
 
         const EVP_MD *md = algorithm == AWS_CAL_RSA_ENCRYPTION_OAEP_SHA256 ? EVP_sha256() : EVP_sha512();
-        if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md), "EVP_PKEY_CTX_set_rsa_oaep_md", AWS_LS_CAL_RSA)) {
+        if (aws_reinterpret_lc_evp_error_as_crt(
+                EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md), "EVP_PKEY_CTX_set_rsa_oaep_md", AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
     } else {
@@ -82,7 +85,8 @@ static int s_rsa_encrypt(
     size_t needed_buffer_len = 0;
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_encrypt(ctx, NULL, &needed_buffer_len, plaintext.ptr, plaintext.len),
-            "EVP_PKEY_encrypt get length", AWS_LS_CAL_RSA)) {
+            "EVP_PKEY_encrypt get length",
+            AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -101,7 +105,9 @@ static int s_rsa_encrypt(
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(
-            EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len), "EVP_PKEY_encrypt", AWS_LS_CAL_RSA)) {
+            EVP_PKEY_encrypt(ctx, out->buffer + out->len, &ct_len, plaintext.ptr, plaintext.len),
+            "EVP_PKEY_encrypt",
+            AWS_LS_CAL_RSA)) {
         goto on_error;
     }
     out->len += ct_len;
@@ -137,7 +143,8 @@ static int s_rsa_decrypt(
     size_t needed_buffer_len = 0;
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_decrypt(ctx, NULL, &needed_buffer_len, ciphertext.ptr, ciphertext.len),
-            "EVP_PKEY_decrypt get length", AWS_LS_CAL_RSA)) {
+            "EVP_PKEY_decrypt get length",
+            AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -153,7 +160,8 @@ static int s_rsa_decrypt(
 
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_decrypt(ctx, out->buffer + out->len, &ct_len, ciphertext.ptr, ciphertext.len),
-            "EVP_PKEY_decrypt", AWS_LS_CAL_RSA)) {
+            "EVP_PKEY_decrypt",
+            AWS_LS_CAL_RSA)) {
         goto on_error;
     }
     out->len += ct_len;
@@ -187,7 +195,9 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
         }
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
         if (aws_reinterpret_lc_evp_error_as_crt(
-                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING), "EVP_PKEY_CTX_set_rsa_padding", AWS_LS_CAL_RSA)) {
+                EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING),
+                "EVP_PKEY_CTX_set_rsa_padding",
+                AWS_LS_CAL_RSA)) {
             return AWS_OP_ERR;
         }
 
@@ -235,7 +245,9 @@ static int s_rsa_sign(
 
     size_t needed_buffer_len = 0;
     if (aws_reinterpret_lc_evp_error_as_crt(
-            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len, digest.ptr, digest.len), "EVP_PKEY_sign get length", AWS_LS_CAL_RSA)) {
+            EVP_PKEY_sign(ctx, NULL, &needed_buffer_len, digest.ptr, digest.len),
+            "EVP_PKEY_sign get length",
+            AWS_LS_CAL_RSA)) {
         goto on_error;
     }
 
@@ -254,7 +266,9 @@ static int s_rsa_sign(
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(
-            EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len), "EVP_PKEY_sign", AWS_LS_CAL_RSA)) {
+            EVP_PKEY_sign(ctx, out->buffer + out->len, &ct_len, digest.ptr, digest.len),
+            "EVP_PKEY_sign",
+            AWS_LS_CAL_RSA)) {
         goto on_error;
     }
     out->len += ct_len;

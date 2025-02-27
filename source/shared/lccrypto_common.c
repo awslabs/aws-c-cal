@@ -3,16 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
-#include <aws/cal/private/opensslcrypto_common.h>
 #include <aws/cal/cal.h>
+#include <aws/cal/private/opensslcrypto_common.h>
 
 #define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#if defined(OPENSSL_IS_OPENSSL) 
+#if defined(OPENSSL_IS_OPENSSL)
 /*Error defines were part of evp.h in 1.0.x and were moved to evperr.h in 1.1.0*/
-#    if OPENSSL_VERSION_NUMBER >= 0x10100000L 
+#    if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #        include <openssl/evperr.h>
 #    endif
 #else

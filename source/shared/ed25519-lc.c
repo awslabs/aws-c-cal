@@ -49,15 +49,11 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
         return NULL;
     }
 
-    if (aws_reinterpret_lc_evp_error_as_crt(
-            EVP_PKEY_keygen_init(ctx),
-            "EVP_PKEY_keygen_init", AWS_LS_CAL_ED25519)) {
+    if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_keygen_init(ctx), "EVP_PKEY_keygen_init", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
 
-    if (aws_reinterpret_lc_evp_error_as_crt(
-        EVP_PKEY_keygen(ctx, &pkey), 
-        "EVP_PKEY_keygen", AWS_LS_CAL_ED25519)) {
+    if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_keygen(ctx, &pkey), "EVP_PKEY_keygen", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
 
@@ -138,7 +134,8 @@ int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair *key_pair, str
 
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_get_raw_public_key(key_pair->key, out->buffer + out->len, &remaining),
-            "EVP_PKEY_get_raw_public_key", AWS_LS_CAL_ED25519)) {
+            "EVP_PKEY_get_raw_public_key",
+            AWS_LS_CAL_ED25519)) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
     if (remaining != 32) {
@@ -207,8 +204,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     aws_byte_buf_init(&key_buf, key_pair->allocator, 312);
 
     /* magic */
-    if (aws_byte_buf_append(&key_buf, &s_private_magic) != AWS_OP_SUCCESS || !
-        aws_byte_buf_write_u8(&key_buf, 0)) {
+    if (aws_byte_buf_append(&key_buf, &s_private_magic) != AWS_OP_SUCCESS || !aws_byte_buf_write_u8(&key_buf, 0)) {
         aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }
@@ -269,8 +265,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     }
 
     /* check (and yeah its written twice on purpose) */
-    if (!aws_byte_buf_write_be32(&key_buf, check) || 
-        !aws_byte_buf_write_be32(&key_buf, check)) {
+    if (!aws_byte_buf_write_be32(&key_buf, check) || !aws_byte_buf_write_be32(&key_buf, check)) {
         aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }
@@ -333,7 +328,7 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
     }
 
     /**
-     * RFC defines private key to be 64 bytes (seed + pub). 
+     * RFC defines private key to be 64 bytes (seed + pub).
      * Old versions of openssl did return it that way, but at some point (seems to be around 1.1.1l) they switched to
      * just returning seed. So for consistency lets also return just the seed.
      * Which on older versions of openssl just means reading first 32 bytes.
@@ -341,8 +336,9 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
     remaining = 32;
 
     if (aws_reinterpret_lc_evp_error_as_crt(
-            EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining), 
-            "EVP_PKEY_get_raw_private_key", AWS_LS_CAL_ED25519)) {
+            EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining),
+            "EVP_PKEY_get_raw_private_key",
+            AWS_LS_CAL_ED25519)) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 

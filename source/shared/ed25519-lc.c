@@ -208,7 +208,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     if (aws_byte_buf_append(&key_buf, &s_private_magic) != AWS_OP_SUCCESS) {
         goto on_error;
     }
-    if(!aws_byte_buf_write_u8(&key_buf, 0)) {
+    if (!aws_byte_buf_write_u8(&key_buf, 0)) {
         aws_raise_error(AWS_ERROR_SHORT_BUFFER);
         goto on_error;
     }
@@ -263,7 +263,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     }
 
     /* check (and yeah its written twice on purpose) */
-    if (s_byte_buf_write_be32_with_err(&key_buf, check) != AWS_OP_SUCCESS || 
+    if (s_byte_buf_write_be32_with_err(&key_buf, check) != AWS_OP_SUCCESS ||
         s_byte_buf_write_be32_with_err(&key_buf, check) != AWS_OP_SUCCESS) {
         goto on_error;
     }

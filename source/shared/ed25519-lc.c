@@ -162,8 +162,6 @@ int aws_ed25519_key_pair_get_public_key(
         default:
             return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
     }
-
-    return AWS_OP_SUCCESS;
 }
 
 size_t aws_ed25519_key_pair_get_public_key_size(enum aws_ed25519_key_export_format format) {
@@ -351,8 +349,6 @@ int aws_ed25519_key_pair_get_private_key(
         default:
             return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
     }
-
-    return AWS_OP_SUCCESS;
 }
 
 size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_format format) {

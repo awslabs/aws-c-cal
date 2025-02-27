@@ -94,7 +94,7 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_release(struct aws_ed25519_key
 static struct aws_byte_cursor s_key_type_literal = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("ssh-ed25519");
 
 int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
-    if (!aws_byte_buf_write_be32(out, s_key_type_literal.len) ||
+    if (!aws_byte_buf_write_be32(out, (uint32_t)s_key_type_literal.len) ||
         aws_byte_buf_append(out, &s_key_type_literal) != AWS_OP_SUCCESS) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
@@ -235,7 +235,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
 
     /* encoded public key */
     const size_t pub_encoded_len = 4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + 32 /* key */;
-    if (!aws_byte_buf_write_be32(&key_buf, pub_encoded_len) ||
+    if (!aws_byte_buf_write_be32(&key_buf, (uint32_t)pub_encoded_len) ||
         s_ed25519_openssh_encode_public_key(key_pair, &key_buf) != AWS_OP_SUCCESS) {
         goto on_error;
     }
@@ -250,7 +250,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     /* pad block to the next multiple of 8 */
     size_t priv_block_padded_len = (priv_block_len + 7) & ~7;
 
-    if (!aws_byte_buf_write_be32(&key_buf, priv_block_padded_len)) {
+    if (!aws_byte_buf_write_be32(&key_buf, (uint32_t)priv_block_padded_len)) {
         goto on_error;
     }
 
@@ -265,7 +265,7 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     }
 
     /* key type */
-    if (!aws_byte_buf_write_be32(&key_buf, s_key_type_literal.len) ||
+    if (!aws_byte_buf_write_be32(&key_buf, (uint32_t)s_key_type_literal.len) ||
         aws_byte_buf_append(&key_buf, &s_key_type_literal) != AWS_OP_SUCCESS) {
         goto on_error;
     }

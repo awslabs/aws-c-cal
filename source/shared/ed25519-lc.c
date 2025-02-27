@@ -49,23 +49,17 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
         return NULL;
     }
 
-    AWS_LOGF_DEBUG(0, "here2");
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_keygen_init(ctx),
             "EVP_PKEY_keygen_init", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
 
-    AWS_LOGF_DEBUG(0, "here3");
-    int err = EVP_PKEY_keygen(ctx, &pkey);
-    AWS_LOGF_DEBUG(0, "here3.5");
     if (aws_reinterpret_lc_evp_error_as_crt(
-        err, 
+        EVP_PKEY_keygen(ctx, &pkey), 
         "EVP_PKEY_keygen", AWS_LS_CAL_ED25519)) {
         goto on_error;
     }
-
-    AWS_LOGF_DEBUG(0, "here4");
 
     struct aws_ed25519_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair));
 

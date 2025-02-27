@@ -113,6 +113,24 @@
                 }
             }
         },
+        "aws-lc-ed25519": {
+            "targets": {
+                "windows": {
+                    "+upstream": [
+                        {
+                            "name": "aws-lc"
+                        }
+                    ]
+                },
+                "macos": {
+                    "+upstream": [
+                        {
+                            "name": "aws-lc"
+                        }
+                    ]
+                }
+            }
+        },
         "no-tests": {
             "!test_steps": []
         },

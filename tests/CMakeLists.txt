@@ -3,7 +3,7 @@ include(AwsTestHarness)
 enable_testing()
 
 if(CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
-    list(APPEND AWS_C_FLAGS -Wl,--no-execute-only)
+t   arget_link_options(${PROJECT_NAME}-tests PRIVATE "-Wl,--no-execute-only")
 endif()
 
 file(GLOB TEST_HDRS "*.h")

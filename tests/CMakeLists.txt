@@ -2,6 +2,10 @@ include(AwsLibFuzzer)
 include(AwsTestHarness)
 enable_testing()
 
+if(CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
+    list(APPEND AWS_C_FLAGS -Wl,--no-execute-only)
+endif()
+
 file(GLOB TEST_HDRS "*.h")
 file(GLOB TEST_SRC "*.c")
 

@@ -93,7 +93,7 @@ static struct aws_byte_cursor s_key_type_literal = AWS_BYTE_CUR_INIT_FROM_STRING
 int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     if (s_byte_buf_write_be32_with_err(out, (uint32_t)s_key_type_literal.len) != AWS_OP_SUCCESS ||
         aws_byte_buf_append(out, &s_key_type_literal) != AWS_OP_SUCCESS) {
-        return AWS_OP_ERR
+        return AWS_OP_ERR;
     }
 
     if (s_byte_buf_write_be32_with_err(out, 32) != AWS_OP_SUCCESS ||

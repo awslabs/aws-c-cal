@@ -12,6 +12,9 @@
 
 #include <openssl/evp.h>
 
+static const size_t s_private_key_size = 32;
+static const size_t s_public_key_size = 32;
+
 int s_byte_buf_write_be32_with_err(struct aws_byte_buf *buf, uint32_t x) {
     return aws_byte_buf_write_be32(buf, x) ? AWS_OP_SUCCESS : AWS_ERROR_SHORT_BUFFER;
 }
@@ -111,7 +114,7 @@ int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_p
  * Note: string is always u32 size followed by the data. all multibyte ints are in big-endian
  */
 int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
-    uint8_t key_data[4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + 32 /* key */] = {0};
+    uint8_t key_data[4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + s_public_key_size /* key */] = {0};
     struct aws_byte_buf key_buf = aws_byte_buf_from_empty_array(key_data, AWS_ARRAY_SIZE(key_data));
 
     if (s_ed25519_openssh_encode_public_key(key_pair, &key_buf)) {
@@ -129,7 +132,7 @@ int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair *key_pair,
 
 int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     size_t remaining = out->capacity - out->len;
-    if (remaining < 32) {
+    if (remaining < s_public_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
@@ -139,10 +142,10 @@ int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair *key_pair, str
             AWS_LS_CAL_ED25519)) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
-    if (remaining != 32) {
+    if (remaining != s_public_key_size) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
-    out->len += 32;
+    out->len += s_public_key_size;
 
     return AWS_OP_SUCCESS;
 }
@@ -167,10 +170,11 @@ int aws_ed25519_key_pair_get_public_key(
 size_t aws_ed25519_key_pair_get_public_key_size(enum aws_ed25519_key_export_format format) {
     switch (format) {
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
-            return 32;
+            return s_public_key_size;
         case AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64:
             return 68;
         default:
+            aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
             return 0;
     }
 }
@@ -242,12 +246,12 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
         goto on_error;
     }
 
-    size_t priv_block_len = 4 +                          /* check1 */
-                            4 +                          /* check2 */
-                            4 + s_key_type_literal.len + /* key type string */
-                            4 + 32 +                     /* public key */
-                            4 + 64 +                     /* private key (includes public) */
-                            4 + 0;                       /* comment (0, since comment not currently supported) */
+    size_t priv_block_len = 4 +                                          /* check1 */
+                            4 +                                          /* check2 */
+                            4 + s_key_type_literal.len +                 /* key type string */
+                            4 + s_public_key_size +                      /* public key */
+                            4 + s_private_key_size + s_public_key_size + /* private key (includes public) */
+                            4 + 0; /* comment (0, since comment not currently supported) */
 
     /* pad block to the next multiple of 8 */
     size_t priv_block_padded_len = (priv_block_len + 7) & ~7;
@@ -275,13 +279,13 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair
     }
 
     /* public key (raw) */
-    if (s_byte_buf_write_be32_with_err(&key_buf, 32) != AWS_OP_SUCCESS ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, s_public_key_size) != AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_public_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
         goto on_error;
     }
 
     /* private key - seed + pub (raw) */
-    if (s_byte_buf_write_be32_with_err(&key_buf, 64) != AWS_OP_SUCCESS ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, s_private_key_size + s_public_key_size) != AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_private_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_public_key(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
         goto on_error;
@@ -318,7 +322,7 @@ on_error:
 
 int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
     size_t remaining = out->capacity - out->len;
-    if (remaining < 32) {
+    if (remaining < s_private_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
@@ -328,7 +332,7 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
      * just returning seed. So for consistency lets also return just the seed.
      * Which on older versions of openssl just means reading first 32 bytes.
      */
-    remaining = 32;
+    remaining = s_private_key_size;
 
     if (aws_reinterpret_lc_evp_error_as_crt(
             EVP_PKEY_get_raw_private_key(key_pair->key, out->buffer + out->len, &remaining),
@@ -337,10 +341,10 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
-    if (remaining != 32) {
+    if (remaining != s_private_key_size) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
-    out->len += 32;
+    out->len += s_private_key_size;
 
     return AWS_OP_SUCCESS;
 }
@@ -365,10 +369,11 @@ int aws_ed25519_key_pair_get_private_key(
 size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_format format) {
     switch (format) {
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
-            return 32;
+            return s_private_key_size;
         case AWS_CAL_ED25519_KEY_EXPORT_OPENSSH_B64:
             return 312;
         default:
+            aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
             return 0;
     }
 }

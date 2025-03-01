@@ -114,7 +114,7 @@ int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_p
  * Note: string is always u32 size followed by the data. all multibyte ints are in big-endian
  */
 int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
-    uint8_t key_data[4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + s_public_key_size /* key */] = {0};
+    uint8_t key_data[4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + 32 /* key */] = {0};
     struct aws_byte_buf key_buf = aws_byte_buf_from_empty_array(key_data, AWS_ARRAY_SIZE(key_data));
 
     if (s_ed25519_openssh_encode_public_key(key_pair, &key_buf)) {

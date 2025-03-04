@@ -99,6 +99,10 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
 
     struct aws_ed25519_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair));
 
+    if (key_pair == NULL) {
+        return NULL;
+    }
+
     aws_ref_count_init(&key_pair->ref_count, key_pair, s_ed25519_destroy_key);
     key_pair->allocator = allocator;
     key_pair->key = key_impl;

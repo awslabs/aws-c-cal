@@ -97,11 +97,11 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
 
     struct aws_ed25519_key_pair_impl *key_impl = aws_ed25519_key_pair_new_generate_impl(allocator);
 
-    struct aws_ed25519_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair));
-
-    if (key_pair == NULL) {
+    if (key_impl == NULL) {
         return NULL;
     }
+
+    struct aws_ed25519_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair));
 
     aws_ref_count_init(&key_pair->ref_count, key_pair, s_ed25519_destroy_key);
     key_pair->allocator = allocator;

@@ -119,3 +119,25 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_release(struct aws_ed25519_key
     }
     return NULL;
 }
+
+int aws_ed25519_key_pair_get_public_key(
+    const struct aws_ed25519_key_pair *key_pair,
+    enum aws_ed25519_key_export_format format,
+    struct aws_byte_buf *out) {
+    return aws_ed25519_key_pair_get_public_key(key_pair->key, format, out);
+}
+
+size_t aws_ed25519_key_pair_get_public_key_size(enum aws_ed25519_key_export_format format) {
+    return aws_ed25519_key_pair_get_public_key_size(format);
+}
+
+int aws_ed25519_key_pair_get_private_key(
+    const struct aws_ed25519_key_pair *key_pair,
+    enum aws_ed25519_key_export_format format,
+    struct aws_byte_buf *out) {
+    return aws_ed25519_key_pair_get_private_key(key_pair->key, format, out);
+}
+
+size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_format format) {
+    return aws_ed25519_key_pair_get_private_key_size(format);
+}

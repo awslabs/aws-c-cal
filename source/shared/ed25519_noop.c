@@ -12,7 +12,7 @@ void aws_ed25519_key_pair_destroy_impl(struct aws_ed25519_key_pair_impl *key_pai
     return;
 }
 
-struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate_impl(struct aws_allocator *allocator) {
+struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct aws_allocator *allocator) {
     (void)allocator;
     aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
     return NULL;

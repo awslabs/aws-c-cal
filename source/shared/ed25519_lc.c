@@ -8,7 +8,6 @@
 
 #include <aws/common/device_random.h>
 #include <aws/common/encoding.h>
-#include <aws/common/ref_count.h>
 
 #include <openssl/evp.h>
 
@@ -19,28 +18,24 @@ int s_byte_buf_write_be32_with_err(struct aws_byte_buf *buf, uint32_t x) {
     return aws_byte_buf_write_be32(buf, x) ? AWS_OP_SUCCESS : AWS_ERROR_SHORT_BUFFER;
 }
 
-struct aws_ed25519_key_pair {
+struct aws_ed25519_key_pair_impl {
     struct aws_allocator *allocator;
-    struct aws_ref_count ref_count;
-
     EVP_PKEY *key;
 };
 
-static void s_ed25519_destroy_key(void *key_pair) {
+static void aws_ed25519_key_pair_destroy_impl(struct aws_ed25519_key_pair_impl *key_pair) {
     if (key_pair == NULL) {
         return;
     }
 
-    struct aws_ed25519_key_pair *lc_key_pair = (struct aws_ed25519_key_pair *)(key_pair);
-
-    if (lc_key_pair->key != NULL) {
-        EVP_PKEY_free(lc_key_pair->key);
+    if (key_pair->key != NULL) {
+        EVP_PKEY_free(key_pair->key);
     }
 
-    aws_mem_release(lc_key_pair->allocator, lc_key_pair);
+    aws_mem_release(key_pair->allocator, key_pair);
 }
 
-struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_allocator *allocator) {
+struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct aws_allocator *allocator) {
 #if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER <= 0x10101000L
     /* ed25519 support does not exist prior to 1.1.1 */
     aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
@@ -62,10 +57,7 @@ struct aws_ed25519_key_pair *aws_ed25519_key_pair_new_generate(struct aws_alloca
         goto on_error;
     }
 
-    struct aws_ed25519_key_pair *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair));
-
-    aws_ref_count_init(&key_pair->ref_count, key_pair, s_ed25519_destroy_key);
-    key_pair->allocator = allocator;
+    struct aws_ed25519_key_pair_impl *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair_impl));
     key_pair->key = pkey;
 
     EVP_PKEY_CTX_free(ctx);
@@ -77,23 +69,9 @@ on_error:
 #endif
 }
 
-struct aws_ed25519_key_pair *aws_ed25519_key_pair_acquire(struct aws_ed25519_key_pair *key_pair) {
-    if (key_pair != NULL) {
-        aws_ref_count_acquire(&key_pair->ref_count);
-    }
-    return key_pair;
-}
-
-struct aws_ed25519_key_pair *aws_ed25519_key_pair_release(struct aws_ed25519_key_pair *key_pair) {
-    if (key_pair != NULL) {
-        aws_ref_count_release(&key_pair->ref_count);
-    }
-    return NULL;
-}
-
 static struct aws_byte_cursor s_key_type_literal = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("ssh-ed25519");
 
-int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
+int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
     if (s_byte_buf_write_be32_with_err(out, (uint32_t)s_key_type_literal.len) != AWS_OP_SUCCESS ||
         aws_byte_buf_append(out, &s_key_type_literal) != AWS_OP_SUCCESS) {
         return AWS_OP_ERR;
@@ -113,7 +91,7 @@ int s_ed25519_openssh_encode_public_key(const struct aws_ed25519_key_pair *key_p
  * string key
  * Note: string is always u32 size followed by the data. all multibyte ints are in big-endian
  */
-int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
+int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
     uint8_t key_data[4 /*id len*/ + 11 /* ssh-ed25519 literal */ + 4 /*key len*/ + 32 /* key */] = {0};
     struct aws_byte_buf key_buf = aws_byte_buf_from_empty_array(key_data, AWS_ARRAY_SIZE(key_data));
 
@@ -130,7 +108,7 @@ int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair *key_pair,
     return AWS_OP_SUCCESS;
 }
 
-int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
+int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
     size_t remaining = out->capacity - out->len;
     if (remaining < s_public_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -150,8 +128,8 @@ int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair *key_pair, str
     return AWS_OP_SUCCESS;
 }
 
-int aws_ed25519_key_pair_get_public_key(
-    const struct aws_ed25519_key_pair *key_pair,
+int aws_ed25519_key_pair_get_public_key_impl(
+    const struct aws_ed25519_key_pair_impl *key_pair,
     enum aws_ed25519_key_export_format format,
     struct aws_byte_buf *out) {
     AWS_PRECONDITION(key_pair);
@@ -167,7 +145,7 @@ int aws_ed25519_key_pair_get_public_key(
     }
 }
 
-size_t aws_ed25519_key_pair_get_public_key_size(enum aws_ed25519_key_export_format format) {
+size_t aws_ed25519_key_pair_get_public_key_size_impl(enum aws_ed25519_key_export_format format) {
     switch (format) {
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
             return s_public_key_size;
@@ -203,7 +181,7 @@ static struct aws_byte_cursor s_private_none_literal = AWS_BYTE_CUR_INIT_FROM_ST
  * - padding to 8 bytes # just add bytes 1, 2, 3, ... until priv block is divisible by 8
  * Note: string is always u32 size followed by the data. all multibyte ints are in big-endian
  */
-int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
+int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
 
     struct aws_byte_buf key_buf;
     aws_byte_buf_init(&key_buf, key_pair->allocator, 312);
@@ -320,7 +298,7 @@ on_error:
     return AWS_OP_ERR;
 }
 
-int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, struct aws_byte_buf *out) {
+int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
     size_t remaining = out->capacity - out->len;
     if (remaining < s_private_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -349,8 +327,8 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair *key_pair, st
     return AWS_OP_SUCCESS;
 }
 
-int aws_ed25519_key_pair_get_private_key(
-    const struct aws_ed25519_key_pair *key_pair,
+int aws_ed25519_key_pair_get_private_key_impl(
+    const struct aws_ed25519_key_pair_impl *key_pair,
     enum aws_ed25519_key_export_format format,
     struct aws_byte_buf *out) {
     AWS_PRECONDITION(key_pair);
@@ -366,7 +344,7 @@ int aws_ed25519_key_pair_get_private_key(
     }
 }
 
-size_t aws_ed25519_key_pair_get_private_key_size(enum aws_ed25519_key_export_format format) {
+size_t aws_ed25519_key_pair_get_private_key_size_impl(enum aws_ed25519_key_export_format format) {
     switch (format) {
         case AWS_CAL_ED25519_KEY_EXPORT_RAW:
             return s_private_key_size;

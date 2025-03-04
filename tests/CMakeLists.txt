@@ -154,4 +154,14 @@ add_test_case(ecc_key_pair_asn1_ref_count_test)
 add_test_case(ecc_key_pair_private_ref_count_test)
 add_test_case(ecc_key_gen_from_private_fuzz_test)
 
+add_test_case(ed25519_key_pair_generate_test)
+
 generate_test_driver(${PROJECT_NAME}-tests)
+
+# OpenBSD 7.4+ defaults to linking with --execute-only which is not always safe for AWS-LC.
+# We have similar link flags in bindings, but in this case we need on the test executable,
+# because ed25519 keygen is hitting the same issue 
+# (according to aws-lc huge tables in text section for ed25519 is the likely culprit)
+if(CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
+    target_link_options(${PROJECT_NAME}-tests PRIVATE "-Wl,--no-execute-only")
+endif()

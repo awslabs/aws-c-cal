@@ -180,6 +180,19 @@ jobs:
         python -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz?run=${{ env.RUN }}', 'builder.pyz')"
         python builder.pyz build -p ${{ env.PACKAGE_NAME }}
 
+  windows-ed25519:
+    runs-on: windows-2022 # latest
+    steps:
+    - uses: ilammy/setup-nasm@v1
+    - uses: aws-actions/configure-aws-credentials@v4  
+      with:
+        role-to-assume: ${{ env.CRT_CI_ROLE }}
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
+    - name: Build ${{ env.PACKAGE_NAME }} + consumers
+      run: |
+        python -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz?run=${{ env.RUN }}', 'builder.pyz')"
+        python builder.pyz build -p ${{ env.PACKAGE_NAME }} --variant=aws-lc-ed25519 --cmake-extra=-DAWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE=ON
+
   windows-debug:
     runs-on: windows-2022 # latest
     steps:
@@ -235,7 +248,11 @@ jobs:
         python .\aws-c-cal\build\deps\aws-c-common\scripts\appverifier_ctest.py --build_directory .\aws-c-cal\build\aws-c-cal
 
   macos:
-    runs-on: macos-14 # latest
+    strategy:
+      matrix:
+        image: [macos-14-large, macos-14]
+    name: ${{ matrix.image == 'macos-14' && 'macos' || 'macos-x64' }}
+    runs-on: ${{ matrix.image }}
     steps:
     - uses: aws-actions/configure-aws-credentials@v4  
       with:
@@ -247,8 +264,12 @@ jobs:
         chmod a+x builder
         ./builder build -p ${{ env.PACKAGE_NAME }}
 
-  macos-x64:
-    runs-on: macos-14-large # latest
+  macos-ed25519:
+    strategy:
+      matrix:
+        image: [macos-14-large, macos-14]
+    name: ${{ matrix.image == 'macos-14' && 'macos' || 'macos-x64' }} with lc ed25519
+    runs-on: ${{ matrix.image }}
     steps:
     - uses: aws-actions/configure-aws-credentials@v4  
       with:
@@ -258,7 +279,7 @@ jobs:
       run: |
         python3 -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz', 'builder')"
         chmod a+x builder
-        ./builder build -p ${{ env.PACKAGE_NAME }}
+        ./builder build -p ${{ env.PACKAGE_NAME }} --variant=aws-lc-ed25519 --cmake-extra=-DAWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE=ON
 
   macos-min-deployment-target:
     runs-on: macos-14 # latest
@@ -303,11 +324,11 @@ jobs:
         aws-region: ${{ env.AWS_DEFAULT_REGION }}
     - uses: actions/checkout@v4
     - name: Build ${{ env.PACKAGE_NAME }} + consumers
-      uses: cross-platform-actions/action@v0.25.0
+      uses: cross-platform-actions/action@v0.27.0
       with:
         operating_system: openbsd
         architecture: x86-64
-        version: '7.4'
+        version: '7.6'
         shell: bash
         run: |
           sudo pkg_add py3-urllib3

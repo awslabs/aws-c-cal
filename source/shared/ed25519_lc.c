@@ -69,6 +69,7 @@ struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct 
 
     struct aws_ed25519_key_pair_impl *key_pair = aws_mem_calloc(allocator, 1, sizeof(struct aws_ed25519_key_pair_impl));
     key_pair->key = pkey;
+    key_pair->allocator = allocator;
 
     EVP_PKEY_CTX_free(ctx);
     return key_pair;

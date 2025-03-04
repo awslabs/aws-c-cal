@@ -11,6 +11,15 @@
 
 #include <openssl/evp.h>
 
+int aws_ed25519_key_pair_get_private_key_impl(
+    const struct aws_ed25519_key_pair_impl *key_pair,
+    enum aws_ed25519_key_export_format format,
+    struct aws_byte_buf *out);
+int aws_ed25519_key_pair_get_public_key_impl(
+    const struct aws_ed25519_key_pair_impl *key_pair,
+    enum aws_ed25519_key_export_format format,
+    struct aws_byte_buf *out);
+
 static const size_t s_private_key_size = 32;
 static const size_t s_public_key_size = 32;
 
@@ -258,14 +267,17 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair_impl *key
 
     /* public key (raw) */
     if (s_byte_buf_write_be32_with_err(&key_buf, s_public_key_size) != AWS_OP_SUCCESS ||
-        aws_ed25519_key_pair_get_public_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
+        aws_ed25519_key_pair_get_public_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) !=
+            AWS_OP_SUCCESS) {
         goto on_error;
     }
 
     /* private key - seed + pub (raw) */
     if (s_byte_buf_write_be32_with_err(&key_buf, s_private_key_size + s_public_key_size) != AWS_OP_SUCCESS ||
-        aws_ed25519_key_pair_get_private_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS ||
-        aws_ed25519_key_pair_get_public_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) != AWS_OP_SUCCESS) {
+        aws_ed25519_key_pair_get_private_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) !=
+            AWS_OP_SUCCESS ||
+        aws_ed25519_key_pair_get_public_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) !=
+            AWS_OP_SUCCESS) {
         goto on_error;
     }
 

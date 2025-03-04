@@ -275,7 +275,8 @@ int s_ed25519_export_private_openssh(const struct aws_ed25519_key_pair_impl *key
     }
 
     /* private key - seed + pub (raw) */
-    if (s_byte_buf_write_be32_with_err(&key_buf, (uint32_t)(s_private_key_size + s_public_key_size)) != AWS_OP_SUCCESS ||
+    if (s_byte_buf_write_be32_with_err(&key_buf, (uint32_t)(s_private_key_size + s_public_key_size)) !=
+            AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_private_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) !=
             AWS_OP_SUCCESS ||
         aws_ed25519_key_pair_get_public_key_impl(key_pair, AWS_CAL_ED25519_KEY_EXPORT_RAW, &key_buf) !=

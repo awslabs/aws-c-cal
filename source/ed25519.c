@@ -35,12 +35,12 @@ struct aws_rsa_key_pair *aws_ed25519_key_pair_new_generate_impl(struct aws_alloc
     abort();
 }
 
-extern void aws_ed25519_key_pair_destroy_impl(struct aws_ed25519_key_pair_impl *key_pair_impl) {
+void aws_ed25519_key_pair_destroy_impl(struct aws_ed25519_key_pair_impl *key_pair_impl) {
     (void)key_pair_impl;
     abort();
 }
 
-extern int aws_ed25519_key_pair_get_public_key_impl(
+int aws_ed25519_key_pair_get_public_key_impl(
     const struct aws_ed25519_key_pair_impl *key_pair,
     enum aws_ed25519_key_export_format format,
     struct aws_byte_buf *out) {
@@ -50,12 +50,12 @@ extern int aws_ed25519_key_pair_get_public_key_impl(
     abort();
 }
 
-extern size_t aws_ed25519_key_pair_get_public_key_size_impl(enum aws_ed25519_key_export_format format) {
+size_t aws_ed25519_key_pair_get_public_key_size_impl(enum aws_ed25519_key_export_format format) {
     (void)format;
     abort();
 }
 
-extern int aws_ed25519_key_pair_get_private_key_impl(
+int aws_ed25519_key_pair_get_private_key_impl(
     const struct aws_ed25519_key_pair_impl *key_pair,
     enum aws_ed25519_key_export_format format,
     struct aws_byte_buf *out) {
@@ -65,7 +65,7 @@ extern int aws_ed25519_key_pair_get_private_key_impl(
     abort();
 }
 
-extern size_t aws_ed25519_key_pair_get_private_key_size_impl(enum aws_ed25519_key_export_format format) {
+size_t aws_ed25519_key_pair_get_private_key_size_impl(enum aws_ed25519_key_export_format format) {
     (void)format;
     abort();
 }

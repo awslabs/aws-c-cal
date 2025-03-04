@@ -11,10 +11,16 @@
 
 #include <openssl/evp.h>
 
+struct aws_ed25519_key_pair_impl {
+    struct aws_allocator *allocator;
+    EVP_PKEY *key;
+};
+
 int aws_ed25519_key_pair_get_private_key_impl(
     const struct aws_ed25519_key_pair_impl *key_pair,
     enum aws_ed25519_key_export_format format,
     struct aws_byte_buf *out);
+
 int aws_ed25519_key_pair_get_public_key_impl(
     const struct aws_ed25519_key_pair_impl *key_pair,
     enum aws_ed25519_key_export_format format,
@@ -26,11 +32,6 @@ static const size_t s_public_key_size = 32;
 int s_byte_buf_write_be32_with_err(struct aws_byte_buf *buf, uint32_t x) {
     return aws_byte_buf_write_be32(buf, x) ? AWS_OP_SUCCESS : AWS_ERROR_SHORT_BUFFER;
 }
-
-struct aws_ed25519_key_pair_impl {
-    struct aws_allocator *allocator;
-    EVP_PKEY *key;
-};
 
 void aws_ed25519_key_pair_destroy_impl(struct aws_ed25519_key_pair_impl *key_pair) {
     if (key_pair == NULL) {

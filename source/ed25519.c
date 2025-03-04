@@ -30,7 +30,7 @@ extern size_t aws_ed25519_key_pair_get_private_key_size_impl(enum aws_ed25519_ke
 
 #else /* BYO_CRYPTO */
 
-struct aws_rsa_key_pair *aws_ed25519_key_pair_new_generate_impl(struct aws_allocator *allocator) {
+struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct aws_allocator *allocator) {
     (void)allocator;
     abort();
 }

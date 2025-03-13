@@ -80,9 +80,9 @@ if (WIN32)
         endif()
 
         if (AWS_SUPPORT_WIN7)
-            set(PLATFORM_LIBS bcrypt)
+            list(APPEND PLATFORM_LIBS bcrypt)
         else()
-            set(PLATFORM_LIBS ncrypt)
+            list(APPEND PLATFORM_LIBS ncrypt)
         endif()
     endif()
 

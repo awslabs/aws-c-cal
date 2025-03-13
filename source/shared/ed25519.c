@@ -56,14 +56,14 @@ struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct 
      * Note: skipping explicit runtime check here because EVP_PKEY_CTX_new_id existed before ed25519 support was added,
      * but algo was not defined, so ctx init will fail on old versions at runtime.
      */
-    aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     return NULL;
 #else
     EVP_PKEY *pkey = NULL;
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
     if (ctx == NULL) {
-        aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+        aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
         return NULL;
     }
 
@@ -129,7 +129,7 @@ int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair_impl *key_
 
 int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
 #if defined(LIBCRYPTO_DOES_NOT_SUPPORT_ED25519)
-    return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 #else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_public_key_size) {
@@ -327,7 +327,7 @@ on_error:
 
 int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
 #if defined(LIBCRYPTO_DOES_NOT_SUPPORT_ED25519)
-    return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 #else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_private_key_size) {

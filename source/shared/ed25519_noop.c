@@ -14,7 +14,7 @@ void aws_ed25519_key_pair_destroy_impl(struct aws_ed25519_key_pair_impl *key_pai
 
 struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct aws_allocator *allocator) {
     (void)allocator;
-    aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     return NULL;
 }
 
@@ -25,7 +25,7 @@ int aws_ed25519_key_pair_get_public_key_impl(
     (void)key_pair;
     (void)format;
     (void)out;
-    return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 }
 
 size_t aws_ed25519_key_pair_get_public_key_size_impl(enum aws_ed25519_key_export_format format) {
@@ -41,7 +41,7 @@ int aws_ed25519_key_pair_get_private_key_impl(
     (void)key_pair;
     (void)format;
     (void)out;
-    return aws_raise_error(AWS_ERROR_PLATFORM_NOT_SUPPORTED);
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 }
 
 size_t aws_ed25519_key_pair_get_private_key_size_impl(enum aws_ed25519_key_export_format format) {

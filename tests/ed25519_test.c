@@ -21,7 +21,7 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 
     struct aws_ed25519_key_pair *pair = aws_ed25519_key_pair_new_generate(allocator);
 
-    if (pair == NULL && aws_last_error() == AWS_ERROR_PLATFORM_NOT_SUPPORTED) {
+    if (pair == NULL && aws_last_error() == AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM) {
 #if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
         ASSERT_TRUE(false);
 #endif

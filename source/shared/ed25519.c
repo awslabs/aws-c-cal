@@ -59,8 +59,6 @@ struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct 
     aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     return NULL;
 #else
-    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-    return NULL;
     EVP_PKEY *pkey = NULL;
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);

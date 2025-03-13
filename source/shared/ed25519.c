@@ -129,8 +129,7 @@ int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair_impl *key_
 
 int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
 #if defined(LIBCRYPTO_DOES_NOT_SUPPORT_ED25519)
-    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-    return NULL;
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 #else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_public_key_size) {
@@ -328,8 +327,7 @@ on_error:
 
 int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
 #if defined(LIBCRYPTO_DOES_NOT_SUPPORT_ED25519)
-    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
-    return NULL;
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
 #else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_private_key_size) {

@@ -125,6 +125,10 @@ else ()
             "source/shared/lccrypto_common.c"
         )
         message(STATUS "Found version ${OPENSSL_VERSION}")
+        if(DEFINED OPENSSL_VERSION_NUMBER)
+            message(STATUS "OpenSSL version number: ${OPENSSL_VERSION_NUMBER}")
+        endif()
+
         if(OPENSSL_VERSION VERSION_LESS "1.1.1")
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519_noop.c")
         else()

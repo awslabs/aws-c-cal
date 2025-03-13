@@ -11,7 +11,7 @@
 
 #include <openssl/evp.h>
 
-#if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER <= 0x10101000L
+#if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER < 0x10101000L
     /* ed25519 support does not exist prior to 1.1.1 */
     #define LIBCRYPTO_DOES_NOT_SUPPORT_ED25519
 #endif

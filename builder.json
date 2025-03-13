@@ -65,6 +65,23 @@
                 }
             }
         },
+        "ancient-openssl": {
+            "hosts": {
+                "ubuntu": {
+                    "packages": [
+                        "libssl1.0-dev",
+                        "libssl1.0.0"
+                    ]
+                }
+            },
+            "targets": {
+                "linux": {
+                    "!upstream": [
+                        { "name": "aws-c-common" }
+                    ]
+                }
+            }
+        },
         "boringssl": {
             "hosts": {
                 "ubuntu": {

@@ -11,6 +11,11 @@
 
 #include <openssl/evp.h>
 
+#if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER < 0x10101000L
+/* ed25519 support does not exist prior to 1.1.1 */
+#    define LIBCRYPTO_DOES_NOT_SUPPORT_ED25519
+#endif
+
 struct aws_ed25519_key_pair_impl {
     struct aws_allocator *allocator;
     EVP_PKEY *key;
@@ -46,8 +51,11 @@ void aws_ed25519_key_pair_destroy_impl(struct aws_ed25519_key_pair_impl *key_pai
 }
 
 struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct aws_allocator *allocator) {
-#if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER <= 0x10101000L
-    /* ed25519 support does not exist prior to 1.1.1 */
+#if defined(LIBCRYPTO_DOES_NOT_SUPPORT_ED25519)
+    /* Compile time check on whether we compiled against libcrypto that supported ed25519
+     * Note: skipping explicit runtime check here because EVP_PKEY_CTX_new_id existed before ed25519 support was added,
+     * but algo was not defined, so ctx init will fail on old versions at runtime.
+     */
     aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     return NULL;
 #else
@@ -55,7 +63,7 @@ struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct 
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
     if (ctx == NULL) {
-        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
         return NULL;
     }
 
@@ -120,6 +128,9 @@ int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair_impl *key_
 }
 
 int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
+#if defined(LIBCRYPTO_DOES_NOT_SUPPORT_ED25519)
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+#else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_public_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -137,6 +148,7 @@ int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair_impl *key_pair
     out->len += s_public_key_size;
 
     return AWS_OP_SUCCESS;
+#endif
 }
 
 int aws_ed25519_key_pair_get_public_key_impl(
@@ -314,6 +326,9 @@ on_error:
 }
 
 int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
+#if defined(LIBCRYPTO_DOES_NOT_SUPPORT_ED25519)
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+#else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_private_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -340,6 +355,7 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair_impl *key_pai
     out->len += s_private_key_size;
 
     return AWS_OP_SUCCESS;
+#endif
 }
 
 int aws_ed25519_key_pair_get_private_key_impl(

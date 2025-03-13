@@ -29,7 +29,7 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 #if defined(AWS_OS_LINUX)
     #if defined(OPENSSL_IS_OPENSSL)
     #    if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    #        ASSERT_TRUE(false);
+            ASSERT_TRUE(false);
     #    endif
     #endif
 #endif

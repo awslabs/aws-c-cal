@@ -12,8 +12,8 @@
 #include <openssl/evp.h>
 
 #if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER < 0x10101000L
-    /* ed25519 support does not exist prior to 1.1.1 */
-    #define LIBCRYPTO_DOES_NOT_SUPPORT_ED25519
+/* ed25519 support does not exist prior to 1.1.1 */
+#    define LIBCRYPTO_DOES_NOT_SUPPORT_ED25519
 #endif
 
 struct aws_ed25519_key_pair_impl {
@@ -55,7 +55,7 @@ struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct 
     /* Compile time check on whether we compiled against libcrypto that supported ed25519
      * Note: skipping explicit runtime check here because EVP_PKEY_CTX_new_id existed before ed25519 support was added,
      * but algo was not defined, so ctx init will fail on old versions at runtime.
-    */
+     */
     aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     return NULL;
 #else

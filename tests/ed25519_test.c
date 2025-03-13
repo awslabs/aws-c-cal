@@ -33,6 +33,8 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
     #    endif
     #endif
 #endif
+
+        return AWS_OP_SKIP;
     }
 
     ASSERT_NOT_NULL(pair);

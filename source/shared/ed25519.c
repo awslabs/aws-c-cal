@@ -120,6 +120,11 @@ int s_ed25519_export_public_openssh(const struct aws_ed25519_key_pair_impl *key_
 }
 
 int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
+#if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER <= 0x10101000L
+    /* ed25519 support does not exist prior to 1.1.1 */
+    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    return NULL;
+#else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_public_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -137,6 +142,7 @@ int s_ed25519_export_public_raw(const struct aws_ed25519_key_pair_impl *key_pair
     out->len += s_public_key_size;
 
     return AWS_OP_SUCCESS;
+#endif
 }
 
 int aws_ed25519_key_pair_get_public_key_impl(
@@ -314,6 +320,11 @@ on_error:
 }
 
 int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair_impl *key_pair, struct aws_byte_buf *out) {
+#if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER <= 0x10101000L
+    /* ed25519 support does not exist prior to 1.1.1 */
+    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+    return NULL;
+#else
     size_t remaining = out->capacity - out->len;
     if (remaining < s_private_key_size) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -340,6 +351,7 @@ int s_ed25519_export_private_raw(const struct aws_ed25519_key_pair_impl *key_pai
     out->len += s_private_key_size;
 
     return AWS_OP_SUCCESS;
+#endif
 }
 
 int aws_ed25519_key_pair_get_private_key_impl(

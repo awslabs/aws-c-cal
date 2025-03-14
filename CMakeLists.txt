@@ -149,6 +149,10 @@ if (BYO_CRYPTO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE -DBYO_CRYPTO)
 endif()
 
+if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -DAWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+endif()
+
 # Our ABI is not yet stable
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION 1.0.0)
 

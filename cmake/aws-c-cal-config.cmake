@@ -2,7 +2,7 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(aws-c-common)
 
-if (NOT @BYO_CRYPTO@ AND (@AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE@ OR (NOT WIN32 AND NOT APPLE))
+if (NOT @BYO_CRYPTO@ AND (@AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE@ OR (NOT WIN32 AND NOT APPLE)))
     if (@USE_OPENSSL@ AND NOT ANDROID)
         # aws-c-cal has been built with a dependency on OpenSSL::Crypto,
         # therefore consumers of this library have a dependency on OpenSSL and must have it found

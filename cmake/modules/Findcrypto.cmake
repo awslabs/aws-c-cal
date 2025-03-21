@@ -41,7 +41,7 @@ else()
         )
 
     find_library(crypto_SHARED_LIBRARY
-        NAMES libcrypto.so libcrypto.dylib
+        NAMES libcrypto.so libcrypto.dylib crypto.dll
         HINTS
         ${CMAKE_PREFIX_PATH}/build/crypto
         ${CMAKE_PREFIX_PATH}/build
@@ -56,7 +56,7 @@ else()
         )
 
     find_library(crypto_STATIC_LIBRARY
-        NAMES libcrypto.a
+        NAMES libcrypto.a crypto.lib
         HINTS
         ${CMAKE_PREFIX_PATH}/build/crypto
         ${CMAKE_PREFIX_PATH}/build

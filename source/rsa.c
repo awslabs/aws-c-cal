@@ -356,55 +356,59 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs8_impl(
      * }
      */
 
+    struct aws_rsa_key_pair *key_pair = NULL;
+
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        return NULL;
+        goto on_done;
     }
 
     /* version */
     struct aws_byte_cursor version_cur;
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &version_cur)) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        return NULL;
+        goto on_done;
     }
 
     if (version_cur.len != 1 || version_cur.ptr[0] != 0) {
         aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
-        return NULL;
+        goto on_done;
     }
 
     /* oid */
     struct aws_byte_cursor oid_cur;
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        return NULL;
+        goto on_done;
     }
 
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
         aws_der_decoder_tlv_blob(decoder, &oid_cur)) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        return NULL;
+        goto on_done;
     }
 
     if (!aws_byte_cursor_eq(&s_rsa_encryption_oid_cur, &oid_cur)) {
         aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
-        return NULL;
+        goto on_done;
     }
 
     /* skip additional params */
     if (!aws_der_decoder_next(decoder)) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        return NULL;
+        goto on_done;
     }
 
     /* key */
     struct aws_byte_cursor key;
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &key)) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-        return NULL;
+        goto on_done;
     }
+    
+    key_pair = aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, key);
 
-    struct aws_rsa_key_pair *key_pair = aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, key);
+on_done:    
     aws_der_decoder_destroy(decoder);
     return key_pair;
 }

@@ -208,7 +208,7 @@ static int s_rsa_pkcs8_key_load_error(struct aws_allocator *allocator, void *ctx
         aws_rsa_key_pair_new_from_private_key_pkcs8(allocator, aws_byte_cursor_from_buf(&key_buf));
 
     ASSERT_NULL(key_pair);
-    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error);
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
 
     aws_cal_library_clean_up();
 

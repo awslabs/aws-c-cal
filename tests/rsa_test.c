@@ -182,7 +182,7 @@ static int s_rsa_encryption_roundtrip_pkcs1_from_user(struct aws_allocator *allo
 }
 AWS_TEST_CASE(rsa_encryption_roundtrip_pkcs1_from_user, s_rsa_encryption_roundtrip_pkcs1_from_user);
 
-static int s_rsa_encryption_roundtrip_pkcs1_from_user_pkcs8(struct aws_allocator *allocator, void *ctx) {
+static int s_rsa_encryption_roundtrip_pkcs15_from_user_pkcs8(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
     aws_cal_library_test_init(allocator);
@@ -193,7 +193,28 @@ static int s_rsa_encryption_roundtrip_pkcs1_from_user_pkcs8(struct aws_allocator
 
     return AWS_OP_SUCCESS;
 }
-AWS_TEST_CASE(rsa_encryption_roundtrip_pkcs1_from_user_pkcs8, s_rsa_encryption_roundtrip_pkcs1_from_user_pkcs8);
+AWS_TEST_CASE(rsa_encryption_roundtrip_pkcs15_from_user_pkcs8, s_rsa_encryption_roundtrip_pkcs15_from_user_pkcs8);
+
+static int s_rsa_pkcs8_key_load_error(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    aws_cal_library_test_init(allocator);
+
+    struct aws_byte_buf key_buf;
+    ASSERT_SUCCESS(s_byte_buf_decoded_from_base64_cur(
+        allocator, aws_byte_cursor_from_c_str(TEST_PKCS1_RSA_PRIVATE_KEY_2048), &key_buf));
+
+    struct aws_rsa_key_pair *key_pair =
+        aws_rsa_key_pair_new_from_private_key_pkcs8(allocator, aws_byte_cursor_from_buf(&key_buf));
+
+    ASSERT_NULL(key_pair);
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error);
+
+    aws_cal_library_clean_up();
+
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(rsa_pkcs8_key_load_error, s_rsa_pkcs8_key_load_error);
 
 static int s_rsa_encryption_roundtrip_oaep_sha256_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;

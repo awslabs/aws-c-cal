@@ -405,10 +405,10 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs8_impl(
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         goto on_done;
     }
-    
+
     key_pair = aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, key);
 
-on_done:    
+on_done:
     aws_der_decoder_destroy(decoder);
     return key_pair;
 }

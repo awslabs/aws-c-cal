@@ -15,7 +15,7 @@
 #        define AWS_CAL_API
 #    endif /* AWS_CAL_USE_IMPORT_EXPORT */
 
-#else /* defined (AWS_CRT_USE_WINDOWS_DLL_SEMANTICS) || defined (WIN32) */
+#else /* defined (AWS_CRT_USE_WINDOWS_DLL_SEMANTICS) || defined (_WIN32) */
 
 #    if defined(AWS_CAL_USE_IMPORT_EXPORT) && defined(AWS_CAL_EXPORTS)
 #        define AWS_CAL_API __attribute__((visibility("default")))

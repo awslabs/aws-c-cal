@@ -54,6 +54,15 @@ AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1
     struct aws_byte_cursor key);
 
 /**
+ * Creates an RSA private key from PrivateKeyInfo as defined in rfc 5208 (aka PKCS8).
+ * Returns a new instance of aws_rsa_key_pair if the key was successfully built.
+ * Otherwise returns NULL.
+ */
+AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs8(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor key);
+
+/**
  * Adds one to an RSA key pair's ref count.
  * Returns key_pair pointer.
  */

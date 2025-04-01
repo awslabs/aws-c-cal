@@ -89,6 +89,7 @@ add_test_case(rsa_decrypt_oaep256)
 add_test_case(rsa_decrypt_oaep512)
 add_test_case(rsa_signing_mismatch_pkcs1_sha256)
 add_test_case(rsa_signing_mismatch_pkcs1_sha1)
+add_test_case(rsa_encryption_roundtrip_pkcs15_from_user_pkcs8)
 
 add_test_case(aes_cbc_NIST_CBCGFSbox256_case_1)
 add_test_case(aes_cbc_NIST_CBCVarKey256_case_254)

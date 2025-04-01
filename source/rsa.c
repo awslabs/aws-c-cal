@@ -14,6 +14,9 @@ typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_public_pkcs1_fn)(str
 typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_pkcs1_fn)(struct aws_allocator *allocator,
                                                                               struct aws_byte_cursor private_key);
 
+typedef struct aws_rsa_key_pair *(aws_rsa_key_pair_new_from_private_pkcs8_fn)(struct aws_allocator *allocator,
+                                                                              struct aws_byte_cursor private_key);
+
 #ifndef BYO_CRYPTO
 
 extern struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
@@ -21,6 +24,10 @@ extern struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1_impl(
     struct aws_byte_cursor public_key);
 
 extern struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor private_key);
+
+struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs8_impl(
     struct aws_allocator *allocator,
     struct aws_byte_cursor private_key);
 
@@ -41,6 +48,14 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1_impl(
     (void)private_key;
     abort();
 }
+
+struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs8_impl(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor private_key) {
+    (void)allocator;
+    (void)private_key;
+    abort();
+}
 #endif /* BYO_CRYPTO */
 
 static aws_rsa_key_pair_new_from_public_pkcs1_fn *s_rsa_key_pair_new_from_public_key_pkcs1_fn =
@@ -48,6 +63,9 @@ static aws_rsa_key_pair_new_from_public_pkcs1_fn *s_rsa_key_pair_new_from_public
 
 static aws_rsa_key_pair_new_from_private_pkcs1_fn *s_rsa_key_pair_new_from_private_key_pkcs1_fn =
     aws_rsa_key_pair_new_from_private_key_pkcs1_impl;
+
+static aws_rsa_key_pair_new_from_private_pkcs8_fn *s_rsa_key_pair_new_from_private_key_pkcs8_fn =
+    aws_rsa_key_pair_new_from_private_key_pkcs8_impl;
 
 struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_public_key_pkcs1(
     struct aws_allocator *allocator,
@@ -59,6 +77,12 @@ struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs1(
     struct aws_allocator *allocator,
     struct aws_byte_cursor private_key) {
     return s_rsa_key_pair_new_from_private_key_pkcs1_fn(allocator, private_key);
+}
+
+AWS_CAL_API struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs8(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor key) {
+    return s_rsa_key_pair_new_from_private_key_pkcs8_fn(allocator, key);
 }
 
 void aws_rsa_key_pair_base_clean_up(struct aws_rsa_key_pair *key_pair) {
@@ -286,3 +310,107 @@ int is_valid_rsa_key_size(size_t key_size_in_bits) {
 
     return AWS_OP_SUCCESS;
 }
+
+#ifndef BYO_CRYPTO
+
+static uint8_t s_rsa_encryption_oid[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01};
+
+/**
+ * There are likely tens of algo specifiers for rsa out there.
+ * But in practice mostly everyone uses rsaEncryption oid for key at rest.
+ * So for now just support that and we can add other ones later if needed.
+ * Even though its technically encryption oid, most crypto libs are lax
+ * and allow the key to be used for all operations.
+ */
+static struct aws_byte_cursor s_rsa_encryption_oid_cur = {
+    .ptr = (s_rsa_encryption_oid),
+    .len = sizeof(s_rsa_encryption_oid),
+};
+
+/**
+ * Win and Mac dont provide native support for loading pkcs8 keys, so
+ * for simplicity and consistency just parse pkcs1 key from pkcs8 and
+ * use it with existing pkcs1 loader.
+ */
+struct aws_rsa_key_pair *aws_rsa_key_pair_new_from_private_key_pkcs8_impl(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor private_key) {
+
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, private_key);
+
+    if (decoder == NULL) {
+        return NULL;
+    }
+
+    /**
+     * Format of pkcs8 is as follows.
+     * PrivateKeyInfo ::= SEQUENCE {
+     *  version         Version,          -- INTEGER (0)
+     *  algorithm       AlgorithmIdentifier,
+     *  privateKey      OCTET STRING,     -- contains DER encoded key
+     *  attributes  [0] IMPLICIT SET OF Attribute OPTIONAL
+     * }
+     * AlgorithmIdentifier ::= SEQUENCE {
+     *  algorithm       OBJECT IDENTIFIER,
+     *  parameters      ANY DEFINED BY algorithm OPTIONAL
+     * }
+     */
+
+    struct aws_rsa_key_pair *key_pair = NULL;
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_done;
+    }
+
+    /* version */
+    struct aws_byte_cursor version_cur;
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &version_cur)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_done;
+    }
+
+    if (version_cur.len != 1 || version_cur.ptr[0] != 0) {
+        aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
+        goto on_done;
+    }
+
+    /* oid */
+    struct aws_byte_cursor oid_cur;
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_done;
+    }
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
+        aws_der_decoder_tlv_blob(decoder, &oid_cur)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_done;
+    }
+
+    if (!aws_byte_cursor_eq(&s_rsa_encryption_oid_cur, &oid_cur)) {
+        aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
+        goto on_done;
+    }
+
+    /* skip additional params */
+    if (!aws_der_decoder_next(decoder)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_done;
+    }
+
+    /* key */
+    struct aws_byte_cursor key;
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &key)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_done;
+    }
+
+    key_pair = aws_rsa_key_pair_new_from_private_key_pkcs1(allocator, key);
+
+on_done:
+    aws_der_decoder_destroy(decoder);
+    return key_pair;
+}
+
+#endif

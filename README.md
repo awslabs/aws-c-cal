@@ -8,7 +8,7 @@ This library is licensed under the Apache 2.0 License.
 
 ## Supported Platforms
 * Windows (Vista and Later)
-* Apple
+* Apple (MacOS 10.15+, IOS 11+)
 * Unix (via OpenSSL compatible libcrypto)
 
 ## Build Instructions

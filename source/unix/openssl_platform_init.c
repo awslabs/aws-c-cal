@@ -9,6 +9,8 @@
 #include <aws/common/mutex.h>
 #include <aws/common/thread.h>
 
+#define _GNU_SOURCE 1
+#define __USE_GNU 1
 #include <dlfcn.h>
 
 #include <aws/cal/private/opensslcrypto_common.h>
@@ -37,7 +39,25 @@ static struct aws_allocator *s_libcrypto_allocator = NULL;
 /* weak refs to libcrypto functions to force them to at least try to link
  * and avoid dead-stripping
  */
+#if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
+extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
+extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
+extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak, used));
+extern void HMAC_CTX_cleanup(HMAC_CTX *) __attribute__((weak, used));
+extern int HMAC_Update(HMAC_CTX *, const unsigned char *, size_t) __attribute__((weak, used));
+extern int HMAC_Final(HMAC_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
+extern int HMAC_Init_ex(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *) __attribute__((weak, used));
 
+static int s_hmac_init_ex_bssl(HMAC_CTX *ctx, const void *key, size_t key_len, const EVP_MD *md, ENGINE *impl) {
+    AWS_PRECONDITION(ctx);
+
+    int (*init_ex_pt)(HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *) = (int (*)(
+        HMAC_CTX *, const void *, size_t, const EVP_MD *, ENGINE *))g_aws_openssl_hmac_ctx_table->impl.init_ex_fn;
+
+    return init_ex_pt(ctx, key, key_len, md, impl);
+}
+
+#else
 /* 1.1 */
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
 extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
@@ -65,6 +85,7 @@ static int s_hmac_init_ex_openssl(HMAC_CTX *ctx, const void *key, size_t key_len
     return init_ex_ptr(ctx, key, (int)key_len, md, impl);
 }
 
+#endif /* !OPENSSL_IS_AWSLC && !OPENSSL_IS_BORINGSSL*/
 
 #if !defined(OPENSSL_IS_AWSLC)
 /* libcrypto 1.1 stub for init */
@@ -646,27 +667,18 @@ static void s_validate_libcrypto_linkage(void) {
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
-    void *process = NULL;
-    if (!process) {
-        char *error = dlerror();
-        printf("dlopen(/proc/self/exe) failed: %s\n", error);
-    }
-    // AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
-    enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
+    enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, RTLD_DEFAULT);
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find aws-lc symbols linked");
-        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_BORINGSSL, process);
+        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_BORINGSSL, RTLD_DEFAULT);
     }
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find boringssl symbols linked");
-        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, process);
+        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, RTLD_DEFAULT);
     }
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find libcrypto 1.1.1 symbols linked");
-        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, process);
-    }
-    if (process) {
-        dlclose(process);
+        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, RTLD_DEFAULT);
     }
 
     if (result == AWS_LIBCRYPTO_NONE) {

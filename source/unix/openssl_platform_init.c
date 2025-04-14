@@ -37,7 +37,7 @@ static struct aws_allocator *s_libcrypto_allocator = NULL;
 /* weak refs to libcrypto functions to force them to at least try to link
  * and avoid dead-stripping
  */
-#if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_OPENSSL)
+#if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
 extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
 extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak, used));
@@ -662,6 +662,7 @@ static void s_validate_libcrypto_linkage(void) {
 }
 
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {
+    CRYPTO_library_init();
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
     void *process = dlopen(NULL, RTLD_NOW);

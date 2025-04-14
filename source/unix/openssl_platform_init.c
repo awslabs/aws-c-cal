@@ -646,8 +646,9 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     void *process = dlopen(NULL, RTLD_NOW);
     if (!process) {
         char *error = dlerror();
-        AWS_FATAL_ASSERT(process && "Unable to load symbols from process space %s", error ? error : "unknown");
+        printf("dlopen(NULL) failed: %s\n", error);
     }
+    AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
     enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find aws-lc symbols linked");

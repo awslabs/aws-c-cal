@@ -665,7 +665,7 @@ static void s_validate_libcrypto_linkage(void) {
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
-    void *process = dlopen(NULL, RTLD_NOW);
+    void *process = dlopen("/proc/self/exe", RTLD_NOW);
     if (!process) {
         char *error = dlerror();
         printf("dlopen(NULL) failed: %s\n", error);

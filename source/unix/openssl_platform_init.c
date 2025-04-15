@@ -180,7 +180,6 @@ bool s_resolve_hmac_111(void *module) {
     hmac_update update_fn = (hmac_update)HMAC_Update;
     hmac_final final_fn = (hmac_final)HMAC_Final;
     hmac_init_ex init_ex_fn = (hmac_init_ex)HMAC_Init_ex;
-    printf("new_fn: %p\n", new_fn);
 
     /* were symbols bound by static linking? */
     bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn;

@@ -195,12 +195,6 @@ jobs:
             static: true
           # arm builds
           - architecture: arm
-            image: alpine-3.16-armv7
-            static: false
-          - architecture: arm
-            image: alpine-3.16-armv7
-            static: true
-          - architecture: arm
             image: alpine-3.16-arm64
             static: false
           - architecture: arm

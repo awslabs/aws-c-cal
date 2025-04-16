@@ -38,6 +38,32 @@ static struct aws_allocator *s_libcrypto_allocator = NULL;
  * and avoid dead-stripping
  */
 #if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
+/* TODO:the weak refs is not GUARANTEED to avoid linker to strip the symbol.
+   Build on musl with openssl 1.1.1w, those those was referenced, but still stripped from libcrypto during linking.
+   Logs was:
+   ```
+   / # gcc -static -Wl,--trace-symbol=HMAC_CTX_new,-v -o test test.c -I $HOME/opt/aws/include -L $HOME/opt/aws/lib
+   -laws-c-cal -laws-c-common /usr/lib/libcrypto.a -fno-lto collect2 version 11.2.1 20220219
+    /usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../x86_64-alpine-linux-musl/bin/ld --hash-style=gnu -m
+   elf_x86_64 --as-needed -static -z now -o test /usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../lib/crt1.o
+   /usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../lib/crti.o
+   /usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/crtbeginT.o -L/root/opt/aws/lib
+   -L/usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1
+   -L/usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../x86_64-alpine-linux-musl/lib/../lib
+   -L/usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../lib -L/lib/../lib -L/usr/lib/../lib
+   -L/usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../x86_64-alpine-linux-musl/lib
+   -L/usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../.. --trace-symbol=HMAC_CTX_new -v /tmp/ccBcKMkh.o -laws-c-cal
+   -laws-c-common /usr/lib/libcrypto.a -lssp_nonshared --start-group -lgcc -lgcc_eh -lc --end-group
+   /usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/crtend.o
+   /usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../lib/crtn.o
+
+   GNU ld (GNU Binutils) 2.38
+   /usr/lib/gcc/x86_64-alpine-linux-musl/11.2.1/../../../../x86_64-alpine-linux-musl/bin/ld:
+   /root/opt/aws/lib/libaws-c-cal.a(openssl_platform_init.c.o): reference to HMAC_CTX_new
+   ```
+    We don't really understand what strips the symbols, but aws-lc is a workaround.
+    And, --require-defined=HMAC_CTX_new is another workaround to force the linker to keep the symbol.
+*/
 extern HMAC_CTX *HMAC_CTX_new(void) __attribute__((weak, used));
 extern void HMAC_CTX_free(HMAC_CTX *) __attribute__((weak, used));
 extern void HMAC_CTX_init(HMAC_CTX *) __attribute__((weak, used));
@@ -140,8 +166,12 @@ bool s_resolve_hmac_102(void *module) {
     /* were symbols bound by static linking? */
     bool has_102_symbols = init_fn && clean_up_fn && update_fn && final_fn && init_ex_fn;
     if (has_102_symbols) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.0.2 HMAC symbols");
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found weak ref libcrypto 1.0.2 HMAC symbols");
     } else {
+        if (!module) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "No loaded libcrypto 1.0.2 HMAC symbols found");
+            return false;
+        }
         /* If symbols aren't already found, try to find the requested version */
         *(void **)(&init_fn) = dlsym(module, "HMAC_CTX_init");
         *(void **)(&clean_up_fn) = dlsym(module, "HMAC_CTX_cleanup");
@@ -180,8 +210,12 @@ bool s_resolve_hmac_111(void *module) {
     bool has_111_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn;
 
     if (has_111_symbols) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.1.1 HMAC symbols");
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found weak ref libcrypto 1.1.1 HMAC symbols");
     } else {
+        if (!module) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "No loaded libcrypto 1.1.1 HMAC symbols found");
+            return false;
+        }
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
@@ -225,8 +259,12 @@ bool s_resolve_hmac_lc(void *module) {
     /* when built as a shared lib, and multiple versions of libcrypto are possibly
      * available (e.g. brazil), select AWS-LC by default for consistency */
     if (has_awslc_symbols) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static aws-lc HMAC symbols");
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found weak ref aws-lc HMAC symbols");
     } else {
+        if (!module) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "No loaded aws-lc HMAC symbols found");
+            return false;
+        }
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
@@ -266,8 +304,12 @@ bool s_resolve_hmac_boringssl(void *module) {
     bool has_bssl_symbols = new_fn && free_fn && update_fn && final_fn && init_ex_fn;
 
     if (has_bssl_symbols) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static boringssl HMAC symbols");
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found weak ref boringssl HMAC symbols");
     } else {
+        if (!module) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "No loaded boringssl HMAC symbols found");
+            return false;
+        }
         *(void **)(&new_fn) = dlsym(module, "HMAC_CTX_new");
         *(void **)(&free_fn) = dlsym(module, "HMAC_CTX_free");
         *(void **)(&update_fn) = dlsym(module, "HMAC_Update");
@@ -352,8 +394,12 @@ bool s_resolve_md_102(void *module) {
     bool has_102_symbols = md_create_fn && md_destroy_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
 
     if (has_102_symbols) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.0.2 EVP_MD symbols");
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found weak ref libcrypto 1.0.2 EVP_MD symbols");
     } else {
+        if (!module) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "No loaded libcrypto 1.0.2 EVP_MD symbols found");
+            return false;
+        }
         *(void **)(&md_create_fn) = dlsym(module, "EVP_MD_CTX_create");
         *(void **)(&md_destroy_fn) = dlsym(module, "EVP_MD_CTX_destroy");
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
@@ -387,8 +433,12 @@ bool s_resolve_md_111(void *module) {
 
     bool has_111_symbols = md_new_fn && md_free_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
     if (has_111_symbols) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static libcrypto 1.1.1 EVP_MD symbols");
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found weak ref libcrypto 1.1.1 EVP_MD symbols");
     } else {
+        if (!module) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "No loaded libcrypto 1.1.1 EVP_MD symbols found");
+            return false;
+        }
         *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_new");
         *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_free");
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
@@ -426,8 +476,12 @@ bool s_resolve_md_lc(void *module) {
         md_new_fn && md_create_fn && md_free_fn && md_destroy_fn && md_init_ex_fn && md_update_fn && md_final_ex_fn;
 
     if (has_awslc_symbols) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found static aws-lc libcrypto 1.1.1 EVP_MD symbols");
+        AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "found weak ref aws-lc libcrypto 1.1.1 EVP_MD symbols");
     } else {
+        if (!module) {
+            AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "No loaded aws-lc libcrypto 1.1.1 EVP_MD symbols found");
+            return false;
+        }
         *(void **)(&md_new_fn) = dlsym(module, "EVP_MD_CTX_new");
         *(void **)(&md_free_fn) = dlsym(module, "EVP_MD_CTX_free");
         *(void **)(&md_init_ex_fn) = dlsym(module, "EVP_DigestInit_ex");
@@ -643,28 +697,25 @@ static void s_validate_libcrypto_linkage(void) {
 static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     /* Try to auto-resolve against what's linked in/process space */
     AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "searching process and loaded modules");
-    void *process = dlopen(NULL, RTLD_NOW);
-    AWS_FATAL_ASSERT(process && "Unable to load symbols from process space");
-    enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, process);
+    enum aws_libcrypto_version result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_LC, NULL);
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find aws-lc symbols linked");
-        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_BORINGSSL, process);
+        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_BORINGSSL, NULL);
     }
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find boringssl symbols linked");
-        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, process);
+        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_1_1, NULL);
     }
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find libcrypto 1.1.1 symbols linked");
-        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, process);
+        result = s_resolve_libcrypto_symbols(AWS_LIBCRYPTO_1_0_2, NULL);
     }
-    dlclose(process);
 
     if (result == AWS_LIBCRYPTO_NONE) {
         AWS_LOGF_DEBUG(AWS_LS_CAL_LIBCRYPTO_RESOLVE, "did not find libcrypto 1.0.2 symbols linked");
         AWS_LOGF_DEBUG(
             AWS_LS_CAL_LIBCRYPTO_RESOLVE,
-            "libcrypto symbols were not statically linked, searching for shared libraries");
+            "libcrypto symbols were not linked, searching for shared libraries and loading it");
         result = s_resolve_libcrypto_sharedlib();
     }
 

@@ -6,7 +6,7 @@
 
 #include <windows.h>
 
-/* keep the space to prevent formatters from reordering this with the Windows.h header. */
+/* keep the space to prevent formatters from reordering this with the windows.h header. */
 #include <bcrypt.h>
 
 /* handles for AES modes and algorithms we'll be using. These are initialized once and allowed to leak. */

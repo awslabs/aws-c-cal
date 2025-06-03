@@ -424,6 +424,9 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         if (decoder->container_index != UINT64_MAX) {
             struct der_tlv *container = NULL;
             aws_array_list_get_at_ptr(&decoder->tlvs, (void **)&container, (size_t)decoder->container_index);
+            if (!container) {
+                return aws_raise_error(AWS_ERROR_INVALID_STATE);
+            }
             container->count++;
         }
         /* if the last element was a container, expand it recursively to maintain order */

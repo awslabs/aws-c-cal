@@ -20,20 +20,20 @@ struct aws_der_encoder {
     struct aws_array_list stack;
 };
 
+struct der_tlv {
+    uint8_t tag;
+    uint32_t length; /* length of value in bytes */
+    uint32_t count;  /* SEQUENCE or SET element count */
+    uint8_t *value;
+};
+
 struct aws_der_decoder {
     struct aws_allocator *allocator;
     struct aws_array_list tlvs;   /* parsed elements */
     int tlv_idx;                  /* index to elements after parsing */
     struct aws_byte_cursor input; /* input buffer */
     uint32_t depth;               /* recursion depth when expanding containers */
-    struct der_tlv *container;    /* currently expanding container */
-};
-
-struct der_tlv {
-    uint8_t tag;
-    uint32_t length; /* length of value in bytes */
-    uint32_t count;  /* SEQUENCE or SET element count */
-    uint8_t *value;
+    struct der_tlv container;     /* currently expanding container. Store it by value. */
 };
 
 static int s_decode_tlv(struct der_tlv *tlv) {
@@ -377,7 +377,6 @@ struct aws_der_decoder *aws_der_decoder_new(struct aws_allocator *allocator, str
     decoder->input = input;
     decoder->tlv_idx = -1;
     decoder->depth = 0;
-    decoder->container = NULL;
     if (aws_array_list_init_dynamic(&decoder->tlvs, decoder->allocator, 16, sizeof(struct der_tlv))) {
         goto error;
     }
@@ -421,21 +420,20 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         if (aws_array_list_push_back(&decoder->tlvs, &tlv)) {
             return aws_raise_error(AWS_ERROR_INVALID_STATE);
         }
-        if (decoder->container) {
-            decoder->container->count++;
+        if (decoder->container.length != 0) {
+            decoder->container.count++;
         }
         /* if the last element was a container, expand it recursively to maintain order */
         if (tlv.tag & AWS_DER_FORM_CONSTRUCTED) {
-            struct der_tlv *outer_container = decoder->container;
-            struct der_tlv *container = NULL;
-            aws_array_list_get_at_ptr(&decoder->tlvs, (void **)&container, decoder->tlvs.length - 1);
-            decoder->container = container;
+            struct der_tlv outer_container = decoder->container;
+            int err = aws_array_list_get_at(&decoder->tlvs, (void *)&decoder->container, decoder->tlvs.length - 1);
 
-            if (!container) {
+            if (err) {
                 return aws_raise_error(AWS_ERROR_INVALID_STATE);
             }
 
-            struct aws_byte_cursor container_cur = aws_byte_cursor_from_array(container->value, container->length);
+            struct aws_byte_cursor container_cur =
+                aws_byte_cursor_from_array(decoder->container.value, decoder->container.length);
             if (s_parse_cursor(decoder, container_cur)) {
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }

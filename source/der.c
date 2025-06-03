@@ -26,7 +26,7 @@ struct aws_der_decoder {
     int tlv_idx;                  /* index to elements after parsing */
     struct aws_byte_cursor input; /* input buffer */
     uint32_t depth;               /* recursion depth when expanding containers */
-    struct der_tlv *container;    /* currently expanding container */
+    uint64_t container_index;     /* currently expanding container index in the list `tlvs` */
 };
 
 struct der_tlv {
@@ -377,7 +377,7 @@ struct aws_der_decoder *aws_der_decoder_new(struct aws_allocator *allocator, str
     decoder->input = input;
     decoder->tlv_idx = -1;
     decoder->depth = 0;
-    decoder->container = NULL;
+    decoder->container_index = UINT64_MAX; /* no container is being expanded */
     if (aws_array_list_init_dynamic(&decoder->tlvs, decoder->allocator, 16, sizeof(struct der_tlv))) {
         goto error;
     }
@@ -421,15 +421,20 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
         if (aws_array_list_push_back(&decoder->tlvs, &tlv)) {
             return aws_raise_error(AWS_ERROR_INVALID_STATE);
         }
-        if (decoder->container) {
-            decoder->container->count++;
+        if (decoder->container_index != UINT64_MAX) {
+            struct der_tlv *container = NULL;
+            aws_array_list_get_at_ptr(&decoder->tlvs, (void **)&container, (size_t)decoder->container_index);
+            if (!container) {
+                return aws_raise_error(AWS_ERROR_INVALID_STATE);
+            }
+            container->count++;
         }
         /* if the last element was a container, expand it recursively to maintain order */
         if (tlv.tag & AWS_DER_FORM_CONSTRUCTED) {
-            struct der_tlv *outer_container = decoder->container;
+            uint64_t outer_container_index = decoder->container_index;
             struct der_tlv *container = NULL;
             aws_array_list_get_at_ptr(&decoder->tlvs, (void **)&container, decoder->tlvs.length - 1);
-            decoder->container = container;
+            decoder->container_index = decoder->tlvs.length - 1;
 
             if (!container) {
                 return aws_raise_error(AWS_ERROR_INVALID_STATE);
@@ -439,7 +444,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
             if (s_parse_cursor(decoder, container_cur)) {
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }
-            decoder->container = outer_container; /* restore the container stack */
+            decoder->container_index = outer_container_index; /* restore the container stack */
         }
     }
 

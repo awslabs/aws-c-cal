@@ -614,7 +614,7 @@ static int s_ecdsa_test_import_asn1_key_pair_invalid_fails_fn(struct aws_allocat
     aws_cal_library_test_init(allocator);
 
     /* I changed the OID to nonsense */
-    uint8_t bad_asn1_encoded_full_key_raw[] = {
+    uint8_t bad_asn1_encoded_full_key_raw_1[] = {
         0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0x99, 0x16, 0x2a, 0x5b, 0x4e, 0x63, 0x86, 0x4c, 0x5f, 0x8e, 0x37,
         0xf7, 0x2b, 0xbd, 0x97, 0x1d, 0x5c, 0x68, 0x80, 0x18, 0xc3, 0x91, 0x0f, 0xb3, 0xc3, 0xf9, 0x3a, 0xc9, 0x7a,
         0x4b, 0xa3, 0xf6, 0xa0, 0x0a, 0x06, 0x08, 0x2a, 0x8a, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0xa1, 0x44, 0x03,
@@ -623,14 +623,27 @@ static int s_ecdsa_test_import_asn1_key_pair_invalid_fails_fn(struct aws_allocat
         0xf6, 0xac, 0xa4, 0xc6, 0x16, 0x7e, 0x3e, 0xe0, 0xff, 0x7b, 0x43, 0xe8, 0xa1, 0x36, 0x50, 0x92, 0x83, 0x06,
         0x94, 0xb3, 0xd4, 0x93, 0x06, 0xde, 0x63, 0x8a, 0xa1, 0x1c, 0x3f, 0xb2, 0x57, 0x0a,
     };
+    /* Once upon a time, we store the pointer of container in the aws_der_decoder, which points to the address in an
+     * array list. However, since the array list will be dynamically expanded, when it happens, the point is freed and
+     * becomes invalid. This blob serves as a regression test. */
+    uint8_t bad_asn1_encoded_full_key_raw_2[] = {
+        0x2b, 0x20, 0x6, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+        0x0,  0x0,  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x6, 0x0,
+    };
 
-    struct aws_byte_cursor bad_full_key_asn1 =
-        aws_byte_cursor_from_array(bad_asn1_encoded_full_key_raw, sizeof(bad_asn1_encoded_full_key_raw));
+    struct aws_byte_cursor bad_full_key_asn1_1 =
+        aws_byte_cursor_from_array(bad_asn1_encoded_full_key_raw_1, sizeof(bad_asn1_encoded_full_key_raw_1));
 
-    struct aws_ecc_key_pair *signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1);
+    struct aws_ecc_key_pair *signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_1);
     ASSERT_NULL(signing_key);
     ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
 
+    struct aws_byte_cursor bad_full_key_asn1_2 =
+        aws_byte_cursor_from_array(bad_asn1_encoded_full_key_raw_2, sizeof(bad_asn1_encoded_full_key_raw_2));
+
+    signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_2);
+    ASSERT_NULL(signing_key);
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
     aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;

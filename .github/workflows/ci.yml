@@ -212,7 +212,7 @@ jobs:
 
 
   windows:
-    runs-on: windows-2022 # latest
+    runs-on: windows-2025 # latest
     steps:
     - uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -224,7 +224,7 @@ jobs:
         python builder.pyz build -p ${{ env.PACKAGE_NAME }}
 
   windows-ed25519:
-    runs-on: windows-2022 # latest
+    runs-on: windows-2025 # latest
     steps:
     - uses: ilammy/setup-nasm@v1
     - uses: aws-actions/configure-aws-credentials@v4
@@ -237,7 +237,7 @@ jobs:
         python builder.pyz build -p ${{ env.PACKAGE_NAME }} --variant=aws-lc-ed25519 --cmake-extra=-DAWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE=ON
 
   windows-debug:
-    runs-on: windows-2022 # latest
+    runs-on: windows-2025 # latest
     steps:
     - uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -248,8 +248,8 @@ jobs:
         python -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz?run=${{ env.RUN }}', 'builder.pyz')"
         python builder.pyz build -p ${{ env.PACKAGE_NAME }} --config Debug --variant=just-tests
 
-  windows-vc14:
-    runs-on: windows-2019 # windows-2019 is last env with Visual Studio 2015 (v14.0)
+  windows-vc17:
+    runs-on: windows-2025 # latest
     strategy:
       matrix:
         arch: [x86, x64]
@@ -261,10 +261,10 @@ jobs:
     - name: Build ${{ env.PACKAGE_NAME }} + consumers
       run: |
         python -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz?run=${{ env.RUN }}', 'builder.pyz')"
-        python builder.pyz build -p ${{ env.PACKAGE_NAME }} --target windows-${{ matrix.arch }} --compiler msvc-14
+        python builder.pyz build -p ${{ env.PACKAGE_NAME }} --target windows-${{ matrix.arch }} --compiler msvc-17
 
   windows-shared-libs:
-    runs-on: windows-2022 # latest
+    runs-on: windows-2025 # latest
     steps:
     - uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -276,7 +276,7 @@ jobs:
         python builder.pyz build -p ${{ env.PACKAGE_NAME }} --cmake-extra=-DBUILD_SHARED_LIBS=ON
 
   windows-app-verifier:
-    runs-on: windows-2022 # latest
+    runs-on: windows-2025 # latest
     steps:
     - uses: aws-actions/configure-aws-credentials@v4
       with:

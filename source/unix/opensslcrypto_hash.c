@@ -20,6 +20,14 @@ static struct aws_hash_vtable s_md5_vtable = {
     .provider = "OpenSSL Compatible libcrypto",
 };
 
+static struct aws_hash_vtable s_sha512_vtable = {
+    .destroy = s_destroy,
+    .update = s_update,
+    .finalize = s_finalize,
+    .alg_name = "SHA512",
+    .provider = "OpenSSL Compatible libcrypto",
+};
+
 static struct aws_hash_vtable s_sha256_vtable = {
     .destroy = s_destroy,
     .update = s_update,
@@ -52,10 +60,6 @@ static void s_destroy(struct aws_hash *hash) {
 struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
 
-    if (!hash) {
-        return NULL;
-    }
-
     hash->allocator = allocator;
     hash->vtable = &s_md5_vtable;
     hash->digest_size = AWS_MD5_LEN;
@@ -63,13 +67,30 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     hash->impl = ctx;
     hash->good = true;
 
-    if (!hash->impl) {
+    AWS_FATAL_ASSERT(hash->impl);
+
+    if (!g_aws_openssl_evp_md_ctx_table->init_ex_fn(ctx, EVP_md5(), NULL)) {
         s_destroy(hash);
-        aws_raise_error(AWS_ERROR_OOM);
+        aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
     }
 
-    if (!g_aws_openssl_evp_md_ctx_table->init_ex_fn(ctx, EVP_md5(), NULL)) {
+    return hash;
+}
+
+struct aws_hash *aws_sha512_default_new(struct aws_allocator *allocator) {
+    struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
+
+    hash->allocator = allocator;
+    hash->vtable = &s_sha512_vtable;
+    hash->digest_size = AWS_SHA512_LEN;
+    EVP_MD_CTX *ctx = g_aws_openssl_evp_md_ctx_table->new_fn();
+    hash->impl = ctx;
+    hash->good = true;
+
+    AWS_FATAL_ASSERT(hash->impl);
+
+    if (!g_aws_openssl_evp_md_ctx_table->init_ex_fn(ctx, EVP_sha512(), NULL)) {
         s_destroy(hash);
         aws_raise_error(AWS_ERROR_UNKNOWN);
         return NULL;
@@ -81,10 +102,6 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
 struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
 
-    if (!hash) {
-        return NULL;
-    }
-
     hash->allocator = allocator;
     hash->vtable = &s_sha256_vtable;
     hash->digest_size = AWS_SHA256_LEN;
@@ -92,11 +109,7 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     hash->impl = ctx;
     hash->good = true;
 
-    if (!hash->impl) {
-        s_destroy(hash);
-        aws_raise_error(AWS_ERROR_OOM);
-        return NULL;
-    }
+    AWS_FATAL_ASSERT(hash->impl);
 
     if (!g_aws_openssl_evp_md_ctx_table->init_ex_fn(ctx, EVP_sha256(), NULL)) {
         s_destroy(hash);
@@ -110,10 +123,6 @@ struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
 struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator) {
     struct aws_hash *hash = aws_mem_acquire(allocator, sizeof(struct aws_hash));
 
-    if (!hash) {
-        return NULL;
-    }
-
     hash->allocator = allocator;
     hash->vtable = &s_sha1_vtable;
     hash->digest_size = AWS_SHA1_LEN;
@@ -121,11 +130,7 @@ struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator) {
     hash->impl = ctx;
     hash->good = true;
 
-    if (!hash->impl) {
-        s_destroy(hash);
-        aws_raise_error(AWS_ERROR_OOM);
-        return NULL;
-    }
+    AWS_FATAL_ASSERT(hash->impl);
 
     if (!g_aws_openssl_evp_md_ctx_table->init_ex_fn(ctx, EVP_sha1(), NULL)) {
         s_destroy(hash);

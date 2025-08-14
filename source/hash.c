@@ -30,6 +30,10 @@ struct aws_hash *aws_sha1_new(struct aws_allocator *allocator) {
     return s_sha1_new_fn(allocator);
 }
 
+struct aws_hash *aws_sha512_new(struct aws_allocator *allocator) {
+    return s_sha512_new_fn(allocator);
+}
+
 struct aws_hash *aws_sha256_new(struct aws_allocator *allocator) {
     return s_sha256_new_fn(allocator);
 }

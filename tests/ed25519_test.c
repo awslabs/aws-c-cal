@@ -20,16 +20,13 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
     aws_cal_library_test_init(allocator);
 
     struct aws_ed25519_key_pair *pair = aws_ed25519_key_pair_new_generate(allocator);
-    AWS_LOGF_ERROR(0, "got here");
 
     if (pair == NULL && aws_last_error() == AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM) {
-        AWS_LOGF_ERROR(0, "foo on this");  
 #if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
         ASSERT_TRUE(false);
 #endif
 
 #if defined(AWS_OS_LINUX)
-    ]AWS_LOGF_ERROR(0, "foo on this 2");   
 #    if defined(OPENSSL_IS_OPENSSL)
 #        if OPENSSL_VERSION_NUMBER >= 0x10101000L
         ASSERT_TRUE(false);
@@ -37,7 +34,9 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 #    endif
 #endif
 
-        AWS_LOGF_ERROR(0, "maybe here");  
+#if defined(AWS_OS_MACOS)
+    ASSERT_NOT_NULL(pair);
+#endif
         return AWS_OP_SKIP;
     }
 

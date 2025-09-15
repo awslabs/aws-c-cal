@@ -29,6 +29,7 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 #endif
 
 #if defined(AWS_OS_LINUX)
+    ]AWS_LOGF_ERROR(0, "foo on this 2");   
 #    if defined(OPENSSL_IS_OPENSSL)
 #        if OPENSSL_VERSION_NUMBER >= 0x10101000L
         ASSERT_TRUE(false);
@@ -36,6 +37,7 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 #    endif
 #endif
 
+        AWS_LOGF_ERROR(0, "maybe here");  
         return AWS_OP_SKIP;
     }
 

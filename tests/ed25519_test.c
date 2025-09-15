@@ -20,8 +20,10 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
     aws_cal_library_test_init(allocator);
 
     struct aws_ed25519_key_pair *pair = aws_ed25519_key_pair_new_generate(allocator);
+    AWS_LOGF_ERROR(0, "got here");
 
     if (pair == NULL && aws_last_error() == AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM) {
+        AWS_LOGF_ERROR(0, "foo on this");  
 #if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
         ASSERT_TRUE(false);
 #endif

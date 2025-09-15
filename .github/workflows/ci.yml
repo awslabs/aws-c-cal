@@ -310,8 +310,8 @@ jobs:
   macos-ed25519:
     strategy:
       matrix:
-        image: [macos-14-large, macos-14]
-    name: ${{ matrix.image == 'macos-14' && 'macos' || 'macos-x64' }} with lc ed25519
+        image: [macos-15-large, macos-15]
+    name: ${{ matrix.image == 'macos-15' && 'macos' || 'macos-x64' }} with lc ed25519
     runs-on: ${{ matrix.image }}
     steps:
     - uses: aws-actions/configure-aws-credentials@v4

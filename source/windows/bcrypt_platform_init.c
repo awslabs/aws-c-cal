@@ -4,10 +4,13 @@
  */
 
 #include <aws/common/allocator.h>
-#if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE) && defined(OPENSSL_IS_AWSLC)
-#   include <aws/cal/private/opensslcrypto_common.h>
-#    include <openssl/thread.h>
-#    include <windows.h>    
+
+#if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+#    include <aws/cal/private/opensslcrypto_common.h>
+#    if defined(OPENSSL_IS_AWSLC)
+#        include <openssl/thread.h>
+#        include <windows.h>
+#    endif
 #endif
 
 void aws_cal_platform_init(struct aws_allocator *allocator) {

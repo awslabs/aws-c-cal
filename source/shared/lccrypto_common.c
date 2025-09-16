@@ -114,4 +114,3 @@ void aws_validate_libcrypto_linkage(void) {
     AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
 #endif
 }
-

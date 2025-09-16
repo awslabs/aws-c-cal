@@ -62,6 +62,12 @@ if (WIN32)
     endif ()
 
 elseif (APPLE)
+    if(DEFINED CMAKE_OSX_SYSROOT)
+        message(STATUS "CMAKE_OSX_SYSROOT is defined and set to: ${CMAKE_OSX_SYSROOT}")
+    else()
+        message(STATUS "CMAKE_OSX_SYSROOT is not defined")
+    endif()
+
     # As of CMake 4.0 isysroot is no longer set on mac and instead /usr/local is checked
     # On systems where custom headers are installed at that location (homebrew loves doing that)
     # we can end up building against random libcrypto headers, which are not guaranteed to be forward compatible.

@@ -81,4 +81,6 @@ extern struct openssl_evp_md_ctx_table *g_aws_openssl_evp_md_ctx_table;
 
 int aws_reinterpret_lc_evp_error_as_crt(int evp_error, const char *function_name, enum aws_cal_log_subject subject);
 
+void aws_validate_libcrypto_linkage(void);
+
 #endif /* AWS_C_CAL_OPENSSLCRYPTO_COMMON_H */

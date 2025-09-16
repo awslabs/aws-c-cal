@@ -62,6 +62,10 @@ if (WIN32)
     endif ()
 
 elseif (APPLE)
+    # As of CMake 4.0 isysroot is no longer set on mac and instead /usr/local is checked
+    # On systems where custom headers are installed at that location (homebrew loves doing that)
+    # we can end up picking up random libcrypto, which interferes with build.
+    # This tries to set isysroot in a way that works on as many platforms as possible
     #execute_process(
     #    COMMAND xcrun --show-sdk-path
     #    OUTPUT_VARIABLE CMAKE_OSX_SYSROOT

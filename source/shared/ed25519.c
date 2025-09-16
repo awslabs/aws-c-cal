@@ -56,8 +56,7 @@ struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct 
      * Note: skipping explicit runtime check here because EVP_PKEY_CTX_new_id existed before ed25519 support was added,
      * but algo was not defined, so ctx init will fail on old versions at runtime.
      */
-    AWS_LOGF_ERROR(0, "foo ed25519 no support");
-    aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
+    aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     return NULL;
 #else
     EVP_PKEY *pkey = NULL;

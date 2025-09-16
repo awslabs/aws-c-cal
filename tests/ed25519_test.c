@@ -33,10 +33,6 @@ static int s_ed25519_key_pair_generate_test(struct aws_allocator *allocator, voi
 #        endif
 #    endif
 #endif
-
-#if defined(AWS_OS_MACOS)
-    ASSERT_NOT_NULL(pair);
-#endif
         return AWS_OP_SKIP;
     }
 

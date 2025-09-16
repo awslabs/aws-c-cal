@@ -159,6 +159,10 @@ add_test_case(ed25519_key_pair_generate_test)
 
 generate_test_driver(${PROJECT_NAME}-tests)
 
+if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -DAWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+endif()
+
 # OpenBSD 7.4+ defaults to linking with --execute-only which is not always safe for AWS-LC.
 # We have similar link flags in bindings, but in this case we need on the test executable,
 # because ed25519 keygen is hitting the same issue 

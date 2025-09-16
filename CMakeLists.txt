@@ -102,7 +102,6 @@ elseif (APPLE)
            message(FATAL_ERROR "Security Framework not found")
         endif ()
 
-
         find_library(COREFOUNDATION_LIB CoreFoundation)
         if(NOT COREFOUNDATION_LIB)
            message(FATAL_ERROR "CoreFoundation Framework not found")

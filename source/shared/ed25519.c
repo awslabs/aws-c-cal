@@ -61,7 +61,16 @@ struct aws_ed25519_key_pair_impl *aws_ed25519_key_pair_new_generate_impl(struct 
 #else
     EVP_PKEY *pkey = NULL;
 
-    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
+    /* Note: nids are not consistent between versions, so we need to do runtime retrieval
+     * to avoid weird issues when building against one version and running against different version. */
+    int nid = OBJ_sn2nid("ED25519");
+    if (nid == NID_undef) {
+        aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+        return NULL;
+    }
+
+    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(nid, NULL);
+
     if (ctx == NULL) {
         aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
         return NULL;

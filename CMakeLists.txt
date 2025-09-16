@@ -64,13 +64,20 @@ if (WIN32)
 elseif (APPLE)
     # As of CMake 4.0 isysroot is no longer set on mac and instead /usr/local is checked
     # On systems where custom headers are installed at that location (homebrew loves doing that)
-    # we can end up picking up random libcrypto, which interferes with build.
-    # This tries to set isysroot in a way that works on as many platforms as possible
-    execute_process(
-        COMMAND xcrun --show-sdk-path
-        OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+    # we can end up building against random libcrypto headers, which are not guaranteed to be forward compatible.
+    # This tries to set isysroot in a way that works on as many combinations of cmake and os as possible.
+    if(NOT DEFINED CMAKE_OSX_SYSROOT)
+        execute_process(
+            COMMAND xcrun --show-sdk-path
+            RESULT_VARIABLE XCRUN_RESULT
+            OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(NOT XCRUN_RESULT EQUAL 0)
+            message(WARNING "Failed to determine SDK path using xcrun")
+        endif()
+    endif()
 
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC

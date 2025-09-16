@@ -66,11 +66,11 @@ elseif (APPLE)
     # On systems where custom headers are installed at that location (homebrew loves doing that)
     # we can end up picking up random libcrypto, which interferes with build.
     # This tries to set isysroot in a way that works on as many platforms as possible
-    #execute_process(
-    #    COMMAND xcrun --show-sdk-path
-    #    OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
-    #    OUTPUT_STRIP_TRAILING_WHITESPACE
-    #)
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
 
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC

@@ -63,7 +63,7 @@ if (WIN32)
 
 elseif (APPLE)
     if(DEFINED CMAKE_OSX_SYSROOT)
-        message(STATUS "CMAKE_OSX_SYSROOT is defined and set to: ${CMAKE_OSX_SYSROOT}")
+        message(STATUS "CMAKE_OSX_SYSROOT is defined and set to: ${CMAKE_OSX_SYSROOT} this value")
     else()
         message(STATUS "CMAKE_OSX_SYSROOT is not defined")
     endif()
@@ -72,7 +72,7 @@ elseif (APPLE)
     # On systems where custom headers are installed at that location (homebrew loves doing that)
     # we can end up building against random libcrypto headers, which are not guaranteed to be forward compatible.
     # This tries to set isysroot in a way that works on as many combinations of cmake and os as possible.
-    if(NOT DEFINED CMAKE_OSX_SYSROOT)
+    if(NOT CMAKE_OSX_SYSROOT)
         execute_process(
             COMMAND xcrun --show-sdk-path
             RESULT_VARIABLE XCRUN_RESULT

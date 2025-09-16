@@ -9,8 +9,8 @@
 #include <aws/common/device_random.h>
 #include <aws/common/encoding.h>
 
-#include <openssl/objects.h>
 #include <openssl/evp.h>
+#include <openssl/objects.h>
 
 #if defined(OPENSSL_IS_OPENSSL) && OPENSSL_VERSION_NUMBER < 0x10101000L
 /* ed25519 support does not exist prior to 1.1.1 */

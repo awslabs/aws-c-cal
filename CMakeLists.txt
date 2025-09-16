@@ -62,6 +62,12 @@ if (WIN32)
     endif ()
 
 elseif (APPLE)
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
     if (NOT BYO_CRYPTO)
         file(GLOB AWS_CAL_OS_SRC
             "source/darwin/*.c"

@@ -34,6 +34,8 @@ void aws_cal_platform_thread_clean_up(void) {
 
 #if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE) && defined(OPENSSL_IS_AWSLC)
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+    (void)hinstDLL;
+    (void)lpvReserved;
     switch (fdwReason) {
         case DLL_PROCESS_DETACH:
             AWSLC_thread_local_shutdown();

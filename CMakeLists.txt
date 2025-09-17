@@ -138,7 +138,7 @@ if (NOT BYO_CRYPTO)
                 message(FATAL_ERROR "Target crypto is not defined, failed to find libcrypto.")
             endif()
         else()
-            #  note aws_use_package() does this for you, except it appends to the public link targets
+            # note aws_use_package() does this for you, except it appends to the public link targets
             # which we probably don't want for this case where we want the crypto dependency private
             if (IN_SOURCE_BUILD)
                 list(APPEND PLATFORM_LIBS crypto)

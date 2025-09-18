@@ -4,11 +4,17 @@
  */
 
 #include <aws/common/allocator.h>
-#if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE) && defined(OPENSSL_IS_AWSLC)
-#    include <openssl/thread.h>
+#if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+#    include <aws/cal/private/opensslcrypto_common.h>
+#    if defined(OPENSSL_IS_AWSLC)
+#        include <openssl/thread.h>
+#    endif
 #endif
 
 void aws_cal_platform_init(struct aws_allocator *allocator) {
+#if defined(AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
+    aws_validate_libcrypto_linkage();
+#endif
     (void)allocator;
 }
 

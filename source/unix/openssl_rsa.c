@@ -71,7 +71,7 @@ static int s_rsa_encrypt(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_encrypt_init(ctx), "EVP_PKEY_encrypt_init", AWS_LS_CAL_RSA)) {
@@ -129,7 +129,7 @@ static int s_rsa_decrypt(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_decrypt_init(ctx), "EVP_PKEY_decrypt_init", AWS_LS_CAL_RSA)) {
@@ -232,7 +232,7 @@ static int s_rsa_sign(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_sign_init(ctx), "EVP_PKEY_sign_init", AWS_LS_CAL_RSA)) {
@@ -290,7 +290,7 @@ static int s_rsa_verify(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_verify_init(ctx), "EVP_PKEY_verify_init", AWS_LS_CAL_RSA)) {

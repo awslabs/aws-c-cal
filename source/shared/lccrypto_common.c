@@ -52,7 +52,8 @@ int aws_reinterpret_lc_evp_error_as_crt(int evp_error, const char *function_name
                 crt_error = AWS_ERROR_SHORT_BUFFER;
                 goto on_error;
             }
-            case EVP_R_UNSUPPORTED_ALGORITHM: {
+            case EVP_R_UNSUPPORTED_ALGORITHM:
+            case EVP_R_INVALID_DIGEST_TYPE: {
                 crt_error = AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM;
                 goto on_error;
             }

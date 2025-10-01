@@ -19,7 +19,7 @@
 /*
 * Helper to figure out whether rsa signing with sha1 is supported with currently crypto lib.
 */
-static bool s_crypto_supports_sha1_signing() {
+static bool s_crypto_supports_sha1_signing(void) {
     bool is_supported = true;
 #if defined(AWS_OS_LINUX)
 #    if defined(OPENSSL_IS_OPENSSL)

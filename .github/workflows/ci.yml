@@ -407,7 +407,7 @@ jobs:
         aws s3 cp s3://aws-crt-test-stuff/ci/${{ env.BUILDER_VERSION }}/linux-container-ci.sh ./linux-container-ci.sh && chmod a+x ./linux-container-ci.sh
         ./linux-container-ci.sh ${{ env.BUILDER_VERSION }} aws-crt-${{ env.LINUX_BASE_IMAGE }} build -p ${{ env.PACKAGE_NAME }} --variant=no-tests --cmake-extra=-DBYO_CRYPTO=ON
 
-  s390x: #big-endian
+  s390x: # big-endian
     runs-on: ubuntu-24.04
     steps:
     - uses: aws-actions/configure-aws-credentials@v4

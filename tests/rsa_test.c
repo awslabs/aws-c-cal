@@ -17,6 +17,21 @@
 #endif
 
 /*
+* Helper to figure out whether rsa signing with sha1 is supported with currently crypto lib.
+*/
+static bool s_crypto_supports_sha1_signing() {
+    bool is_supported = true;
+#if defined(AWS_OS_LINUX)
+#    if defined(OPENSSL_IS_OPENSSL)
+#        if OPENSSL_VERSION_NUMBER >= 0x30500000L
+    is_supported = false;
+#        endif
+#    endif
+#endif
+    return is_supported;
+}
+
+/*
  * TODO: Need better test vectors. NIST ones are a pain to use.
  * For now using manually generated vectors and relying on round tripping.
  */
@@ -615,18 +630,6 @@ static int s_rsa_signing_roundtrip_from_user(
     aws_byte_buf_clean_up_secure(&public_key_buf);
 
     return AWS_OP_SUCCESS;
-}
-
-bool s_crypto_supports_sha1_signing() {
-    bool is_supported = true;
-#if defined(AWS_OS_LINUX)
-#    if defined(OPENSSL_IS_OPENSSL)
-#        if OPENSSL_VERSION_NUMBER >= 0x30500000L
-    is_supported = false;
-#        endif
-#    endif
-#endif
-    return is_supported;
 }
 
 static int s_rsa_signing_roundtrip_pkcs1_sha256_from_user(struct aws_allocator *allocator, void *ctx) {

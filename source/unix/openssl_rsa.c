@@ -71,7 +71,7 @@ static int s_rsa_encrypt(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_encrypt_init(ctx), "EVP_PKEY_encrypt_init", AWS_LS_CAL_RSA)) {
@@ -129,7 +129,7 @@ static int s_rsa_decrypt(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_decrypt_init(ctx), "EVP_PKEY_decrypt_init", AWS_LS_CAL_RSA)) {
@@ -191,7 +191,14 @@ static int s_set_signature_ctx_from_algo(EVP_PKEY_CTX *ctx, enum aws_rsa_signatu
         }
         if (aws_reinterpret_lc_evp_error_as_crt(
                 EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha1()), "EVP_PKEY_CTX_set_signature_md", AWS_LS_CAL_RSA)) {
-            return AWS_OP_ERR;
+            /*
+             * This can fail with invalid digest on platforms that disabled sha1 for fips (ex. openssl 3.5+).
+             * Unfortunately, error code for invalid digest is wildly inconsistent between versions, making it
+             * impossible to write a backwards compatible error handling. In practice however the only way this should
+             * fail is when algo is not supported, so lets just hardcode the error. Still call the helper to get
+             * consistent logging for error.
+             */
+            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
         }
     } else if (algorithm == AWS_CAL_RSA_SIGNATURE_PSS_SHA256) {
         if (aws_reinterpret_lc_evp_error_as_crt(
@@ -232,7 +239,7 @@ static int s_rsa_sign(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_sign_init(ctx), "EVP_PKEY_sign_init", AWS_LS_CAL_RSA)) {
@@ -290,7 +297,7 @@ static int s_rsa_verify(
 
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key_pair_impl->key, NULL);
     if (ctx == NULL) {
-        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
     }
 
     if (aws_reinterpret_lc_evp_error_as_crt(EVP_PKEY_verify_init(ctx), "EVP_PKEY_verify_init", AWS_LS_CAL_RSA)) {

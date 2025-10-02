@@ -10,6 +10,10 @@
 #include <bcrypt.h>
 #include <winerror.h>
 
+static BCRYPT_ALG_HANDLE s_sha512_alg = NULL;
+static size_t s_sha512_obj_len = 0;
+static aws_thread_once s_sha512_once = AWS_THREAD_ONCE_STATIC_INIT;
+
 static BCRYPT_ALG_HANDLE s_sha256_alg = NULL;
 static size_t s_sha256_obj_len = 0;
 static aws_thread_once s_sha256_once = AWS_THREAD_ONCE_STATIC_INIT;
@@ -25,6 +29,14 @@ static aws_thread_once s_md5_once = AWS_THREAD_ONCE_STATIC_INIT;
 static void s_destroy(struct aws_hash *hash);
 static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);
 static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output);
+
+static struct aws_hash_vtable s_sha512_vtable = {
+    .destroy = s_destroy,
+    .update = s_update,
+    .finalize = s_finalize,
+    .alg_name = "SHA512",
+    .provider = "Windows CNG",
+};
 
 static struct aws_hash_vtable s_sha256_vtable = {
     .destroy = s_destroy,
@@ -56,6 +68,16 @@ struct bcrypt_hash_handle {
     uint8_t *hash_obj;
 };
 
+static void s_load_sha512_alg_handle(void *user_data) {
+    (void)user_data;
+    /* this function is incredibly slow, LET IT LEAK*/
+    (void)BCryptOpenAlgorithmProvider(&s_sha512_alg, BCRYPT_SHA512_ALGORITHM, MS_PRIMITIVE_PROVIDER, 0);
+    AWS_ASSERT(s_sha512_alg);
+    DWORD result_length = 0;
+    (void)BCryptGetProperty(
+        s_sha512_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_sha512_obj_len, sizeof(s_sha512_obj_len), &result_length, 0);
+}
+
 static void s_load_sha256_alg_handle(void *user_data) {
     (void)user_data;
     /* this function is incredibly slow, LET IT LEAK*/
@@ -86,16 +108,37 @@ static void s_load_md5_alg_handle(void *user_data) {
         s_md5_alg, BCRYPT_OBJECT_LENGTH, (PBYTE)&s_md5_obj_len, sizeof(s_md5_obj_len), &result_length, 0);
 }
 
+struct aws_hash *aws_sha512_default_new(struct aws_allocator *allocator) {
+    aws_thread_call_once(&s_sha512_once, s_load_sha512_alg_handle, NULL);
+
+    struct bcrypt_hash_handle *bcrypt_hash = NULL;
+    uint8_t *hash_obj = NULL;
+    aws_mem_acquire_many(allocator, 2, &bcrypt_hash, sizeof(struct bcrypt_hash_handle), &hash_obj, s_sha512_obj_len);
+
+    AWS_ZERO_STRUCT(*bcrypt_hash);
+    bcrypt_hash->hash.allocator = allocator;
+    bcrypt_hash->hash.vtable = &s_sha512_vtable;
+    bcrypt_hash->hash.impl = bcrypt_hash;
+    bcrypt_hash->hash.digest_size = AWS_SHA512_LEN;
+    bcrypt_hash->hash.good = true;
+    bcrypt_hash->hash_obj = hash_obj;
+    NTSTATUS status = BCryptCreateHash(
+        s_sha512_alg, &bcrypt_hash->hash_handle, bcrypt_hash->hash_obj, (ULONG)s_sha512_obj_len, NULL, 0, 0);
+
+    if (((NTSTATUS)status) < 0) {
+        aws_mem_release(allocator, bcrypt_hash);
+        return NULL;
+    }
+
+    return &bcrypt_hash->hash;
+}
+
 struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
     aws_thread_call_once(&s_sha256_once, s_load_sha256_alg_handle, NULL);
 
     struct bcrypt_hash_handle *bcrypt_hash = NULL;
     uint8_t *hash_obj = NULL;
     aws_mem_acquire_many(allocator, 2, &bcrypt_hash, sizeof(struct bcrypt_hash_handle), &hash_obj, s_sha256_obj_len);
-
-    if (!bcrypt_hash) {
-        return NULL;
-    }
 
     AWS_ZERO_STRUCT(*bcrypt_hash);
     bcrypt_hash->hash.allocator = allocator;
@@ -122,10 +165,6 @@ struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator) {
     uint8_t *hash_obj = NULL;
     aws_mem_acquire_many(allocator, 2, &bcrypt_hash, sizeof(struct bcrypt_hash_handle), &hash_obj, s_sha1_obj_len);
 
-    if (!bcrypt_hash) {
-        return NULL;
-    }
-
     AWS_ZERO_STRUCT(*bcrypt_hash);
     bcrypt_hash->hash.allocator = allocator;
     bcrypt_hash->hash.vtable = &s_sha1_vtable;
@@ -150,10 +189,6 @@ struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator) {
     struct bcrypt_hash_handle *bcrypt_hash = NULL;
     uint8_t *hash_obj = NULL;
     aws_mem_acquire_many(allocator, 2, &bcrypt_hash, sizeof(struct bcrypt_hash_handle), &hash_obj, s_md5_obj_len);
-
-    if (!bcrypt_hash) {
-        return NULL;
-    }
 
     AWS_ZERO_STRUCT(*bcrypt_hash);
     bcrypt_hash->hash.allocator = allocator;

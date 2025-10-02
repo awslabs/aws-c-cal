@@ -5,10 +5,12 @@
 #include <aws/cal/hash.h>
 
 #ifndef BYO_CRYPTO
+extern struct aws_hash *aws_sha512_default_new(struct aws_allocator *allocator);
 extern struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator);
 extern struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator);
 extern struct aws_hash *aws_md5_default_new(struct aws_allocator *allocator);
 
+static aws_hash_new_fn *s_sha512_new_fn = aws_sha512_default_new;
 static aws_hash_new_fn *s_sha256_new_fn = aws_sha256_default_new;
 static aws_hash_new_fn *s_sha1_new_fn = aws_sha1_default_new;
 static aws_hash_new_fn *s_md5_new_fn = aws_md5_default_new;
@@ -18,6 +20,7 @@ static struct aws_hash *aws_hash_new_abort(struct aws_allocator *allocator) {
     abort();
 }
 
+static aws_hash_new_fn *s_sha512_new_fn = aws_hash_new_abort;
 static aws_hash_new_fn *s_sha256_new_fn = aws_hash_new_abort;
 static aws_hash_new_fn *s_sha1_new_fn = aws_hash_new_abort;
 static aws_hash_new_fn *s_md5_new_fn = aws_hash_new_abort;
@@ -25,6 +28,10 @@ static aws_hash_new_fn *s_md5_new_fn = aws_hash_new_abort;
 
 struct aws_hash *aws_sha1_new(struct aws_allocator *allocator) {
     return s_sha1_new_fn(allocator);
+}
+
+struct aws_hash *aws_sha512_new(struct aws_allocator *allocator) {
+    return s_sha512_new_fn(allocator);
 }
 
 struct aws_hash *aws_sha256_new(struct aws_allocator *allocator) {
@@ -37,6 +44,10 @@ struct aws_hash *aws_md5_new(struct aws_allocator *allocator) {
 
 void aws_set_md5_new_fn(aws_hash_new_fn *fn) {
     s_md5_new_fn = fn;
+}
+
+void aws_set_sha512_new_fn(aws_hash_new_fn *fn) {
+    s_sha512_new_fn = fn;
 }
 
 void aws_set_sha256_new_fn(aws_hash_new_fn *fn) {
@@ -110,6 +121,14 @@ int aws_md5_compute(
     struct aws_byte_buf *output,
     size_t truncate_to) {
     return compute_hash(aws_md5_new(allocator), input, output, truncate_to);
+}
+
+int aws_sha512_compute(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *input,
+    struct aws_byte_buf *output,
+    size_t truncate_to) {
+    return compute_hash(aws_sha512_new(allocator), input, output, truncate_to);
 }
 
 int aws_sha256_compute(

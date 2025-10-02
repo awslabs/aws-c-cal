@@ -27,10 +27,6 @@ struct cc_sha1_hash {
 struct aws_hash *aws_sha1_default_new(struct aws_allocator *allocator) {
     struct cc_sha1_hash *sha1_hash = aws_mem_acquire(allocator, sizeof(struct cc_sha1_hash));
 
-    if (!sha1_hash) {
-        return NULL;
-    }
-
     sha1_hash->hash.allocator = allocator;
     sha1_hash->hash.vtable = &s_vtable;
     sha1_hash->hash.impl = sha1_hash;

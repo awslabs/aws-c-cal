@@ -14,30 +14,30 @@ static struct aws_hash_vtable s_vtable = {
     .destroy = s_destroy,
     .update = s_update,
     .finalize = s_finalize,
-    .alg_name = "SHA256",
+    .alg_name = "SHA512",
     .provider = "CommonCrypto",
 };
 
-struct cc_sha256_hash {
+struct cc_sha512_hash {
     struct aws_hash hash;
-    CC_SHA256_CTX cc_hash;
+    CC_SHA512_CTX cc_hash;
 };
 
-struct aws_hash *aws_sha256_default_new(struct aws_allocator *allocator) {
-    struct cc_sha256_hash *sha256_hash = aws_mem_acquire(allocator, sizeof(struct cc_sha256_hash));
+struct aws_hash *aws_sha512_default_new(struct aws_allocator *allocator) {
+    struct cc_sha512_hash *sha512_hash = aws_mem_acquire(allocator, sizeof(struct cc_sha512_hash));
 
-    sha256_hash->hash.allocator = allocator;
-    sha256_hash->hash.vtable = &s_vtable;
-    sha256_hash->hash.impl = sha256_hash;
-    sha256_hash->hash.digest_size = AWS_SHA256_LEN;
-    sha256_hash->hash.good = true;
+    sha512_hash->hash.allocator = allocator;
+    sha512_hash->hash.vtable = &s_vtable;
+    sha512_hash->hash.impl = sha512_hash;
+    sha512_hash->hash.digest_size = AWS_SHA512_LEN;
+    sha512_hash->hash.good = true;
 
-    CC_SHA256_Init(&sha256_hash->cc_hash);
-    return &sha256_hash->hash;
+    CC_SHA512_Init(&sha512_hash->cc_hash);
+    return &sha512_hash->hash;
 }
 
 static void s_destroy(struct aws_hash *hash) {
-    struct cc_sha256_hash *ctx = hash->impl;
+    struct cc_sha512_hash *ctx = hash->impl;
     aws_mem_release(hash->allocator, ctx);
 }
 
@@ -46,9 +46,9 @@ static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
-    struct cc_sha256_hash *ctx = hash->impl;
+    struct cc_sha512_hash *ctx = hash->impl;
 
-    CC_SHA256_Update(&ctx->cc_hash, to_hash->ptr, (CC_LONG)to_hash->len);
+    CC_SHA512_Update(&ctx->cc_hash, to_hash->ptr, (CC_LONG)to_hash->len);
     return AWS_OP_SUCCESS;
 }
 
@@ -57,7 +57,7 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
         return aws_raise_error(AWS_ERROR_INVALID_STATE);
     }
 
-    struct cc_sha256_hash *ctx = hash->impl;
+    struct cc_sha512_hash *ctx = hash->impl;
 
     size_t buffer_len = output->capacity - output->len;
 
@@ -65,7 +65,7 @@ static int s_finalize(struct aws_hash *hash, struct aws_byte_buf *output) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
 
-    CC_SHA256_Final(output->buffer + output->len, &ctx->cc_hash);
+    CC_SHA512_Final(output->buffer + output->len, &ctx->cc_hash);
     hash->good = false;
     output->len += hash->digest_size;
     return AWS_OP_SUCCESS;

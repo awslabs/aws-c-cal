@@ -80,16 +80,22 @@ static int s_der_read_tlv(struct aws_byte_cursor *cur, struct der_tlv *tlv) {
     if (len_bytes & 0x80) {
         len_bytes &= 0x7f;
         switch (len_bytes) {
-            case 1:
-                if (!aws_byte_cursor_read_u8(cur, (uint8_t *)&len)) {
+            case 1: {
+                uint8_t len_u8;
+                if (!aws_byte_cursor_read_u8(cur, &len_u8)) {
                     return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
                 }
+                len = len_u8;
                 break;
-            case 2:
-                if (!aws_byte_cursor_read_be16(cur, (uint16_t *)&len)) {
+            }
+            case 2: {
+                uint16_t len_u16;
+                if (!aws_byte_cursor_read_be16(cur, &len_u16)) {
                     return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
                 }
+                len = len_u16;
                 break;
+            }
             case 4:
                 if (!aws_byte_cursor_read_be32(cur, &len)) {
                     return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);

@@ -178,6 +178,12 @@ AWS_CAL_API void aws_der_decoder_destroy(struct aws_der_decoder *decoder);
 AWS_CAL_API bool aws_der_decoder_next(struct aws_der_decoder *decoder);
 
 /**
+ * Resets der decoder to the start.
+ * @param decoder The decoder to reset
+ */
+AWS_CAL_API void aws_der_decoder_reset(struct aws_der_decoder *decoder);
+
+/**
  * The type of the current TLV
  * @param decoder The decoder to inspect
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS

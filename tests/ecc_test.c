@@ -654,9 +654,9 @@ AWS_TEST_CASE(ecdsa_test_import_asn1_key_pair_invalid_fails, s_ecdsa_test_import
 /* this test exists because we have to manually handle signature encoding/decoding on windows.
    this takes an encoded signature and makes sure we decode and verify it properly. How do we know
    we encode properly b.t.w? Well we have tests that verify signatures we generated, so we already know
-   that anything we signed can be decoded. What we don't have proven is that we're not just symetrically
+   that anything we signed can be decoded. What we don't have proven is that we're not just symmetrically
    wrong. So, let's take the format we know signatures must be in ASN.1 DER encoded, and make sure we can
-   verify it. Since we KNOW the signing and verifying code is symetric, verifying the verification side should
+   verify it. Since we KNOW the signing and verifying code is symmetric, verifying the verification side should
    prove our encoding/decoding code is correct to the spec. */
 static int s_ecdsa_test_signature_format_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;

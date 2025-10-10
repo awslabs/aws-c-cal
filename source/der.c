@@ -461,6 +461,10 @@ bool aws_der_decoder_next(struct aws_der_decoder *decoder) {
     return (++decoder->tlv_idx < (int)decoder->tlvs.length);
 }
 
+void aws_der_decoder_reset(struct aws_der_decoder *decoder) {
+    decoder->tlv_idx = 0;
+}
+
 static struct der_tlv s_decoder_tlv(struct aws_der_decoder *decoder) {
     AWS_FATAL_ASSERT(decoder->tlv_idx < (int)decoder->tlvs.length);
     struct der_tlv tlv = {0};

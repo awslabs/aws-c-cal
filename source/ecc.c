@@ -226,7 +226,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     AWS_ZERO_STRUCT(*out_public_y_coord);
     AWS_ZERO_STRUCT(*out_private_d);
 
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+    if (aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -235,7 +235,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (version_cur.len != 1 || version_cur.ptr[0] != 0) {
+    if (version_cur.len != 1 || version_cur.ptr[0] != 1) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
     }
 
@@ -246,18 +246,18 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
 
     struct aws_byte_cursor oid;
     AWS_ZERO_STRUCT(oid);
-    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
-        aws_der_decoder_tlv_blob(decoder, &oid)) {
+    if (!aws_der_decoder_next(decoder) || !aws_der_decoder_next(decoder) /* skip context specific structure */
+        || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER || aws_der_decoder_tlv_blob(decoder, &oid)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     enum aws_ecc_curve_name curve_name;
-    if (!aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+    if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
         return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
     }
 
     struct aws_byte_cursor public_key_cur;
-    if (aws_der_decoder_next(decoder)) {
+    if (aws_der_decoder_next(decoder) && aws_der_decoder_next(decoder)) { /* skip context wrapper */
         if (aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
             return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
@@ -347,7 +347,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (version_cur.len != 1 || version_cur.ptr[0] != 0) {
+    if (version_cur.len != 1 || version_cur.ptr[0] != 1) {
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
     }
 
@@ -379,7 +379,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
     }
 
     enum aws_ecc_curve_name curve_name;
-    if (!aws_ecc_curve_name_from_oid(&curve_oid, &curve_name)) {
+    if (aws_ecc_curve_name_from_oid(&curve_oid, &curve_name)) {
         return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
     }
 
@@ -412,7 +412,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }
             enum aws_ecc_curve_name inner_curve_name;
-            if (!aws_ecc_curve_name_from_oid(&inner_oid, &inner_curve_name)) {
+            if (aws_ecc_curve_name_from_oid(&inner_oid, &inner_curve_name)) {
                 return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
             }
             if (inner_curve_name != curve_name) {
@@ -497,12 +497,13 @@ static int s_der_decoder_load_ecc_public_key_pair_from_asn1(
     }
 
     enum aws_ecc_curve_name curve_name;
-    if (!aws_ecc_curve_name_from_oid(&curve_oid, &curve_name)) {
+    if (aws_ecc_curve_name_from_oid(&curve_oid, &curve_name)) {
         return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
     }
 
     struct aws_byte_cursor public_key_cur;
-    if (!aws_der_decoder_next(decoder) && aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
+    AWS_ZERO_STRUCT(public_key_cur);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -528,11 +529,13 @@ int aws_der_decoder_load_ecc_key_pair(
         return AWS_OP_SUCCESS;
     }
 
+    aws_der_decoder_reset(decoder);
     if (s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
             decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
         return AWS_OP_SUCCESS;
     }
 
+    aws_der_decoder_reset(decoder);
     if (s_der_decoder_load_ecc_private_key_pair_from_sec1(
             decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
         return AWS_OP_SUCCESS;

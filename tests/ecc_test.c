@@ -636,14 +636,14 @@ static int s_ecdsa_test_import_asn1_key_pair_invalid_fails_fn(struct aws_allocat
 
     struct aws_ecc_key_pair *signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_1);
     ASSERT_NULL(signing_key);
-    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, aws_last_error());
 
     struct aws_byte_cursor bad_full_key_asn1_2 =
         aws_byte_cursor_from_array(bad_asn1_encoded_full_key_raw_2, sizeof(bad_asn1_encoded_full_key_raw_2));
 
     signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_2);
     ASSERT_NULL(signing_key);
-    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, aws_last_error());
     aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;

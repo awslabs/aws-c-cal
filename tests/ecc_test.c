@@ -447,8 +447,6 @@ static int s_ecdsa_test_import_asn1_key_pair(
 
     aws_cal_library_test_init(allocator);
 
-    AWS_LOGF_DEBUG(0, "bbb");
-
     struct aws_ecc_key_pair *imported_key = aws_ecc_key_pair_new_from_asn1(allocator, &asn1_cur);
     ASSERT_NOT_NULL(imported_key);
 

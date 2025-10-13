@@ -549,13 +549,9 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     CFMutableDictionaryRef key_attributes = NULL;
     CFDataRef key_data = NULL;
 
-    AWS_LOGF_DEBUG(0, "ccc");
-
     if (!decoder) {
         return NULL;
     }
-
-    AWS_LOGF_DEBUG(0, "ddd");
 
     /* we could have private key or a public key, or a full pair. */
     struct aws_byte_cursor pub_x;

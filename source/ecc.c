@@ -226,22 +226,28 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     AWS_ZERO_STRUCT(*out_public_y_coord);
     AWS_ZERO_STRUCT(*out_private_d);
 
+            AWS_LOGF_DEBUG(0, "foo0");
+
     if (aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+                AWS_LOGF_DEBUG(0, "foo0");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     struct aws_byte_cursor version_cur;
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &version_cur)) {
+        AWS_LOGF_DEBUG(0, "foo1");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     if (version_cur.len != 1 || version_cur.ptr[0] != 1) {
+                AWS_LOGF_DEBUG(0, "foo2");
         return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
     }
 
     struct aws_byte_cursor private_key_cur;
     AWS_ZERO_STRUCT(private_key_cur);
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &private_key_cur)) {
+                AWS_LOGF_DEBUG(0, "foo3");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -249,11 +255,13 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     AWS_ZERO_STRUCT(oid);
     if (!aws_der_decoder_next(decoder) || !aws_der_decoder_next(decoder) /* skip context specific structure */
         || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER || aws_der_decoder_tlv_blob(decoder, &oid)) {
+                    AWS_LOGF_DEBUG(0, "foo4");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     enum aws_ecc_curve_name curve_name;
     if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+                AWS_LOGF_DEBUG(0, "foo5");
         return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
     }
 
@@ -261,6 +269,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     AWS_ZERO_STRUCT(public_key_cur);
     if (aws_der_decoder_next(decoder) && aws_der_decoder_next(decoder)) { /* skip context wrapper */
         if (aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
+                    AWS_LOGF_DEBUG(0, "foo6");
             return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
     }
@@ -270,6 +279,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
 
     if (private_key_cur.len != key_coordinate_size ||
         (public_key_cur.len != 0 && public_key_cur.len != public_key_blob_size)) {
+                    AWS_LOGF_DEBUG(0, "foo7");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -280,6 +290,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     }
 
     *out_curve_name = curve_name;
+            AWS_LOGF_DEBUG(0, "foo8");
 
     return AWS_OP_SUCCESS;
 }
@@ -530,6 +541,8 @@ int aws_der_decoder_load_ecc_key_pair(
     struct aws_byte_cursor *out_private_d,
     enum aws_ecc_curve_name *out_curve_name) {
 
+          AWS_LOGF_DEBUG(0, "aaa");
+
     /**
      * Since this is a generic api to parse from ans1, we can encounter several key structures.
      * Just go through them one by one and see if any match the expected type.
@@ -537,21 +550,25 @@ int aws_der_decoder_load_ecc_key_pair(
      */
     if (s_der_decoder_load_ecc_public_key_pair_from_asn1(
             decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
+                        AWS_LOGF_DEBUG(0, "1");
         return AWS_OP_SUCCESS;
     }
 
     aws_der_decoder_reset(decoder);
     if (s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
             decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
+                        AWS_LOGF_DEBUG(0, "2");
         return AWS_OP_SUCCESS;
     }
 
     aws_der_decoder_reset(decoder);
     if (s_der_decoder_load_ecc_private_key_pair_from_sec1(
             decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
+                        AWS_LOGF_DEBUG(0, "3");
         return AWS_OP_SUCCESS;
     }
 
+            AWS_LOGF_DEBUG(0, "4");
     return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
 }
 

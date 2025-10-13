@@ -258,8 +258,8 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     }
 
     struct aws_byte_cursor public_key_cur;
-    AWS_ZERO_STRUCT(private_key_cur);
-    if (aws_der_decoder_next(decoder) || aws_der_decoder_next(decoder)) { /* skip context wrapper */
+    AWS_ZERO_STRUCT(public_key_cur);
+    if (aws_der_decoder_next(decoder) && aws_der_decoder_next(decoder)) { /* skip context wrapper */
         if (aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
             return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }

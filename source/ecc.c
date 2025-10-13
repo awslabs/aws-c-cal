@@ -203,6 +203,7 @@ static void s_parse_public_key(
 }
 
 /*
+ * Load key from sec1 container. Aka "EC PRIVATE KEY" in pem
  * ECPrivateKey ::= SEQUENCE {
  *   version        INTEGER { ecPrivkeyVer1(1) },
  *   privateKey     OCTET STRING,
@@ -307,6 +308,7 @@ static uint8_t s_ec_public_key_oid[] = {
 STATIC_INIT_BYTE_CURSOR(s_ec_public_key_oid, ec_public_key_oid_cursor)
 
 /*
+ * Load key from PKCS8 container with the following format and "PRIVATE KEY" in pem
  * PrivateKeyInfo ::= SEQUENCE {
  *   version                  Integer,
  *   privateKeyAlgorithm      PrivateKeyAlgorithmIdentifier,
@@ -445,6 +447,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
 }
 
 /*
+ * Load public key from x509 ec key structure, "EC PUBLIC KEY" or "PUBLIC KEY" in pem
  * SubjectPublicKeyInfo ::= SEQUENCE {
  *   algorithm         AlgorithmIdentifier,
  *   subjectPublicKey  BIT STRING

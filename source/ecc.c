@@ -551,7 +551,7 @@ int aws_der_decoder_load_ecc_key_pair(
             decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
         return AWS_OP_SUCCESS;
     }
-    
+
     return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
 }
 

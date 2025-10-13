@@ -12,6 +12,25 @@
 
 #include "test_case_helper.h"
 
+#if defined(AWS_OS_LINUX)
+#    include <aws/cal/private/opensslcrypto_common.h>
+#endif
+
+/*
+ * Helper to figure out whether rsa signing with sha1 is supported with currently crypto lib.
+ */
+static bool s_crypto_supports_sha1_signing(void) {
+    bool is_supported = true;
+#if defined(AWS_OS_LINUX)
+#    if defined(OPENSSL_IS_OPENSSL)
+#        if OPENSSL_VERSION_NUMBER >= 0x30500000L
+    is_supported = false;
+#        endif
+#    endif
+#endif
+    return is_supported;
+}
+
 /*
  * TODO: Need better test vectors. NIST ones are a pain to use.
  * For now using manually generated vectors and relying on round tripping.
@@ -335,6 +354,10 @@ AWS_TEST_CASE(rsa_verify_signing_pkcs1_sha256, s_rsa_verify_signing_pkcs1_sha256
 
 static int s_rsa_verify_signing_pkcs1_sha1(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    if (!s_crypto_supports_sha1_signing()) {
+        return AWS_OP_SKIP;
+    }
+
     struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
 
     aws_cal_library_init(allocator);
@@ -626,6 +649,10 @@ AWS_TEST_CASE(rsa_signing_roundtrip_pkcs1_sha256_from_user, s_rsa_signing_roundt
 static int s_rsa_signing_roundtrip_pkcs1_sha1_from_user(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
+    if (!s_crypto_supports_sha1_signing()) {
+        return AWS_OP_SKIP;
+    }
+
     aws_cal_library_init(allocator);
 
     ASSERT_SUCCESS(s_rsa_signing_roundtrip_from_user(
@@ -893,6 +920,10 @@ AWS_TEST_CASE(rsa_signing_mismatch_pkcs1_sha256, s_rsa_signing_mismatch_pkcs1_sh
 
 static int s_rsa_signing_mismatch_pkcs1_sha1(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    if (!s_crypto_supports_sha1_signing()) {
+        return AWS_OP_SKIP;
+    }
+
     struct aws_byte_cursor message = aws_byte_cursor_from_c_str(TEST_ENCRYPTION_STRING);
 
     aws_cal_library_init(allocator);

@@ -145,6 +145,13 @@
             "!test_steps": [
                 "test"
             ]
+        },
+        "s390x": {
+            "hosts": {
+                "ubuntu": {
+                    "!pkg_setup": []
+                }
+            }
         }
     },
     "test_steps": [

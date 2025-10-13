@@ -520,7 +520,7 @@ static int s_der_decoder_load_ecc_public_key_pair_from_asn1(
 
     *out_curve_name = curve_name;
 
-    return AWS_OP_SUCCESS; 
+    return AWS_OP_SUCCESS;
 }
 
 int aws_der_decoder_load_ecc_key_pair(

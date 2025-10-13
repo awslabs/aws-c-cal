@@ -240,6 +240,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     }
 
     struct aws_byte_cursor private_key_cur;
+    AWS_ZERO_STRUCT(private_key_cur);
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &private_key_cur)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
@@ -257,7 +258,8 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     }
 
     struct aws_byte_cursor public_key_cur;
-    if (aws_der_decoder_next(decoder) && aws_der_decoder_next(decoder)) { /* skip context wrapper */
+    AWS_ZERO_STRUCT(private_key_cur);
+    if (aws_der_decoder_next(decoder) || aws_der_decoder_next(decoder)) { /* skip context wrapper */
         if (aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
             return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
@@ -508,13 +510,17 @@ static int s_der_decoder_load_ecc_public_key_pair_from_asn1(
     }
 
     size_t key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
+    if ((public_key_cur.len != 0 && public_key_cur.len != (key_coordinate_size * 2 + 1))) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
     if (public_key_cur.len > 0) {
         s_parse_public_key(public_key_cur, key_coordinate_size, out_public_x_coord, out_public_y_coord);
     }
 
     *out_curve_name = curve_name;
 
-    return AWS_OP_SUCCESS;
+    return AWS_OP_SUCCESS; 
 }
 
 int aws_der_decoder_load_ecc_key_pair(
@@ -524,6 +530,11 @@ int aws_der_decoder_load_ecc_key_pair(
     struct aws_byte_cursor *out_private_d,
     enum aws_ecc_curve_name *out_curve_name) {
 
+    /**
+     * Since this is a generic api to parse from ans1, we can encounter several key structures.
+     * Just go through them one by one and see if any match the expected type.
+     * Note: We should at least get some id in the structure or unique enough layout so ordering does not matter.
+     */
     if (s_der_decoder_load_ecc_public_key_pair_from_asn1(
             decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
         return AWS_OP_SUCCESS;

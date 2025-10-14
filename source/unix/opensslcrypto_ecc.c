@@ -243,6 +243,35 @@ static int s_ec_key_set_private_key(EC_KEY* key, struct aws_byte_cursor priv) {
     return AWS_OP_SUCCESS;
 }
 
+static int s_ec_key_set_public_key(EC_KEY* key, struct aws_byte_cursor pub_x, struct aws_byte_cursor pub_y) {
+    BIGNUM *pub_x_num = BN_bin2bn(pub_x.ptr, pub_x.len, NULL);
+    BIGNUM *pub_y_num = BN_bin2bn(pub_y.ptr, pub_x.len, NULL);
+
+    const EC_GROUP *group = EC_KEY_get0_group(key);
+    EC_POINT *point = EC_POINT_new(group);
+
+    if (EC_POINT_set_affine_coordinates_GFp(group, point, pub_x_num, pub_y_num, NULL) != 1) {
+        EC_POINT_free(point);
+        BN_free(pub_x_num);
+        BN_free(pub_y_num);
+        return AWS_OP_ERR;
+    }
+
+    if (EC_KEY_set_public_key(key, point) != 1) {
+        EC_POINT_free(point);
+        BN_free(pub_x_num);
+        BN_free(pub_y_num);
+        return AWS_OP_ERR;
+    }
+
+    EC_POINT_free(point);
+    BN_free(pub_x_num);
+    BN_free(pub_y_num);
+
+    return AWS_OP_SUCCESS;
+
+}
+
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
@@ -355,7 +384,12 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
                 goto error;
             }
         } else {
-            AWS_LOGF_DEBUG(0, "or there");
+            if (s_ec_key_set_public_key(key_impl->ec_key, pub_x, pub_y)) {
+                aws_mem_release(allocator, key_impl);
+                aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
+                AWS_LOGF_DEBUG(0, "foo2");
+                goto error;
+            }
         }
 
         key_impl->key_pair.allocator = allocator;

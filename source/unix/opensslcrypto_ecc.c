@@ -347,12 +347,15 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         }
 
         if (!pub_x.ptr || !pub_y.ptr ) {
+            AWS_LOGF_DEBUG(0, "we are here");
             if (!EC_KEY_generate_key(key_impl->ec_key)) {
                 aws_mem_release(allocator, key_impl);
                 aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
                 AWS_LOGF_DEBUG(0, "foo2.5");
                 goto error;
             }
+        } else {
+            AWS_LOGF_DEBUG(0, "or there");
         }
 
         key_impl->key_pair.allocator = allocator;

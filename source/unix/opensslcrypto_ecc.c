@@ -243,21 +243,6 @@ static int s_ec_key_set_private_key(EC_KEY* key, struct aws_byte_cursor priv) {
     return AWS_OP_SUCCESS;
 }
 
-static int s_ec_key_set_public_key(EC_KEY* key, const struct aws_byte_cursor *public_key_x, const struct aws_byte_cursor *public_key_y) {
-    BIGNUM *priv_n = BN_bin2bn(priv.ptr, priv.len, NULL);
-    if (!priv_n) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
-    }
-
-    if (!EC_KEY_set_private_key(key, priv_n)) {
-        BN_free(priv_n);
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
-    }
-
-    BN_free(priv_n);
-    return AWS_OP_SUCCESS;
-} 
-
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,

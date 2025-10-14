@@ -17,7 +17,7 @@ AWS_EXTERN_C_BEGIN
  * Helper to load keypair from various ASN1 format.
  * Note: there are several formats in the wild: Sec1 and PKCS8 for private key and X509 for public key.
  * This function attempts to automatically recognize the format and load from it.
- * Depending on data available in the asn, either private or public key might remain uninitialized.
+ * Depending on data available in the asn, either private or public key might be empty (zeroed out).
  */
 AWS_CAL_API int aws_der_decoder_load_ecc_key_pair(
     struct aws_der_decoder *decoder,

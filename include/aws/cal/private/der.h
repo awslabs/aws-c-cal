@@ -165,6 +165,14 @@ AWS_CAL_API int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, st
 AWS_CAL_API struct aws_der_decoder *aws_der_decoder_new(struct aws_allocator *allocator, struct aws_byte_cursor input);
 
 /**
+ * Initializes new decoder from string at the current location.
+ * Useful for cases where asn1 structure is nested inside another one, ex. ec pkcs8.
+ * @param decoder Current decoder
+ * @return Initialized decoder, or NULL
+ */
+AWS_CAL_API struct aws_der_decoder *aws_der_decoder_nested_tlv_decoder(struct aws_der_decoder *decoder);
+
+/**
  * Cleans up a DER encoder
  * @param decoder The encoder to clean up
  */

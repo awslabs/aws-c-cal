@@ -241,18 +241,27 @@ static int s_der_decoder_sec1_private_key_helper(
 
     *curve_name_set = false;
     if (aws_der_decoder_next(decoder)) {
-        if (aws_der_decoder_tlv_type(decoder) == AWS_DER_OBJECT_IDENTIFIER) {
-            if (aws_der_decoder_tlv_blob(decoder, &oid)) {
-                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+
+        /* tag 0 is optional params */
+        if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG0) {
+            aws_der_decoder_next(decoder);
+
+            if (aws_der_decoder_tlv_type(decoder) == AWS_DER_OBJECT_IDENTIFIER) {
+                if (aws_der_decoder_tlv_blob(decoder, &oid)) {
+                    return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+                }
+                if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+                    return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
+                }
+                *curve_name_set = true;
+                aws_der_decoder_next(decoder); /* skip to field after */
             }
-            if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
-                return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
-            }
-            *curve_name_set = true;
-            aws_der_decoder_next(decoder); /* skip to field after */
         }
 
-        if (aws_der_decoder_next(decoder) /* skip context specific */) {
+        /* tag 1 is optional public key */
+        if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG1) {
+            aws_der_decoder_next(decoder);
+
             if (aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }
@@ -290,6 +299,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
     struct aws_byte_cursor public_key_cur;
     enum aws_ecc_curve_name curve_name;
     bool curve_name_set = false;
+
     if (s_der_decoder_sec1_private_key_helper(
             decoder, &private_key_cur, &public_key_cur, &curve_name, &curve_name_set)) {
         return AWS_OP_ERR;

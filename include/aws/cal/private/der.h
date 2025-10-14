@@ -60,6 +60,11 @@ enum aws_der_type {
     /* forms */
     AWS_DER_FORM_CONSTRUCTED = 0x20,
     AWS_DER_FORM_PRIMITIVE = 0x00,
+
+    /* context specific */
+    /* TODO: we should probably handle tags more generically, but for now first 2 tags cover all cases. */
+    AWS_DER_CONTEXT_SPECIFIC_TAG0 = 0xa0,
+    AWS_DER_CONTEXT_SPECIFIC_TAG1 = 0xa1,
 };
 
 AWS_EXTERN_C_BEGIN

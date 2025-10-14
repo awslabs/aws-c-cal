@@ -245,7 +245,7 @@ static int s_ec_key_set_private_key(EC_KEY *key, struct aws_byte_cursor priv) {
 
 static int s_ec_key_set_public_key(EC_KEY *key, struct aws_byte_cursor pub_x, struct aws_byte_cursor pub_y) {
     BIGNUM *pub_x_num = BN_bin2bn(pub_x.ptr, pub_x.len, NULL);
-    BIGNUM *pub_y_num = BN_bin2bn(pub_y.ptr, pub_x.len, NULL);
+    BIGNUM *pub_y_num = BN_bin2bn(pub_y.ptr, pub_y.len, NULL);
 
     const EC_GROUP *group = EC_KEY_get0_group(key);
     EC_POINT *point = EC_POINT_new(group);

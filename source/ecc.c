@@ -229,6 +229,7 @@ static int s_der_decoder_sec1_private_key_helper(
     }
 
     struct aws_byte_cursor private_key_cur;
+    AWS_ZERO_STRUCT(private_key_cur);
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &private_key_cur)) {
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }

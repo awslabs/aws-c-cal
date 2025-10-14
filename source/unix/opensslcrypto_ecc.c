@@ -228,7 +228,7 @@ error:
     return NULL;
 }
 
-static int s_ec_key_set_private_key(EC_KEY* key, struct aws_byte_cursor priv) {
+static int s_ec_key_set_private_key(EC_KEY *key, struct aws_byte_cursor priv) {
     BIGNUM *priv_n = BN_bin2bn(priv.ptr, priv.len, NULL);
     if (!priv_n) {
         return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
@@ -243,7 +243,7 @@ static int s_ec_key_set_private_key(EC_KEY* key, struct aws_byte_cursor priv) {
     return AWS_OP_SUCCESS;
 }
 
-static int s_ec_key_set_public_key(EC_KEY* key, struct aws_byte_cursor pub_x, struct aws_byte_cursor pub_y) {
+static int s_ec_key_set_public_key(EC_KEY *key, struct aws_byte_cursor pub_x, struct aws_byte_cursor pub_y) {
     BIGNUM *pub_x_num = BN_bin2bn(pub_x.ptr, pub_x.len, NULL);
     BIGNUM *pub_y_num = BN_bin2bn(pub_y.ptr, pub_x.len, NULL);
 
@@ -251,17 +251,11 @@ static int s_ec_key_set_public_key(EC_KEY* key, struct aws_byte_cursor pub_x, st
     EC_POINT *point = EC_POINT_new(group);
 
     if (EC_POINT_set_affine_coordinates_GFp(group, point, pub_x_num, pub_y_num, NULL) != 1) {
-        EC_POINT_free(point);
-        BN_free(pub_x_num);
-        BN_free(pub_y_num);
-        return AWS_OP_ERR;
+        goto on_error;
     }
 
     if (EC_KEY_set_public_key(key, point) != 1) {
-        EC_POINT_free(point);
-        BN_free(pub_x_num);
-        BN_free(pub_y_num);
-        return AWS_OP_ERR;
+        goto on_error;
     }
 
     EC_POINT_free(point);
@@ -270,6 +264,11 @@ static int s_ec_key_set_public_key(EC_KEY* key, struct aws_byte_cursor pub_x, st
 
     return AWS_OP_SUCCESS;
 
+on_error:
+    EC_POINT_free(point);
+    BN_free(pub_x_num);
+    BN_free(pub_y_num);
+    return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
 }
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
@@ -278,9 +277,6 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     const struct aws_byte_cursor *public_key_x,
     const struct aws_byte_cursor *public_key_y) {
     struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
-    BIGNUM *pub_x_num = NULL;
-    BIGNUM *pub_y_num = NULL;
-    EC_POINT *point = NULL;
 
     if (!key_impl) {
         return NULL;
@@ -293,49 +289,16 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     key_impl->key_pair.impl = key_impl;
     aws_atomic_init_int(&key_impl->key_pair.ref_count, 1);
 
-    if (aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_x, allocator, *public_key_x)) {
-        s_key_pair_destroy(&key_impl->key_pair);
-        return NULL;
+    aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_x, allocator, *public_key_x);
+    aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_y, allocator, *public_key_y);
+
+    if (s_ec_key_set_public_key(key_impl->ec_key, *public_key_x, *public_key_y)) {
+        goto on_error;
     }
-
-    if (aws_byte_buf_init_copy_from_cursor(&key_impl->key_pair.pub_y, allocator, *public_key_y)) {
-        s_key_pair_destroy(&key_impl->key_pair);
-        return NULL;
-    }
-
-    pub_x_num = BN_bin2bn(public_key_x->ptr, public_key_x->len, NULL);
-    pub_y_num = BN_bin2bn(public_key_y->ptr, public_key_y->len, NULL);
-
-    const EC_GROUP *group = EC_KEY_get0_group(key_impl->ec_key);
-    point = EC_POINT_new(group);
-
-    if (EC_POINT_set_affine_coordinates_GFp(group, point, pub_x_num, pub_y_num, NULL) != 1) {
-        goto error;
-    }
-
-    if (EC_KEY_set_public_key(key_impl->ec_key, point) != 1) {
-        goto error;
-    }
-
-    EC_POINT_free(point);
-    BN_free(pub_x_num);
-    BN_free(pub_y_num);
 
     return &key_impl->key_pair;
 
-error:
-    if (point) {
-        EC_POINT_free(point);
-    }
-
-    if (pub_x_num) {
-        BN_free(pub_x_num);
-    }
-
-    if (pub_y_num) {
-        BN_free(pub_y_num);
-    }
-
+on_error:
     s_key_pair_destroy(&key_impl->key_pair);
 
     return NULL;
@@ -358,7 +321,6 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     enum aws_ecc_curve_name curve_name;
     if (aws_der_decoder_load_ecc_key_pair(decoder, &pub_x, &pub_y, &priv_d, &curve_name)) {
-        AWS_LOGF_DEBUG(0, "foo1");
         goto error;
     }
 
@@ -370,24 +332,21 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
         if (s_ec_key_set_private_key(key_impl->ec_key, priv_d)) {
             aws_mem_release(allocator, key_impl);
-            aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
-            AWS_LOGF_DEBUG(0, "foo2");
+            aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
             goto error;
         }
 
-        if (!pub_x.ptr || !pub_y.ptr ) {
-            AWS_LOGF_DEBUG(0, "we are here");
+        /* if pub is missing, generate it */
+        if (!pub_x.ptr || !pub_y.ptr) {
             if (!EC_KEY_generate_key(key_impl->ec_key)) {
                 aws_mem_release(allocator, key_impl);
-                aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
-                AWS_LOGF_DEBUG(0, "foo2.5");
+                aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
                 goto error;
             }
         } else {
             if (s_ec_key_set_public_key(key_impl->ec_key, pub_x, pub_y)) {
                 aws_mem_release(allocator, key_impl);
-                aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
-                AWS_LOGF_DEBUG(0, "foo2");
+                aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
                 goto error;
             }
         }
@@ -398,38 +357,20 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         aws_atomic_init_int(&key_impl->key_pair.ref_count, 1);
         key = &key_impl->key_pair;
 
-        struct aws_byte_buf temp_buf;
-        AWS_ZERO_STRUCT(temp_buf);
-
         if (pub_x.ptr) {
-            temp_buf = aws_byte_buf_from_array(pub_x.ptr, pub_x.len);
-            if (aws_byte_buf_init_copy(&key->pub_x, allocator, &temp_buf)) {
-                AWS_LOGF_DEBUG(0, "foo3");
-                goto error;
-            }
+            aws_byte_buf_init_copy_from_cursor(&key->pub_x, allocator, pub_x);
         }
 
         if (pub_y.ptr) {
-            temp_buf = aws_byte_buf_from_array(pub_y.ptr, pub_y.len);
-            if (aws_byte_buf_init_copy(&key->pub_y, allocator, &temp_buf)) {
-                AWS_LOGF_DEBUG(0, "foo4");
-                goto error;
-            }
+            aws_byte_buf_init_copy_from_cursor(&key->pub_y, allocator, pub_y);
         }
 
-        if (priv_d.ptr) {
-            temp_buf = aws_byte_buf_from_array(priv_d.ptr, priv_d.len);
-            if (aws_byte_buf_init_copy(&key->priv_d, allocator, &temp_buf)) {
-                AWS_LOGF_DEBUG(0, "foo5");
-                goto error;
-            }
-        }
+        aws_byte_buf_init_copy_from_cursor(&key->priv_d, allocator, priv_d);
 
     } else {
         key = aws_ecc_key_pair_new_from_public_key(allocator, curve_name, &pub_x, &pub_y);
 
         if (!key) {
-            AWS_LOGF_DEBUG(0, "foo6");
             goto error;
         }
     }

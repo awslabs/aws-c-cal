@@ -196,7 +196,7 @@ static void s_parse_public_key(
     struct aws_byte_cursor *out_public_y_coord) {
 
     aws_byte_cursor_advance(&public_key, 1);
-     *out_public_x_coord = public_key;
+    *out_public_x_coord = public_key;
     out_public_x_coord->len = key_coordinate_size;
     out_public_y_coord->ptr = public_key.ptr + key_coordinate_size;
     out_public_y_coord->len = key_coordinate_size;
@@ -382,15 +382,11 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
     AWS_ZERO_STRUCT(*out_public_y_coord);
     AWS_ZERO_STRUCT(*out_private_d);
 
-    AWS_LOGF_DEBUG(0, "here 1");
-
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
-        AWS_LOGF_DEBUG(0, "here 2");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     if (!aws_der_decoder_next(decoder)) {
-        AWS_LOGF_DEBUG(0, "here 3");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -401,14 +397,12 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
      * So be lax here and treat version as optional. */
     if (aws_der_decoder_tlv_unsigned_integer(decoder, &version_cur) == AWS_OP_SUCCESS) {
         if (version_cur.len != 1 || version_cur.ptr[0] != 0) {
-            AWS_LOGF_DEBUG(0, "here 4");
             return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
         }
         aws_der_decoder_next(decoder);
     }
 
     if (aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
-        AWS_LOGF_DEBUG(0, "here 5");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -416,7 +410,6 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
     AWS_ZERO_STRUCT(algo_oid);
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
         aws_der_decoder_tlv_blob(decoder, &algo_oid)) {
-            AWS_LOGF_DEBUG(0, "here 6");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -426,7 +419,6 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
      */
     if (!aws_byte_cursor_eq(&algo_oid, &s_ec_public_key_oid_cursor) &&
         !aws_byte_cursor_eq(&algo_oid, &s_ec_private_key_oid_cursor)) {
-            AWS_LOGF_DEBUG(0, "here 7");
         return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
     }
 
@@ -434,26 +426,22 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
     AWS_ZERO_STRUCT(curve_oid);
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
         aws_der_decoder_tlv_blob(decoder, &curve_oid)) {
-            AWS_LOGF_DEBUG(0, "here 8");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     enum aws_ecc_curve_name curve_name;
     if (aws_ecc_curve_name_from_oid(&curve_oid, &curve_name)) {
-        AWS_LOGF_DEBUG(0, "here 9");
         return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
     }
 
     /* private key string */
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OCTET_STRING) {
-        AWS_LOGF_DEBUG(0, "here 10");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
     struct aws_der_decoder *nested_decoder = aws_der_decoder_nested_tlv_decoder(decoder);
 
     if (!nested_decoder) {
-        AWS_LOGF_DEBUG(0, "here 11");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -463,7 +451,6 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
     bool curve_name_set = false;
     if (s_der_decoder_sec1_private_key_helper(
             nested_decoder, &private_key_cur, &public_key_cur, &inner_curve_name, &curve_name_set)) {
-                AWS_LOGF_DEBUG(0, "here 12");
         aws_der_decoder_destroy(nested_decoder);
         return AWS_OP_ERR;
     }
@@ -471,7 +458,6 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
     aws_der_decoder_destroy(nested_decoder);
 
     if (curve_name_set && inner_curve_name != curve_name) {
-        AWS_LOGF_DEBUG(0, "here 13");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -480,7 +466,6 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
 
     if (private_key_cur.len != key_coordinate_size ||
         (public_key_cur.len != 0 && public_key_cur.len != public_key_blob_size)) {
-            AWS_LOGF_DEBUG(0, "here 14");
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
@@ -491,8 +476,6 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
     }
 
     *out_curve_name = curve_name;
-
-    AWS_LOGF_DEBUG(0, "here 15");
 
     return AWS_OP_SUCCESS;
 }

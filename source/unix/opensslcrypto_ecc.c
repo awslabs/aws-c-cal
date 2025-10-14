@@ -228,6 +228,21 @@ error:
     return NULL;
 }
 
+static int s_ec_key_set_private_key(EC_KEY* key, struct aws_byte_cursor priv) {
+    BIGNUM *priv_n = BN_bin2bn(priv.ptr, priv.len, NULL);
+    if (!priv_n) {
+        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+    }
+
+    if (!EC_KEY_set_private_key(key, priv_n)) {
+        BN_free(priv_n);
+        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+    }
+
+    BN_free(priv_n);
+    return AWS_OP_SUCCESS;
+} 
+
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
@@ -321,9 +336,10 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     if (priv_d.ptr) {
         struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));
         key_impl->key_pair.curve_name = curve_name;
-        /* as awkward as it seems, there's not a great way to manually set the public key, so let openssl just parse
-         * the der document manually now that we know what parts are what. */
-        if (!d2i_ECPrivateKey(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len)) {
+
+        key_impl->ec_key = EC_KEY_new_by_curve_name(s_curve_name_to_nid(curve_name));
+
+        if (s_ec_key_set_private_key(key_impl->ec_key, priv_d)) {
             aws_mem_release(allocator, key_impl);
             aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
             AWS_LOGF_DEBUG(0, "foo2");

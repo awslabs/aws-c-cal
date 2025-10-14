@@ -196,8 +196,10 @@ static void s_parse_public_key(
     struct aws_byte_cursor *out_public_y_coord) {
 
     aws_byte_cursor_advance(&public_key, 1);
-    *out_public_x_coord = aws_byte_cursor_advance(&public_key, key_coordinate_size);
-    *out_public_y_coord = public_key;
+     *out_public_x_coord = public_key;
+    out_public_x_coord->len = key_coordinate_size;
+    out_public_y_coord->ptr = public_key.ptr + key_coordinate_size;
+    out_public_y_coord->len = key_coordinate_size;
 }
 
 /*

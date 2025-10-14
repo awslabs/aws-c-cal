@@ -314,6 +314,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 
     enum aws_ecc_curve_name curve_name;
     if (aws_der_decoder_load_ecc_key_pair(decoder, &pub_x, &pub_y, &priv_d, &curve_name)) {
+        AWS_LOGF_DEBUG(0, "foo1");
         goto error;
     }
 
@@ -325,6 +326,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         if (!d2i_ECPrivateKey(&key_impl->ec_key, (const unsigned char **)&encoded_keys->ptr, encoded_keys->len)) {
             aws_mem_release(allocator, key_impl);
             aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
+            AWS_LOGF_DEBUG(0, "foo2");
             goto error;
         }
 
@@ -340,6 +342,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         if (pub_x.ptr) {
             temp_buf = aws_byte_buf_from_array(pub_x.ptr, pub_x.len);
             if (aws_byte_buf_init_copy(&key->pub_x, allocator, &temp_buf)) {
+                AWS_LOGF_DEBUG(0, "foo3");
                 goto error;
             }
         }
@@ -347,6 +350,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         if (pub_y.ptr) {
             temp_buf = aws_byte_buf_from_array(pub_y.ptr, pub_y.len);
             if (aws_byte_buf_init_copy(&key->pub_y, allocator, &temp_buf)) {
+                AWS_LOGF_DEBUG(0, "foo4");
                 goto error;
             }
         }
@@ -354,6 +358,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         if (priv_d.ptr) {
             temp_buf = aws_byte_buf_from_array(priv_d.ptr, priv_d.len);
             if (aws_byte_buf_init_copy(&key->priv_d, allocator, &temp_buf)) {
+                AWS_LOGF_DEBUG(0, "foo5");
                 goto error;
             }
         }
@@ -362,6 +367,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
         key = aws_ecc_key_pair_new_from_public_key(allocator, curve_name, &pub_x, &pub_y);
 
         if (!key) {
+            AWS_LOGF_DEBUG(0, "foo6");
             goto error;
         }
     }

@@ -116,7 +116,7 @@ static int s_sign_message(
     size_t coordinate_len = temp_signature_buf.len / 2;
 
     /* okay. Windows doesn't DER encode this to ASN.1, so we need to do it manually. */
-    struct aws_byte_cursor s = aws_byte_cursor_from_buf(temp_signature_buf);
+    struct aws_byte_cursor s = aws_byte_cursor_from_buf(&temp_signature_buf);
     struct aws_byte_cursor r = aws_byte_cursor_advance(s, coordinate_len);
     if (aws_ecc_encode_signature_raw_to_der(key_pair->allocator, r, s, signature_output)) {
         return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);

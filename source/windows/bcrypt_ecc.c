@@ -82,10 +82,6 @@ static size_t s_signature_length(const struct aws_ecc_key_pair *key_pair) {
     return s_der_overhead + aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name) * 2;
 }
 
-static bool s_trim_zeros_predicate(uint8_t value) {
-    return value == 0;
-}
-
 static int s_sign_message(
     const struct aws_ecc_key_pair *key_pair,
     const struct aws_byte_cursor *message,
@@ -120,28 +116,11 @@ static int s_sign_message(
     size_t coordinate_len = temp_signature_buf.len / 2;
 
     /* okay. Windows doesn't DER encode this to ASN.1, so we need to do it manually. */
-    struct aws_der_encoder *encoder =
-        aws_der_encoder_new(key_pair->allocator, signature_output->capacity - signature_output->len);
-    if (!encoder) {
-        return AWS_OP_ERR;
+    struct aws_byte_cursor s = aws_byte_cursor_from_buf(temp_signature_buf);
+    struct aws_byte_cursor r = aws_byte_cursor_advance(s, coordinate_len);
+    if (aws_ecc_encode_signature_raw_to_der(key_pair->allocator, r, s, signature_output)) {
+        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
-
-    aws_der_encoder_begin_sequence(encoder);
-    struct aws_byte_cursor integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer, coordinate_len);
-    /* trim off the leading zero padding for DER encoding */
-    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
-    aws_der_encoder_write_unsigned_integer(encoder, integer_cur);
-    integer_cur = aws_byte_cursor_from_array(temp_signature_buf.buffer + coordinate_len, coordinate_len);
-    /* trim off the leading zero padding for DER encoding */
-    integer_cur = aws_byte_cursor_left_trim_pred(&integer_cur, s_trim_zeros_predicate);
-    aws_der_encoder_write_unsigned_integer(encoder, integer_cur);
-    aws_der_encoder_end_sequence(encoder);
-
-    struct aws_byte_cursor signature_out_cur;
-    AWS_ZERO_STRUCT(signature_out_cur);
-    aws_der_encoder_get_contents(encoder, &signature_out_cur);
-    aws_byte_buf_append(signature_output, &signature_out_cur);
-    aws_der_encoder_destroy(encoder);
 
     return AWS_OP_SUCCESS;
 }

@@ -970,13 +970,17 @@ static int s_ecdsa_signature_encode_helper_roundtrip(struct aws_allocator *alloc
     AWS_ZERO_STRUCT(r);
     struct aws_byte_cursor s;
     AWS_ZERO_STRUCT(s);
-    ASSERT_SUCCESS(aws_ecc_decode_signature_der_to_raw(allocator, signature_value_cursor, &r, &s));
+    struct aws_byte_cursor bin_cursor = aws_byte_cursor_from_buf(&binary_signature);
+    ASSERT_SUCCESS(aws_ecc_decode_signature_der_to_raw(allocator, bin_cursor, &r, &s));
 
     struct aws_byte_buf encoded_sig;
-    AWS_ZERO_STRUCT(encoded_sig);
+    aws_byte_buf_init(&encoded_sig, allocator, 128);
     ASSERT_SUCCESS(aws_ecc_encode_signature_raw_to_der(allocator, r, s, &encoded_sig));
 
     ASSERT_BIN_ARRAYS_EQUALS(binary_signature.buffer, binary_signature.len, encoded_sig.buffer, encoded_sig.len);
+
+    aws_byte_buf_clean_up(&binary_signature);
+    aws_byte_buf_clean_up(&encoded_sig);
 
     aws_cal_library_clean_up();
     return AWS_OP_SUCCESS;

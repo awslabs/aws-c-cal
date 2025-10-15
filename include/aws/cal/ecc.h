@@ -190,6 +190,7 @@ AWS_CAL_API int aws_ecc_decode_signature_der_to_raw(
 
 /*
  * Helper to encode ECDSA signature from raw format (R and S) to DER.
+ * out_signature must be initialized and must be able to fit signature
  */
 AWS_CAL_API int aws_ecc_encode_signature_raw_to_der(
     struct aws_allocator *allocator,

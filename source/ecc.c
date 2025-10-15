@@ -342,7 +342,15 @@ int aws_ecc_decode_signature_der_to_raw(
     struct aws_byte_cursor signature,
     struct aws_byte_cursor *out_r,
     struct aws_byte_cursor *out_s) {
+
+    AWS_PRECONDITION(out_r);
+    AWS_PRECONDITION(out_s);
+
     struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, signature);
+
+    if (!decoder) {
+        return AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED;
+    }
 
     if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
         aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
@@ -373,23 +381,29 @@ on_error:
     return AWS_OP_ERR;
 }
 
+static bool s_trim_zeros_predicate(uint8_t value) {
+    return value == 0;
+}
+
 int aws_ecc_encode_signature_raw_to_der(
     struct aws_allocator *allocator,
     struct aws_byte_cursor r,
     struct aws_byte_cursor s,
     struct aws_byte_buf *out_signature) {
-    struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, 64);
+    struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, out_signature->capacity - out_signature->len);
 
     if (aws_der_encoder_begin_sequence(encoder)) {
         aws_raise_error(AWS_ERROR_UNKNOWN);
         goto on_error;
     }
 
+    r = aws_byte_cursor_left_trim_pred(&r, s_trim_zeros_predicate);
     if (aws_der_encoder_write_unsigned_integer(encoder, r)) {
         aws_raise_error(AWS_ERROR_UNKNOWN);
         goto on_error;
     }
 
+    s = aws_byte_cursor_left_trim_pred(&s, s_trim_zeros_predicate);
     if (aws_der_encoder_write_unsigned_integer(encoder, s)) {
         aws_raise_error(AWS_ERROR_UNKNOWN);
         goto on_error;
@@ -407,9 +421,7 @@ int aws_ecc_encode_signature_raw_to_der(
         goto on_error;
     }
 
-    if (aws_byte_buf_init_copy_from_cursor(out_signature, allocator, contents)) {
-        goto on_error;
-    }
+    aws_byte_buf_append(out_signature, &contents);
 
     aws_der_encoder_destroy(encoder);
     return AWS_OP_SUCCESS;

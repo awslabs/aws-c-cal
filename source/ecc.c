@@ -336,3 +336,85 @@ done:
 
     return key;
 }
+
+int aws_ecc_decode_signature_der_to_raw(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor signature,
+    struct aws_byte_cursor *out_r,
+    struct aws_byte_cursor *out_s) {
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, signature);
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+
+    struct aws_byte_cursor r;
+    AWS_ZERO_STRUCT(r);
+    struct aws_byte_cursor s;
+    AWS_ZERO_STRUCT(s);
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &r)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &s)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+
+    aws_der_decoder_destroy(decoder);
+    *out_r = r;
+    *out_s = s;
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_decoder_destroy(decoder);
+    return AWS_OP_ERR;
+}
+
+int aws_ecc_encode_signature_raw_to_der(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor r,
+    struct aws_byte_cursor s,
+    struct aws_byte_buf *out_signature) {
+    struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, 64);
+
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    if (aws_der_encoder_write_unsigned_integer(encoder, r)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    if (aws_der_encoder_write_unsigned_integer(encoder, s)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    struct aws_byte_cursor contents;
+    AWS_ZERO_STRUCT(contents);
+    if (aws_der_encoder_get_contents(encoder, &contents)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    if (aws_byte_buf_init_copy_from_cursor(out_signature, allocator, contents)) {
+        goto on_error;
+    }
+
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+}

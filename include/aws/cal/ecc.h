@@ -179,6 +179,24 @@ AWS_CAL_API void aws_ecc_key_pair_get_private_key(
 
 AWS_CAL_API size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name curve_name);
 
+/*
+ * Helper to decode ECDSA signature from DER format to base components R and S.
+ */
+AWS_CAL_API int aws_ecc_decode_signature_der_to_raw(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor signature,
+    struct aws_byte_cursor *out_r,
+    struct aws_byte_cursor *out_s);
+
+/*
+ * Helper to encode ECDSA signature from raw format (R and S) to DER.
+ */
+AWS_CAL_API int aws_ecc_encode_signature_raw_to_der(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor r,
+    struct aws_byte_cursor s,
+    struct aws_byte_buf *out_signature);
+
 AWS_EXTERN_C_END
 AWS_POP_SANE_WARNING_LEVEL
 

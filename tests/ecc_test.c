@@ -506,8 +506,28 @@ static int s_ecdsa_p256_test_import_asn1_key_pair_fn(struct aws_allocator *alloc
 
     return s_ecdsa_test_import_asn1_key_pair(allocator, asn1_encoded_key, AWS_CAL_ECDSA_P256);
 }
-
 AWS_TEST_CASE(ecdsa_p256_test_import_asn1_key_pair, s_ecdsa_p256_test_import_asn1_key_pair_fn)
+
+static int s_ecdsa_p256_test_import_asn1_pkcs8_key_pair_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t asn1_encoded_key_raw[] = {
+        0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01, 0x06,
+        0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, 0x04, 0x6D, 0x30, 0x6B, 0x02, 0x01, 0x01, 0x04, 0x20,
+        0x18, 0xCD, 0x6B, 0x61, 0x25, 0xB5, 0x37, 0x61, 0xB8, 0xF4, 0x6A, 0xBA, 0x42, 0xAF, 0xA9, 0x70, 0x14, 0x9D,
+        0x72, 0x40, 0x6D, 0x84, 0x00, 0xA8, 0x40, 0x02, 0x13, 0x86, 0x8C, 0xA9, 0x2D, 0x63, 0xA1, 0x44, 0x03, 0x42,
+        0x00, 0x04, 0x95, 0x4E, 0x22, 0xE2, 0xDB, 0x79, 0xCC, 0xA7, 0x56, 0x6F, 0xC2, 0x29, 0xA1, 0x0B, 0x05, 0x96,
+        0x22, 0x66, 0x06, 0xC3, 0x6D, 0x0A, 0xD1, 0xD8, 0x57, 0x82, 0x02, 0x19, 0x74, 0xCD, 0x52, 0x4D, 0x5A, 0x57,
+        0x18, 0xCA, 0xDF, 0xF5, 0x81, 0x9B, 0x9D, 0x0C, 0xBF, 0x2E, 0xB9, 0x91, 0xD2, 0x1A, 0xBB, 0x76, 0x8A, 0x06,
+        0x66, 0xB3, 0xBF, 0x7C, 0x6C, 0x30, 0xF6, 0xBF, 0x8C, 0x84, 0x73, 0x96,
+    };
+
+    struct aws_byte_cursor asn1_encoded_key =
+        aws_byte_cursor_from_array(asn1_encoded_key_raw, sizeof(asn1_encoded_key_raw));
+
+    return s_ecdsa_test_import_asn1_key_pair(allocator, asn1_encoded_key, AWS_CAL_ECDSA_P256);
+}
+AWS_TEST_CASE(ecdsa_p256_test_import_asn1_pkcs8_key_pair, s_ecdsa_p256_test_import_asn1_pkcs8_key_pair_fn)
 
 static int s_ecdsa_p384_test_import_asn1_key_pair_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -636,14 +656,14 @@ static int s_ecdsa_test_import_asn1_key_pair_invalid_fails_fn(struct aws_allocat
 
     struct aws_ecc_key_pair *signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_1);
     ASSERT_NULL(signing_key);
-    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, aws_last_error());
 
     struct aws_byte_cursor bad_full_key_asn1_2 =
         aws_byte_cursor_from_array(bad_asn1_encoded_full_key_raw_2, sizeof(bad_asn1_encoded_full_key_raw_2));
 
     signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_2);
     ASSERT_NULL(signing_key);
-    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, aws_last_error());
     aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
@@ -654,9 +674,9 @@ AWS_TEST_CASE(ecdsa_test_import_asn1_key_pair_invalid_fails, s_ecdsa_test_import
 /* this test exists because we have to manually handle signature encoding/decoding on windows.
    this takes an encoded signature and makes sure we decode and verify it properly. How do we know
    we encode properly b.t.w? Well we have tests that verify signatures we generated, so we already know
-   that anything we signed can be decoded. What we don't have proven is that we're not just symetrically
+   that anything we signed can be decoded. What we don't have proven is that we're not just symmetrically
    wrong. So, let's take the format we know signatures must be in ASN.1 DER encoded, and make sure we can
-   verify it. Since we KNOW the signing and verifying code is symetric, verifying the verification side should
+   verify it. Since we KNOW the signing and verifying code is symmetric, verifying the verification side should
    prove our encoding/decoding code is correct to the spec. */
 static int s_ecdsa_test_signature_format_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;

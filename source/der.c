@@ -400,6 +400,15 @@ error:
     return NULL;
 }
 
+struct aws_der_decoder *aws_der_decoder_nested_tlv_decoder(struct aws_der_decoder *decoder) {
+    struct aws_byte_cursor cursor;
+    AWS_ZERO_STRUCT(cursor);
+    if (aws_der_decoder_tlv_string(decoder, &cursor)) {
+        return NULL;
+    }
+    return aws_der_decoder_new(decoder->allocator, cursor);
+}
+
 void aws_der_decoder_destroy(struct aws_der_decoder *decoder) {
     if (!decoder) {
         return;
@@ -465,6 +474,10 @@ int s_decoder_parse(struct aws_der_decoder *decoder) {
 
 bool aws_der_decoder_next(struct aws_der_decoder *decoder) {
     return (++decoder->tlv_idx < (int)decoder->tlvs.length);
+}
+
+void aws_der_decoder_reset(struct aws_der_decoder *decoder) {
+    decoder->tlv_idx = -1;
 }
 
 static struct der_tlv s_decoder_tlv(struct aws_der_decoder *decoder) {

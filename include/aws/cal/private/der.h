@@ -60,6 +60,11 @@ enum aws_der_type {
     /* forms */
     AWS_DER_FORM_CONSTRUCTED = 0x20,
     AWS_DER_FORM_PRIMITIVE = 0x00,
+
+    /* context specific */
+    /* TODO: we should probably handle tags more generically, but for now first 2 tags cover all cases. */
+    AWS_DER_CONTEXT_SPECIFIC_TAG0 = 0xa0,
+    AWS_DER_CONTEXT_SPECIFIC_TAG1 = 0xa1,
 };
 
 AWS_EXTERN_C_BEGIN
@@ -165,6 +170,14 @@ AWS_CAL_API int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, st
 AWS_CAL_API struct aws_der_decoder *aws_der_decoder_new(struct aws_allocator *allocator, struct aws_byte_cursor input);
 
 /**
+ * Initializes new decoder from string at the current location.
+ * Useful for cases where asn1 structure is nested inside another one, ex. ec pkcs8.
+ * @param decoder Current decoder
+ * @return Initialized decoder, or NULL
+ */
+AWS_CAL_API struct aws_der_decoder *aws_der_decoder_nested_tlv_decoder(struct aws_der_decoder *decoder);
+
+/**
  * Cleans up a DER encoder
  * @param decoder The encoder to clean up
  */
@@ -176,6 +189,12 @@ AWS_CAL_API void aws_der_decoder_destroy(struct aws_der_decoder *decoder);
  * @return true if there is a tlv to read after advancing, false when done
  */
 AWS_CAL_API bool aws_der_decoder_next(struct aws_der_decoder *decoder);
+
+/**
+ * Resets der decoder to the start.
+ * @param decoder The decoder to reset
+ */
+AWS_CAL_API void aws_der_decoder_reset(struct aws_der_decoder *decoder);
 
 /**
  * The type of the current TLV

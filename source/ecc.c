@@ -390,8 +390,8 @@ int aws_ecc_encode_signature_raw_to_der(
     struct aws_allocator *allocator,
     struct aws_byte_cursor r,
     struct aws_byte_cursor s,
-    struct aws_byte_buf *out_signature) {   
-    
+    struct aws_byte_buf *out_signature) {
+
     AWS_ERROR_PRECONDITION(allocator);
     AWS_ERROR_PRECONDITION(out_signature);
 

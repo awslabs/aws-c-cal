@@ -247,16 +247,18 @@ static int s_der_decoder_sec1_private_key_helper(
         if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG0) {
             aws_der_decoder_next(decoder);
 
-            if (aws_der_decoder_tlv_type(decoder) == AWS_DER_OBJECT_IDENTIFIER) {
-                if (aws_der_decoder_tlv_blob(decoder, &oid)) {
-                    return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
-                }
-                if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
-                    return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
-                }
-                *curve_name_set = true;
-                aws_der_decoder_next(decoder); /* skip to field after */
+            if (aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }
+
+            if (aws_der_decoder_tlv_blob(decoder, &oid)) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
+            if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+                return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
+            }
+            *curve_name_set = true;
+            aws_der_decoder_next(decoder); /* skip to field after */
         }
 
         /* tag 1 is optional public key */

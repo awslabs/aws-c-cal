@@ -576,11 +576,11 @@ int aws_der_decoder_load_ecc_key_pair(
     struct aws_byte_cursor *out_private_d,
     enum aws_ecc_curve_name *out_curve_name) {
 
-    AWS_PRECONDITION(decoder);
-    AWS_PRECONDITION(out_public_x_coord);
-    AWS_PRECONDITION(out_public_y_coord);
-    AWS_PRECONDITION(out_private_d);
-    AWS_PRECONDITION(out_curve_name);
+    AWS_ERROR_PRECONDITION(decoder);
+    AWS_ERROR_PRECONDITION(out_public_x_coord);
+    AWS_ERROR_PRECONDITION(out_public_y_coord);
+    AWS_ERROR_PRECONDITION(out_private_d);
+    AWS_ERROR_PRECONDITION(out_curve_name);
 
     /**
      * Since this is a generic api to parse from ans1, we can encounter several key structures.

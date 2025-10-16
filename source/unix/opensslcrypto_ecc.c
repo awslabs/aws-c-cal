@@ -231,7 +231,7 @@ error:
 static int s_ec_key_set_private_key(EC_KEY *key, struct aws_byte_cursor priv) {
     BIGNUM *priv_n = BN_bin2bn(priv.ptr, priv.len, NULL);
     if (!priv_n) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+        return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
     }
 
     if (!EC_KEY_set_private_key(key, priv_n)) {

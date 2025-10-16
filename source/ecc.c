@@ -243,9 +243,12 @@ static int s_der_decoder_sec1_private_key_helper(
     *curve_name_set = false;
     if (aws_der_decoder_next(decoder)) {
 
+        bool version_found = false;
         /* tag 0 is optional params */
         if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG0) {
-            aws_der_decoder_next(decoder);
+            if (!aws_der_decoder_next(decoder)) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
 
             if (aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER) {
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
@@ -258,12 +261,21 @@ static int s_der_decoder_sec1_private_key_helper(
                 return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
             }
             *curve_name_set = true;
-            aws_der_decoder_next(decoder); /* skip to field after */
+            version_found = true;
         }
 
-        /* tag 1 is optional public key */
+        /* tag 1 is optional public key
+         * Note: even though its optional, I could not get any modern tools to generate a key without one.
+         * So from practical perspective it almost always is present.
+         * */
+        if (version_found && !aws_der_decoder_next(decoder)) {
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        }
+
         if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG1) {
-            aws_der_decoder_next(decoder);
+            if (!aws_der_decoder_next(decoder)) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
 
             if (aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
@@ -399,7 +411,9 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
         if (version_cur.len != 1 || version_cur.ptr[0] != 0) {
             return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
         }
-        aws_der_decoder_next(decoder);
+        if (!aws_der_decoder_next(decoder)) {
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        }
     }
 
     if (aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {

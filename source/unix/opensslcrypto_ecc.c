@@ -265,10 +265,10 @@ static int s_ec_key_set_public_key(EC_KEY *key, struct aws_byte_cursor pub_x, st
     return AWS_OP_SUCCESS;
 
 on_error:
-    if (point){
+    if (point) {
         EC_POINT_free(point);
     }
- 
+
     if (pub_x_num) {
         BN_free(pub_x_num);
     }
@@ -276,7 +276,7 @@ on_error:
     if (pub_x_num) {
         BN_free(pub_y_num);
     }
-    
+
     return aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
 }
 

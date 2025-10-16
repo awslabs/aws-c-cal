@@ -664,3 +664,102 @@ done:
 
     return key;
 }
+
+int aws_ecc_decode_signature_der_to_raw(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor signature,
+    struct aws_byte_cursor *out_r,
+    struct aws_byte_cursor *out_s) {
+
+    AWS_ERROR_PRECONDITION(allocator);
+    AWS_ERROR_PRECONDITION(out_r);
+    AWS_ERROR_PRECONDITION(out_s);
+
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, signature);
+
+    if (!decoder) {
+        return AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED;
+    }
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+
+    struct aws_byte_cursor r;
+    AWS_ZERO_STRUCT(r);
+    struct aws_byte_cursor s;
+    AWS_ZERO_STRUCT(s);
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &r)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &s)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+
+    aws_der_decoder_destroy(decoder);
+    *out_r = r;
+    *out_s = s;
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_decoder_destroy(decoder);
+    return AWS_OP_ERR;
+}
+
+static bool s_trim_zeros_predicate(uint8_t value) {
+    return value == 0;
+}
+
+int aws_ecc_encode_signature_raw_to_der(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor r,
+    struct aws_byte_cursor s,
+    struct aws_byte_buf *out_signature) {
+
+    AWS_ERROR_PRECONDITION(allocator);
+    AWS_ERROR_PRECONDITION(out_signature);
+
+    struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, out_signature->capacity - out_signature->len);
+
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    r = aws_byte_cursor_left_trim_pred(&r, s_trim_zeros_predicate);
+    if (aws_der_encoder_write_unsigned_integer(encoder, r)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    s = aws_byte_cursor_left_trim_pred(&s, s_trim_zeros_predicate);
+    if (aws_der_encoder_write_unsigned_integer(encoder, s)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    struct aws_byte_cursor contents;
+    AWS_ZERO_STRUCT(contents);
+    if (aws_der_encoder_get_contents(encoder, &contents)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    aws_byte_buf_append(out_signature, &contents);
+
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+}

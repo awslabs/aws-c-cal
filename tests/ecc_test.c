@@ -970,6 +970,55 @@ static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator 
 }
 AWS_TEST_CASE(ecdsa_p256_test_small_coordinate_verification, s_ecdsa_p256_test_small_coordinate_verification);
 
+static int s_ecdsa_signature_encode_helper_roundtrip(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    struct aws_byte_cursor signature_value_cursor = aws_byte_cursor_from_string(s_signature_value);
+    size_t binary_length = 0;
+    if (aws_hex_compute_decoded_len(signature_value_cursor.len, &binary_length)) {
+        return AWS_OP_ERR;
+    }
+    struct aws_byte_buf binary_signature;
+    AWS_ZERO_STRUCT(binary_signature);
+
+    aws_byte_buf_init(&binary_signature, allocator, binary_length);
+
+    ASSERT_SUCCESS(aws_hex_decode(&signature_value_cursor, &binary_signature));
+
+    struct aws_byte_cursor r;
+    AWS_ZERO_STRUCT(r);
+    struct aws_byte_cursor s;
+    AWS_ZERO_STRUCT(s);
+    struct aws_byte_cursor bin_cursor = aws_byte_cursor_from_buf(&binary_signature);
+    ASSERT_SUCCESS(aws_ecc_decode_signature_der_to_raw(allocator, bin_cursor, &r, &s));
+
+    uint8_t expected_r[] = {0x7c, 0xfd, 0x51, 0xaf, 0x2b, 0x72, 0x2f, 0x8d, 0x1f, 0xa1, 0xaf,
+                            0xb6, 0x5b, 0x4d, 0x54, 0x86, 0xed, 0x59, 0xa6, 0x7b, 0xcf, 0x9f,
+                            0x3a, 0xcc, 0x62, 0xaa, 0xd6, 0xdd, 0xd3, 0x7d, 0xb1};
+    struct aws_byte_cursor expected_r_cur = aws_byte_cursor_from_array(expected_r, sizeof(expected_r));
+    uint8_t expected_s[] = {0x9d, 0x4c, 0x9f, 0x9a, 0x37, 0x10, 0x4f, 0xc0, 0x1a, 0x8d, 0xaf,
+                            0xfc, 0x9a, 0x6b, 0xd1, 0x05, 0x6b, 0x7b, 0x43, 0xc1, 0x19, 0x6e,
+                            0xdd, 0xe0, 0xb5, 0x28, 0x78, 0xb7, 0x59, 0x62, 0x8f, 0x8c};
+    struct aws_byte_cursor expected_s_cur = aws_byte_cursor_from_array(expected_s, sizeof(expected_s));
+
+    ASSERT_BIN_ARRAYS_EQUALS(expected_r_cur.ptr, expected_r_cur.len, r.ptr, r.len);
+    ASSERT_BIN_ARRAYS_EQUALS(expected_s_cur.ptr, expected_s_cur.len, s.ptr, s.len);
+
+    struct aws_byte_buf encoded_sig;
+    aws_byte_buf_init(&encoded_sig, allocator, 128);
+    ASSERT_SUCCESS(aws_ecc_encode_signature_raw_to_der(allocator, r, s, &encoded_sig));
+
+    ASSERT_BIN_ARRAYS_EQUALS(binary_signature.buffer, binary_signature.len, encoded_sig.buffer, encoded_sig.len);
+
+    aws_byte_buf_clean_up(&binary_signature);
+    aws_byte_buf_clean_up(&encoded_sig);
+
+    aws_cal_library_clean_up();
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(ecdsa_signature_encode_helper_roundtrip, s_ecdsa_signature_encode_helper_roundtrip);
+
 #ifdef AWS_OS_APPLE
 
 static int s_test_key_gen_from_private_fuzz(

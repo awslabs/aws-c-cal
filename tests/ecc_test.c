@@ -506,8 +506,28 @@ static int s_ecdsa_p256_test_import_asn1_key_pair_fn(struct aws_allocator *alloc
 
     return s_ecdsa_test_import_asn1_key_pair(allocator, asn1_encoded_key, AWS_CAL_ECDSA_P256);
 }
-
 AWS_TEST_CASE(ecdsa_p256_test_import_asn1_key_pair, s_ecdsa_p256_test_import_asn1_key_pair_fn)
+
+static int s_ecdsa_p256_test_import_asn1_pkcs8_key_pair_fn(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    uint8_t asn1_encoded_key_raw[] = {
+        0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01, 0x06,
+        0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07, 0x04, 0x6D, 0x30, 0x6B, 0x02, 0x01, 0x01, 0x04, 0x20,
+        0x18, 0xCD, 0x6B, 0x61, 0x25, 0xB5, 0x37, 0x61, 0xB8, 0xF4, 0x6A, 0xBA, 0x42, 0xAF, 0xA9, 0x70, 0x14, 0x9D,
+        0x72, 0x40, 0x6D, 0x84, 0x00, 0xA8, 0x40, 0x02, 0x13, 0x86, 0x8C, 0xA9, 0x2D, 0x63, 0xA1, 0x44, 0x03, 0x42,
+        0x00, 0x04, 0x95, 0x4E, 0x22, 0xE2, 0xDB, 0x79, 0xCC, 0xA7, 0x56, 0x6F, 0xC2, 0x29, 0xA1, 0x0B, 0x05, 0x96,
+        0x22, 0x66, 0x06, 0xC3, 0x6D, 0x0A, 0xD1, 0xD8, 0x57, 0x82, 0x02, 0x19, 0x74, 0xCD, 0x52, 0x4D, 0x5A, 0x57,
+        0x18, 0xCA, 0xDF, 0xF5, 0x81, 0x9B, 0x9D, 0x0C, 0xBF, 0x2E, 0xB9, 0x91, 0xD2, 0x1A, 0xBB, 0x76, 0x8A, 0x06,
+        0x66, 0xB3, 0xBF, 0x7C, 0x6C, 0x30, 0xF6, 0xBF, 0x8C, 0x84, 0x73, 0x96,
+    };
+
+    struct aws_byte_cursor asn1_encoded_key =
+        aws_byte_cursor_from_array(asn1_encoded_key_raw, sizeof(asn1_encoded_key_raw));
+
+    return s_ecdsa_test_import_asn1_key_pair(allocator, asn1_encoded_key, AWS_CAL_ECDSA_P256);
+}
+AWS_TEST_CASE(ecdsa_p256_test_import_asn1_pkcs8_key_pair, s_ecdsa_p256_test_import_asn1_pkcs8_key_pair_fn)
 
 static int s_ecdsa_p384_test_import_asn1_key_pair_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -636,14 +656,14 @@ static int s_ecdsa_test_import_asn1_key_pair_invalid_fails_fn(struct aws_allocat
 
     struct aws_ecc_key_pair *signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_1);
     ASSERT_NULL(signing_key);
-    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, aws_last_error());
 
     struct aws_byte_cursor bad_full_key_asn1_2 =
         aws_byte_cursor_from_array(bad_asn1_encoded_full_key_raw_2, sizeof(bad_asn1_encoded_full_key_raw_2));
 
     signing_key = aws_ecc_key_pair_new_from_asn1(allocator, &bad_full_key_asn1_2);
     ASSERT_NULL(signing_key);
-    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER, aws_last_error());
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, aws_last_error());
     aws_cal_library_clean_up();
 
     return AWS_OP_SUCCESS;
@@ -654,9 +674,9 @@ AWS_TEST_CASE(ecdsa_test_import_asn1_key_pair_invalid_fails, s_ecdsa_test_import
 /* this test exists because we have to manually handle signature encoding/decoding on windows.
    this takes an encoded signature and makes sure we decode and verify it properly. How do we know
    we encode properly b.t.w? Well we have tests that verify signatures we generated, so we already know
-   that anything we signed can be decoded. What we don't have proven is that we're not just symetrically
+   that anything we signed can be decoded. What we don't have proven is that we're not just symmetrically
    wrong. So, let's take the format we know signatures must be in ASN.1 DER encoded, and make sure we can
-   verify it. Since we KNOW the signing and verifying code is symetric, verifying the verification side should
+   verify it. Since we KNOW the signing and verifying code is symmetric, verifying the verification side should
    prove our encoding/decoding code is correct to the spec. */
 static int s_ecdsa_test_signature_format_fn(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -949,6 +969,55 @@ static int s_ecdsa_p256_test_small_coordinate_verification(struct aws_allocator 
     return AWS_OP_SUCCESS;
 }
 AWS_TEST_CASE(ecdsa_p256_test_small_coordinate_verification, s_ecdsa_p256_test_small_coordinate_verification);
+
+static int s_ecdsa_signature_encode_helper_roundtrip(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    struct aws_byte_cursor signature_value_cursor = aws_byte_cursor_from_string(s_signature_value);
+    size_t binary_length = 0;
+    if (aws_hex_compute_decoded_len(signature_value_cursor.len, &binary_length)) {
+        return AWS_OP_ERR;
+    }
+    struct aws_byte_buf binary_signature;
+    AWS_ZERO_STRUCT(binary_signature);
+
+    aws_byte_buf_init(&binary_signature, allocator, binary_length);
+
+    ASSERT_SUCCESS(aws_hex_decode(&signature_value_cursor, &binary_signature));
+
+    struct aws_byte_cursor r;
+    AWS_ZERO_STRUCT(r);
+    struct aws_byte_cursor s;
+    AWS_ZERO_STRUCT(s);
+    struct aws_byte_cursor bin_cursor = aws_byte_cursor_from_buf(&binary_signature);
+    ASSERT_SUCCESS(aws_ecc_decode_signature_der_to_raw(allocator, bin_cursor, &r, &s));
+
+    uint8_t expected_r[] = {0x7c, 0xfd, 0x51, 0xaf, 0x2b, 0x72, 0x2f, 0x8d, 0x1f, 0xa1, 0xaf,
+                            0xb6, 0x5b, 0x4d, 0x54, 0x86, 0xed, 0x59, 0xa6, 0x7b, 0xcf, 0x9f,
+                            0x3a, 0xcc, 0x62, 0xaa, 0xd6, 0xdd, 0xd3, 0x7d, 0xb1};
+    struct aws_byte_cursor expected_r_cur = aws_byte_cursor_from_array(expected_r, sizeof(expected_r));
+    uint8_t expected_s[] = {0x9d, 0x4c, 0x9f, 0x9a, 0x37, 0x10, 0x4f, 0xc0, 0x1a, 0x8d, 0xaf,
+                            0xfc, 0x9a, 0x6b, 0xd1, 0x05, 0x6b, 0x7b, 0x43, 0xc1, 0x19, 0x6e,
+                            0xdd, 0xe0, 0xb5, 0x28, 0x78, 0xb7, 0x59, 0x62, 0x8f, 0x8c};
+    struct aws_byte_cursor expected_s_cur = aws_byte_cursor_from_array(expected_s, sizeof(expected_s));
+
+    ASSERT_BIN_ARRAYS_EQUALS(expected_r_cur.ptr, expected_r_cur.len, r.ptr, r.len);
+    ASSERT_BIN_ARRAYS_EQUALS(expected_s_cur.ptr, expected_s_cur.len, s.ptr, s.len);
+
+    struct aws_byte_buf encoded_sig;
+    aws_byte_buf_init(&encoded_sig, allocator, 128);
+    ASSERT_SUCCESS(aws_ecc_encode_signature_raw_to_der(allocator, r, s, &encoded_sig));
+
+    ASSERT_BIN_ARRAYS_EQUALS(binary_signature.buffer, binary_signature.len, encoded_sig.buffer, encoded_sig.len);
+
+    aws_byte_buf_clean_up(&binary_signature);
+    aws_byte_buf_clean_up(&encoded_sig);
+
+    aws_cal_library_clean_up();
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(ecdsa_signature_encode_helper_roundtrip, s_ecdsa_signature_encode_helper_roundtrip);
 
 #ifdef AWS_OS_APPLE
 

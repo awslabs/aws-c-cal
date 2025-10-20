@@ -189,95 +189,423 @@ size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name 
     }
 }
 
-int aws_der_decoder_load_ecc_key_pair(
+static void s_parse_public_key(
+    struct aws_byte_cursor public_key,
+    size_t key_coordinate_size,
+    struct aws_byte_cursor *out_public_x_coord,
+    struct aws_byte_cursor *out_public_y_coord) {
+
+    aws_byte_cursor_advance(&public_key, 1);
+    *out_public_x_coord = aws_byte_cursor_advance(&public_key, key_coordinate_size);
+    *out_public_y_coord = public_key;
+}
+
+/*
+ * Both pkcs8 and sec1 have a shared overlapped structure.
+ * This helper extracts common fields and then validation can differ in the caller.
+ */
+static int s_der_decoder_sec1_private_key_helper(
     struct aws_der_decoder *decoder,
-    struct aws_byte_cursor *out_public_x_coor,
-    struct aws_byte_cursor *out_public_y_coor,
+    struct aws_byte_cursor *out_private_cursor,
+    struct aws_byte_cursor *out_public_cursor,
+    enum aws_ecc_curve_name *out_curve_name,
+    bool *curve_name_set) {
+
+    AWS_ZERO_STRUCT(*out_private_cursor);
+    AWS_ZERO_STRUCT(*out_public_cursor);
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    struct aws_byte_cursor version_cur;
+    AWS_ZERO_STRUCT(version_cur);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &version_cur)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    if (version_cur.len != 1 || version_cur.ptr[0] != 1) {
+        return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
+    }
+
+    struct aws_byte_cursor private_key_cur;
+    AWS_ZERO_STRUCT(private_key_cur);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &private_key_cur)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    struct aws_byte_cursor oid;
+    AWS_ZERO_STRUCT(oid);
+    struct aws_byte_cursor public_key_cur;
+    AWS_ZERO_STRUCT(public_key_cur);
+    enum aws_ecc_curve_name curve_name = {0};
+
+    *curve_name_set = false;
+    if (aws_der_decoder_next(decoder)) {
+
+        bool version_found = false;
+        /* tag 0 is optional params */
+        if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG0) {
+            if (!aws_der_decoder_next(decoder)) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
+
+            if (aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
+
+            if (aws_der_decoder_tlv_blob(decoder, &oid)) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
+            if (aws_ecc_curve_name_from_oid(&oid, &curve_name)) {
+                return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
+            }
+            *curve_name_set = true;
+            version_found = true;
+        }
+
+        /* tag 1 is optional public key
+         * Note: even though its optional, I could not get any modern tools to generate a key without one.
+         * So from practical perspective it almost always is present.
+         * */
+        if (version_found && !aws_der_decoder_next(decoder)) {
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        }
+
+        if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG1) {
+            if (!aws_der_decoder_next(decoder)) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
+
+            if (aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
+                return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+            }
+        }
+    }
+
+    *out_public_cursor = public_key_cur;
+    *out_private_cursor = private_key_cur;
+    *out_curve_name = curve_name;
+
+    return AWS_OP_SUCCESS;
+}
+
+/*
+ * Load key from sec1 container. Aka "EC PRIVATE KEY" in pem
+ * ECPrivateKey ::= SEQUENCE {
+ *   version        INTEGER { ecPrivkeyVer1(1) },
+ *   privateKey     OCTET STRING,
+ *   parameters [0] ECParameters {{ NamedCurve }} OPTIONAL,
+ *   publicKey  [1] BIT STRING OPTIONAL
+ * }
+ */
+static int s_der_decoder_load_ecc_private_key_pair_from_sec1(
+    struct aws_der_decoder *decoder,
+    struct aws_byte_cursor *out_public_x_coord,
+    struct aws_byte_cursor *out_public_y_coord,
     struct aws_byte_cursor *out_private_d,
     enum aws_ecc_curve_name *out_curve_name) {
 
-    AWS_ZERO_STRUCT(*out_public_x_coor);
-    AWS_ZERO_STRUCT(*out_public_y_coor);
+    AWS_ZERO_STRUCT(*out_public_x_coord);
+    AWS_ZERO_STRUCT(*out_public_y_coord);
     AWS_ZERO_STRUCT(*out_private_d);
 
-    /* we could have private key or a public key, or a full pair. */
-    struct aws_byte_cursor pair_part_1;
-    AWS_ZERO_STRUCT(pair_part_1);
-    struct aws_byte_cursor pair_part_2;
-    AWS_ZERO_STRUCT(pair_part_2);
+    struct aws_byte_cursor private_key_cur;
+    struct aws_byte_cursor public_key_cur;
+    enum aws_ecc_curve_name curve_name;
+    bool curve_name_set = false;
 
-    bool curve_name_recognized = false;
+    if (s_der_decoder_sec1_private_key_helper(
+            decoder, &private_key_cur, &public_key_cur, &curve_name, &curve_name_set)) {
+        return AWS_OP_ERR;
+    }
 
-    /* work with this pointer and move it to the next after using it. We need
-     * to know which curve we're dealing with before we can figure out which is which. */
-    struct aws_byte_cursor *current_part = &pair_part_1;
+    if (!curve_name_set) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
 
-    while (aws_der_decoder_next(decoder)) {
-        enum aws_der_type type = aws_der_decoder_tlv_type(decoder);
+    size_t key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
+    size_t public_key_blob_size = key_coordinate_size * 2 + 1;
 
-        if (type == AWS_DER_OBJECT_IDENTIFIER) {
-            struct aws_byte_cursor oid;
-            AWS_ZERO_STRUCT(oid);
-            aws_der_decoder_tlv_blob(decoder, &oid);
-            /* There can be other OID's so just look for one that is the curve. */
-            if (!aws_ecc_curve_name_from_oid(&oid, out_curve_name)) {
-                curve_name_recognized = true;
-            }
-            continue;
+    if (private_key_cur.len != key_coordinate_size ||
+        (public_key_cur.len != 0 && public_key_cur.len != public_key_blob_size)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    *out_private_d = private_key_cur;
+
+    if (public_key_cur.len > 0) {
+        s_parse_public_key(public_key_cur, key_coordinate_size, out_public_x_coord, out_public_y_coord);
+    }
+
+    *out_curve_name = curve_name;
+
+    return AWS_OP_SUCCESS;
+}
+
+static uint8_t s_ec_private_key_oid[] = {
+    0x2A,
+    0x86,
+    0x48,
+    0xCE,
+    0x3D,
+    0x02,
+    0x01,
+};
+STATIC_INIT_BYTE_CURSOR(s_ec_private_key_oid, ec_private_key_oid_cursor)
+
+static uint8_t s_ec_public_key_oid[] = {
+    0x2A,
+    0x86,
+    0x48,
+    0xCE,
+    0x3D,
+    0x02,
+    0x01,
+};
+STATIC_INIT_BYTE_CURSOR(s_ec_public_key_oid, ec_public_key_oid_cursor)
+
+/*
+ * Load key from PKCS8 container with the following format and "PRIVATE KEY" in pem
+ * PrivateKeyInfo ::= SEQUENCE {
+ *   version                  Integer,
+ *   privateKeyAlgorithm      PrivateKeyAlgorithmIdentifier,
+ *   privateKey               PrivateKey
+ * }
+ * PrivateKeyAlgorithmIdentifier ::= SEQUENCE {
+ *   algorithm         OBJECT IDENTIFIER,
+ *   parameters        ANY DEFINED BY algorithm OPTIONAL
+ * }
+ * ECPrivateKey ::= SEQUENCE {
+ *   version        INTEGER { ecPrivkeyVer1(1) },
+ *   privateKey     OCTET STRING,
+ *   parameters [0] ECParameters {{ NamedCurve }} OPTIONAL,
+ *   publicKey  [1] BIT STRING OPTIONAL
+ * }
+ */
+static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
+    struct aws_der_decoder *decoder,
+    struct aws_byte_cursor *out_public_x_coord,
+    struct aws_byte_cursor *out_public_y_coord,
+    struct aws_byte_cursor *out_private_d,
+    enum aws_ecc_curve_name *out_curve_name) {
+
+    AWS_ZERO_STRUCT(*out_public_x_coord);
+    AWS_ZERO_STRUCT(*out_public_y_coord);
+    AWS_ZERO_STRUCT(*out_private_d);
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    if (!aws_der_decoder_next(decoder)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    /* version */
+    struct aws_byte_cursor version_cur;
+    AWS_ZERO_STRUCT(version_cur);
+    /* Note: this is not really spec compliant, but some implementations ignore the top level version.
+     * So be lax here and treat version as optional. */
+    if (aws_der_decoder_tlv_unsigned_integer(decoder, &version_cur) == AWS_OP_SUCCESS) {
+        if (version_cur.len != 1 || version_cur.ptr[0] != 0) {
+            return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
         }
-
-        /* you'd think we'd get some type hints on which key this is, but it's not consistent
-         * as far as I can tell. */
-        if (type == AWS_DER_BIT_STRING || type == AWS_DER_OCTET_STRING) {
-            aws_der_decoder_tlv_string(decoder, current_part);
-            current_part = &pair_part_2;
+        if (!aws_der_decoder_next(decoder)) {
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
     }
 
-    if (!curve_name_recognized) {
+    if (aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    struct aws_byte_cursor algo_oid;
+    AWS_ZERO_STRUCT(algo_oid);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
+        aws_der_decoder_tlv_blob(decoder, &algo_oid)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    /*
+     * Why check both public and private? Cause in real world standards are mostly a suggestion.
+     * A lot of private keys in the wild use public also oid and its defacto standard for a lot of libs.
+     */
+    if (!aws_byte_cursor_eq(&algo_oid, &s_ec_public_key_oid_cursor) &&
+        !aws_byte_cursor_eq(&algo_oid, &s_ec_private_key_oid_cursor)) {
         return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
     }
 
-    size_t key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(*out_curve_name);
+    struct aws_byte_cursor curve_oid;
+    AWS_ZERO_STRUCT(curve_oid);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
+        aws_der_decoder_tlv_blob(decoder, &curve_oid)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
 
-    struct aws_byte_cursor *private_key = NULL;
-    struct aws_byte_cursor *public_key = NULL;
+    enum aws_ecc_curve_name curve_name;
+    if (aws_ecc_curve_name_from_oid(&curve_oid, &curve_name)) {
+        return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
+    }
 
+    /* private key string */
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OCTET_STRING) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    struct aws_der_decoder *nested_decoder = aws_der_decoder_nested_tlv_decoder(decoder);
+
+    if (!nested_decoder) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    struct aws_byte_cursor private_key_cur;
+    struct aws_byte_cursor public_key_cur;
+    enum aws_ecc_curve_name inner_curve_name;
+    bool curve_name_set = false;
+    if (s_der_decoder_sec1_private_key_helper(
+            nested_decoder, &private_key_cur, &public_key_cur, &inner_curve_name, &curve_name_set)) {
+        aws_der_decoder_destroy(nested_decoder);
+        return AWS_OP_ERR;
+    }
+
+    aws_der_decoder_destroy(nested_decoder);
+
+    if (curve_name_set && inner_curve_name != curve_name) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    size_t key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
     size_t public_key_blob_size = key_coordinate_size * 2 + 1;
 
-    if (pair_part_1.ptr && pair_part_1.len) {
-        if (pair_part_1.len == key_coordinate_size) {
-            private_key = &pair_part_1;
-        } else if (pair_part_1.len == public_key_blob_size) {
-            public_key = &pair_part_1;
-        }
+    if (private_key_cur.len != key_coordinate_size ||
+        (public_key_cur.len != 0 && public_key_cur.len != public_key_blob_size)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
     }
 
-    if (pair_part_2.ptr && pair_part_2.len) {
-        if (pair_part_2.len == key_coordinate_size) {
-            private_key = &pair_part_2;
-        } else if (pair_part_2.len == public_key_blob_size) {
-            public_key = &pair_part_2;
-        }
+    *out_private_d = private_key_cur;
+
+    if (public_key_cur.len > 0) {
+        s_parse_public_key(public_key_cur, key_coordinate_size, out_public_x_coord, out_public_y_coord);
     }
 
-    if (!private_key && !public_key) {
-        return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
-    }
-
-    if (private_key) {
-        *out_private_d = *private_key;
-    }
-
-    if (public_key) {
-        aws_byte_cursor_advance(public_key, 1);
-        *out_public_x_coor = *public_key;
-        out_public_x_coor->len = key_coordinate_size;
-        out_public_y_coor->ptr = public_key->ptr + key_coordinate_size;
-        out_public_y_coor->len = key_coordinate_size;
-    }
+    *out_curve_name = curve_name;
 
     return AWS_OP_SUCCESS;
+}
+
+/*
+ * Load public key from x509 ec key structure, "EC PUBLIC KEY" or "PUBLIC KEY" in pem
+ * SubjectPublicKeyInfo ::= SEQUENCE {
+ *   algorithm         AlgorithmIdentifier,
+ *   subjectPublicKey  BIT STRING
+ * }
+ * AlgorithmIdentifier ::= SEQUENCE {
+ *   algorithm        OBJECT IDENTIFIER,
+ *   parameters       ANY DEFINED BY algorithm OPTIONAL
+ * }
+ */
+static int s_der_decoder_load_ecc_public_key_pair_from_asn1(
+    struct aws_der_decoder *decoder,
+    struct aws_byte_cursor *out_public_x_coord,
+    struct aws_byte_cursor *out_public_y_coord,
+    struct aws_byte_cursor *out_private_d,
+    enum aws_ecc_curve_name *out_curve_name) {
+
+    AWS_ZERO_STRUCT(*out_public_x_coord);
+    AWS_ZERO_STRUCT(*out_public_y_coord);
+    AWS_ZERO_STRUCT(*out_private_d);
+
+    /* sequence */
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    /* algo identifier sequence */
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    struct aws_byte_cursor algo_oid;
+    AWS_ZERO_STRUCT(algo_oid);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
+        aws_der_decoder_tlv_blob(decoder, &algo_oid)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    if (!aws_byte_cursor_eq(&algo_oid, &s_ec_public_key_oid_cursor)) {
+        return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
+    }
+
+    struct aws_byte_cursor curve_oid;
+    AWS_ZERO_STRUCT(curve_oid);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_OBJECT_IDENTIFIER ||
+        aws_der_decoder_tlv_blob(decoder, &curve_oid)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    enum aws_ecc_curve_name curve_name;
+    if (aws_ecc_curve_name_from_oid(&curve_oid, &curve_name)) {
+        return aws_raise_error(AWS_ERROR_CAL_UNKNOWN_OBJECT_IDENTIFIER);
+    }
+
+    struct aws_byte_cursor public_key_cur;
+    AWS_ZERO_STRUCT(public_key_cur);
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_string(decoder, &public_key_cur)) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    size_t key_coordinate_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
+    if ((public_key_cur.len != 0 && public_key_cur.len != (key_coordinate_size * 2 + 1))) {
+        return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+    }
+
+    if (public_key_cur.len > 0) {
+        s_parse_public_key(public_key_cur, key_coordinate_size, out_public_x_coord, out_public_y_coord);
+    }
+
+    *out_curve_name = curve_name;
+
+    return AWS_OP_SUCCESS;
+}
+
+int aws_der_decoder_load_ecc_key_pair(
+    struct aws_der_decoder *decoder,
+    struct aws_byte_cursor *out_public_x_coord,
+    struct aws_byte_cursor *out_public_y_coord,
+    struct aws_byte_cursor *out_private_d,
+    enum aws_ecc_curve_name *out_curve_name) {
+
+    AWS_ERROR_PRECONDITION(decoder);
+    AWS_ERROR_PRECONDITION(out_public_x_coord);
+    AWS_ERROR_PRECONDITION(out_public_y_coord);
+    AWS_ERROR_PRECONDITION(out_private_d);
+    AWS_ERROR_PRECONDITION(out_curve_name);
+
+    /**
+     * Since this is a generic api to parse from ans1, we can encounter several key structures.
+     * Just go through them one by one and see if any match the expected type.
+     * Note: We should at least get some id in the structure or unique enough layout so ordering does not matter.
+     */
+    if (s_der_decoder_load_ecc_public_key_pair_from_asn1(
+            decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
+        return AWS_OP_SUCCESS;
+    }
+
+    aws_der_decoder_reset(decoder);
+
+    if (s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
+            decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
+        return AWS_OP_SUCCESS;
+    }
+
+    aws_der_decoder_reset(decoder);
+    if (s_der_decoder_load_ecc_private_key_pair_from_sec1(
+            decoder, out_public_x_coord, out_public_y_coord, out_private_d, out_curve_name) == AWS_OP_SUCCESS) {
+        return AWS_OP_SUCCESS;
+    }
+
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
 }
 
 void aws_ecc_key_pair_acquire(struct aws_ecc_key_pair *key_pair) {
@@ -335,4 +663,103 @@ done:
     aws_byte_buf_clean_up(&pub_y_buffer);
 
     return key;
+}
+
+int aws_ecc_decode_signature_der_to_raw(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor signature,
+    struct aws_byte_cursor *out_r,
+    struct aws_byte_cursor *out_s) {
+
+    AWS_ERROR_PRECONDITION(allocator);
+    AWS_ERROR_PRECONDITION(out_r);
+    AWS_ERROR_PRECONDITION(out_s);
+
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, signature);
+
+    if (!decoder) {
+        return AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED;
+    }
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_type(decoder) != AWS_DER_SEQUENCE) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+
+    struct aws_byte_cursor r;
+    AWS_ZERO_STRUCT(r);
+    struct aws_byte_cursor s;
+    AWS_ZERO_STRUCT(s);
+
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &r)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+    if (!aws_der_decoder_next(decoder) || aws_der_decoder_tlv_unsigned_integer(decoder, &s)) {
+        aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        goto on_error;
+    }
+
+    aws_der_decoder_destroy(decoder);
+    *out_r = r;
+    *out_s = s;
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_decoder_destroy(decoder);
+    return AWS_OP_ERR;
+}
+
+static bool s_trim_zeros_predicate(uint8_t value) {
+    return value == 0;
+}
+
+int aws_ecc_encode_signature_raw_to_der(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor r,
+    struct aws_byte_cursor s,
+    struct aws_byte_buf *out_signature) {
+
+    AWS_ERROR_PRECONDITION(allocator);
+    AWS_ERROR_PRECONDITION(out_signature);
+
+    struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, out_signature->capacity - out_signature->len);
+
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    r = aws_byte_cursor_left_trim_pred(&r, s_trim_zeros_predicate);
+    if (aws_der_encoder_write_unsigned_integer(encoder, r)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    s = aws_byte_cursor_left_trim_pred(&s, s_trim_zeros_predicate);
+    if (aws_der_encoder_write_unsigned_integer(encoder, s)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    struct aws_byte_cursor contents;
+    AWS_ZERO_STRUCT(contents);
+    if (aws_der_encoder_get_contents(encoder, &contents)) {
+        aws_raise_error(AWS_ERROR_UNKNOWN);
+        goto on_error;
+    }
+
+    aws_byte_buf_append(out_signature, &contents);
+
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
 }

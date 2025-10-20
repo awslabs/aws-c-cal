@@ -245,7 +245,7 @@ static int s_der_decoder_sec1_private_key_helper(
 
         bool version_found = false;
         /* tag 0 is optional params */
-        if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG0) {
+        if (aws_der_decoder_tlv_type(decoder) == (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED)) {
             if (!aws_der_decoder_next(decoder)) {
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }
@@ -272,7 +272,7 @@ static int s_der_decoder_sec1_private_key_helper(
             return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
 
-        if (aws_der_decoder_tlv_type(decoder) == AWS_DER_CONTEXT_SPECIFIC_TAG1) {
+        if (aws_der_decoder_tlv_type(decoder) == (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED | 1)) {
             if (!aws_der_decoder_next(decoder)) {
                 return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
             }

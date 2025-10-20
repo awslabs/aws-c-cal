@@ -556,7 +556,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
 
     /* container */
     ASSERT_TRUE(aws_der_decoder_next(decoder));
-    ASSERT_TRUE(aws_der_decoder_tlv_type(decoder) & (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED));
+    ASSERT_TRUE(aws_der_decoder_tlv_type(decoder) == (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED));
     ASSERT_INT_EQUALS(7, aws_der_decoder_tlv_length(decoder));
     ASSERT_INT_EQUALS(1, aws_der_decoder_tlv_count(decoder));
 
@@ -570,7 +570,7 @@ static int s_der_decode_key_pair(struct aws_allocator *allocator, void *ctx) {
 
     /* container */
     ASSERT_TRUE(aws_der_decoder_next(decoder));
-    ASSERT_TRUE(aws_der_decoder_tlv_type(decoder) & (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED));
+    ASSERT_TRUE(aws_der_decoder_tlv_type(decoder) == (AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED | 1));
     ASSERT_INT_EQUALS(68, aws_der_decoder_tlv_length(decoder));
     ASSERT_INT_EQUALS(1, aws_der_decoder_tlv_count(decoder));
 

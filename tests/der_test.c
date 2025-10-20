@@ -687,3 +687,52 @@ static int s_der_decode_zero_length_int(struct aws_allocator *allocator, void *c
     return 0;
 }
 AWS_TEST_CASE(der_decode_zero_length_int, s_der_decode_zero_length_int)
+
+static int s_der_roundtrip_context_specific_tags(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    struct aws_der_encoder *encoder = aws_der_encoder_new(allocator, 256);
+
+    uint8_t int_value[] = {59, 3, 71};
+    struct aws_byte_cursor int_cur = aws_byte_cursor_from_array(int_value, 3);
+
+    ASSERT_SUCCESS(aws_der_encoder_begin_sequence(encoder));
+    ASSERT_SUCCESS(aws_der_encoder_begin_context_aware_tag(encoder, true, 1));
+    ASSERT_SUCCESS(aws_der_encoder_begin_sequence(encoder));
+    ASSERT_SUCCESS(aws_der_encoder_write_unsigned_integer(encoder, int_cur));
+    ASSERT_SUCCESS(aws_der_encoder_end_sequence(encoder));
+    ASSERT_SUCCESS(aws_der_encoder_end_context_aware_tag(encoder));
+    ASSERT_SUCCESS(aws_der_encoder_end_sequence(encoder));
+
+    struct aws_byte_cursor contents;
+    AWS_ZERO_STRUCT(contents);
+    ASSERT_SUCCESS(aws_der_encoder_get_contents(encoder, &contents));
+
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, contents);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+    ASSERT_INT_EQUALS(aws_der_decoder_tlv_type(decoder), AWS_DER_SEQUENCE);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+    ASSERT_INT_EQUALS(aws_der_decoder_tlv_type(decoder), AWS_DER_CLASS_CONTEXT | AWS_DER_FORM_CONSTRUCTED | 1);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+    ASSERT_INT_EQUALS(aws_der_decoder_tlv_type(decoder), AWS_DER_SEQUENCE);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+    ASSERT_INT_EQUALS(aws_der_decoder_tlv_type(decoder), AWS_DER_INTEGER);
+
+    struct aws_byte_cursor actual_cur;
+    AWS_ZERO_STRUCT(actual_cur);
+    ASSERT_SUCCESS(aws_der_decoder_tlv_unsigned_integer(decoder, &actual_cur));
+    ASSERT_BIN_ARRAYS_EQUALS(int_cur.ptr, int_cur.len, actual_cur.ptr, actual_cur.len);
+
+    aws_der_encoder_destroy(encoder);
+    aws_der_decoder_destroy(decoder);
+
+    aws_cal_library_clean_up();
+    return 0;
+}
+AWS_TEST_CASE(der_roundtrip_context_specific_tags, s_der_roundtrip_context_specific_tags)
+

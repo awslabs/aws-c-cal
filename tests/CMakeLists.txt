@@ -150,6 +150,7 @@ add_test_case(der_decode_positive_int)
 add_test_case(der_decode_zero_int)
 add_test_case(der_decode_bad_length)
 add_test_case(der_decode_zero_length_int)
+add_test_case(der_roundtrip_context_specific_tags)
 
 add_test_case(der_decode_integer)
 add_test_case(der_decode_integer_zero)

@@ -135,6 +135,24 @@ AWS_CAL_API int aws_der_encoder_begin_sequence(struct aws_der_encoder *encoder);
 AWS_CAL_API int aws_der_encoder_end_sequence(struct aws_der_encoder *encoder);
 
 /**
+ * Begins a Context Aware Tag of objects in the DER stream
+ * The tag behaves similar to sequence with assigned tag value.
+ * is_constructed is used to indicate that tag is wrapping constructed or primitive content.
+ * Note: currently only supports regular sized tag values (i.e. 5 bits) and will error for anything larger.
+ * We can cross that bridge when needed if anyone is really using huge value tags in the wild.
+ * @param encoder The encoder to use
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
+AWS_CAL_API int aws_der_encoder_begin_context_aware_tag(struct aws_der_encoder *encoder, bool is_constructed, uint64_t tag_value);
+
+/**
+ * Finishes a SEQUENCE and applies it to the DER stream buffer
+ * @param encoder The encoder to update
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
+AWS_CAL_API int aws_der_encoder_end_context_aware_tag(struct aws_der_encoder *encoder);
+
+/**
  * Begins a SET of objects in the DER stream
  * @param encoder The encoder to use
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS

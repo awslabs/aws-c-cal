@@ -735,4 +735,3 @@ static int s_der_roundtrip_context_specific_tags(struct aws_allocator *allocator
     return 0;
 }
 AWS_TEST_CASE(der_roundtrip_context_specific_tags, s_der_roundtrip_context_specific_tags)
-

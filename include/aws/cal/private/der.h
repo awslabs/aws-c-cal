@@ -143,7 +143,10 @@ AWS_CAL_API int aws_der_encoder_end_sequence(struct aws_der_encoder *encoder);
  * @param encoder The encoder to use
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
  */
-AWS_CAL_API int aws_der_encoder_begin_context_aware_tag(struct aws_der_encoder *encoder, bool is_constructed, uint64_t tag_value);
+AWS_CAL_API int aws_der_encoder_begin_context_aware_tag(
+    struct aws_der_encoder *encoder,
+    bool is_constructed,
+    uint64_t tag_value);
 
 /**
  * Finishes a SEQUENCE and applies it to the DER stream buffer

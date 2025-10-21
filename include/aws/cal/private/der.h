@@ -121,6 +121,14 @@ AWS_CAL_API int aws_der_encoder_write_octet_string(
     struct aws_byte_cursor octet_string);
 
 /**
+ * Writes an object identifier to the stream
+ * @param encoder The encoder to use
+ * @param byes encoded bytes
+ * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS
+ */
+AWS_CAL_API int aws_der_encoder_write_object_identifier(struct aws_der_encoder *encoder, struct aws_byte_cursor bytes);
+
+/**
  * Begins a SEQUENCE of objects in the DER stream
  * @param encoder The encoder to use
  * @return AWS_OP_ERR if an error occurs, otherwise AWS_OP_SUCCESS

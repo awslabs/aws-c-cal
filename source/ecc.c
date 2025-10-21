@@ -366,7 +366,7 @@ static uint8_t s_ec_public_key_oid[] = {
 STATIC_INIT_BYTE_CURSOR(s_ec_public_key_oid, ec_public_key_oid_cursor)
 
 /*
- * Load key from PKCS8 container with the following format and "PRIVATE KEY" in pem
+ * Load key from PKCS8 container with the following format. "PRIVATE KEY" in pem
  * PrivateKeyInfo ::= SEQUENCE {
  *   version                  Integer,
  *   privateKeyAlgorithm      PrivateKeyAlgorithmIdentifier,
@@ -495,7 +495,7 @@ static int s_der_decoder_load_ecc_private_key_pair_from_pkcs8(
 }
 
 /*
- * Load public key from x509 ec key structure, "EC PUBLIC KEY" or "PUBLIC KEY" in pem
+ * Load public key from x509 (aka SPKI) ec key structure, "EC PUBLIC KEY" or "PUBLIC KEY" in pem
  * SubjectPublicKeyInfo ::= SEQUENCE {
  *   algorithm         AlgorithmIdentifier,
  *   subjectPublicKey  BIT STRING
@@ -762,4 +762,339 @@ int aws_ecc_encode_signature_raw_to_der(
 on_error:
     aws_der_encoder_destroy(encoder);
     return AWS_OP_ERR;
+}
+
+int s_write_coord_padded(struct aws_byte_buf *buf, struct aws_byte_cursor coord, size_t pad_to) {
+    for (size_t pad = 0; pad < pad_to - coord.len; ++pad) {
+        if (aws_byte_buf_append_byte_dynamic(buf, 0x0)) {
+            return AWS_OP_ERR;
+        }
+    }
+
+    if (aws_byte_buf_append(buf, &coord)) {
+        return AWS_OP_ERR;
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+/*
+ * Export key to a sec1 container. Aka "EC PRIVATE KEY" in pem
+ * ECPrivateKey ::= SEQUENCE {
+ *   version        INTEGER { ecPrivkeyVer1(1) },
+ *   privateKey     OCTET STRING,
+ *   parameters [0] ECParameters {{ NamedCurve }} OPTIONAL,
+ *   publicKey  [1] BIT STRING OPTIONAL
+ * }
+ *
+ * Note: skip params is used for pkcs8 case, where params structure is written out top level instead.
+ */
+int s_export_sec1(const struct aws_ecc_key_pair *key_pair, bool should_skip_params, struct aws_byte_buf *out) {
+
+    if (key_pair->priv_d.buffer == NULL) {
+        return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
+    }
+
+    struct aws_der_encoder *encoder = aws_der_encoder_new(key_pair->allocator, 256);
+
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        goto on_error;
+    }
+
+    static uint8_t ver_one[] = {1};
+    if (aws_der_encoder_write_unsigned_integer(encoder, aws_byte_cursor_from_array(ver_one, 1))) {
+        goto on_error;
+    }
+
+    if (aws_der_encoder_write_octet_string(encoder, aws_byte_cursor_from_buf(&key_pair->priv_d))) {
+        goto on_error;
+    }
+
+    if (!should_skip_params) {
+        if (aws_der_encoder_begin_context_aware_tag(encoder, true, 0)) {
+            goto on_error;
+        }
+
+        struct aws_byte_cursor oid;
+        AWS_ZERO_STRUCT(oid);
+        if (aws_ecc_oid_from_curve_name(key_pair->curve_name, &oid)) {
+            goto on_error;
+        }
+
+        if (aws_der_encoder_write_object_identifier(encoder, oid)) {
+            goto on_error;
+        }
+
+        if (aws_der_encoder_end_context_aware_tag(encoder)) {
+            goto on_error;
+        }
+    }
+
+    if (aws_der_encoder_begin_context_aware_tag(encoder, true, 1)) {
+        goto on_error;
+    }
+
+    struct aws_byte_buf pub_buf;
+    aws_byte_buf_init(&pub_buf, key_pair->allocator, 128);
+
+    if (aws_byte_buf_append_byte_dynamic(&pub_buf, 0x04)) { /* uncompressed pub key */
+        goto on_error_pub_key;
+    }
+
+    size_t coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name);
+
+    struct aws_byte_cursor pub_x_cur = aws_byte_cursor_from_buf(&key_pair->pub_x);
+    if (s_write_coord_padded(&pub_buf, pub_x_cur, coord_size)) {
+        goto on_error_pub_key;
+    }
+
+    struct aws_byte_cursor pub_y_cur = aws_byte_cursor_from_buf(&key_pair->pub_y);
+    if (s_write_coord_padded(&pub_buf, pub_y_cur, coord_size)) {
+        goto on_error_pub_key;
+    }
+
+    struct aws_byte_cursor pub_cur = aws_byte_cursor_from_buf(&pub_buf);
+    if (aws_der_encoder_write_bit_string(encoder, pub_cur)) {
+        goto on_error_pub_key;
+    }
+    aws_byte_buf_clean_up(&pub_buf);
+
+    if (aws_der_encoder_end_context_aware_tag(encoder)) {
+        goto on_error;
+    }
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        goto on_error;
+    }
+
+    struct aws_byte_cursor contents;
+    AWS_ZERO_STRUCT(contents);
+    if (aws_der_encoder_get_contents(encoder, &contents)) {
+        goto on_error;
+    }
+
+    if (aws_byte_buf_append(out, &contents)) {
+        goto on_error;
+    }
+
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+
+on_error_pub_key:
+    aws_byte_buf_clean_up(&pub_buf);
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+}
+
+/*
+ * Export key to PKCS8 container with the following format. "PRIVATE KEY" in pem
+ * PrivateKeyInfo ::= SEQUENCE {
+ *   version                  Integer,
+ *   privateKeyAlgorithm      PrivateKeyAlgorithmIdentifier,
+ *   privateKey               PrivateKey
+ * }
+ * PrivateKeyAlgorithmIdentifier ::= SEQUENCE {
+ *   algorithm         OBJECT IDENTIFIER,
+ *   parameters        ANY DEFINED BY algorithm OPTIONAL
+ * }
+ * ECPrivateKey ::= SEQUENCE {
+ *   version        INTEGER { ecPrivkeyVer1(1) },
+ *   privateKey     OCTET STRING,
+ *   parameters [0] ECParameters {{ NamedCurve }} OPTIONAL,
+ *   publicKey  [1] BIT STRING OPTIONAL
+ * }
+ */
+int s_export_pkcs8(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *out) {
+    if (key_pair->priv_d.buffer == NULL) {
+        return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
+    }
+
+    struct aws_der_encoder *encoder = aws_der_encoder_new(key_pair->allocator, 256);
+
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        goto on_error;
+    }
+
+    /* version */
+    static uint8_t ver_zero[] = {0};
+    if (aws_der_encoder_write_unsigned_integer(encoder, aws_byte_cursor_from_array(ver_zero, 1))) {
+        goto on_error;
+    }
+
+    /* privateKeyAlgorithm */
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        goto on_error;
+    }
+
+    /* write id-ecPublicKey. yeah its technically private, but wider world has moved on from respecting standard here */
+    if (aws_der_encoder_write_object_identifier(encoder, s_ec_public_key_oid_cursor)) {
+        goto on_error;
+    }
+
+    struct aws_byte_cursor oid;
+    AWS_ZERO_STRUCT(oid);
+    if (aws_ecc_oid_from_curve_name(key_pair->curve_name, &oid)) {
+        goto on_error;
+    }
+
+    if (aws_der_encoder_write_object_identifier(encoder, oid)) {
+        goto on_error;
+    }
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        goto on_error;
+    }
+
+    /* Private key, i.e. octet string of sec1 structure */
+    struct aws_byte_buf priv_buf;
+    aws_byte_buf_init(&priv_buf, key_pair->allocator, 256);
+    if (s_export_sec1(key_pair, true, &priv_buf)) {
+        goto on_priv_error;
+    }
+
+    if (aws_der_encoder_write_octet_string(encoder, aws_byte_cursor_from_buf(&priv_buf))) {
+        goto on_priv_error;
+    }
+
+    aws_byte_buf_clean_up(&priv_buf);
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        goto on_error;
+    }
+
+    struct aws_byte_cursor contents;
+    AWS_ZERO_STRUCT(contents);
+    if (aws_der_encoder_get_contents(encoder, &contents)) {
+        goto on_error;
+    }
+
+    if (aws_byte_buf_append(out, &contents)) {
+        goto on_error;
+    }
+
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+
+on_priv_error:
+    aws_byte_buf_clean_up(&priv_buf);
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+}
+
+/*
+ * Export public key to x509 (aka SPKI) ec key structure, "EC PUBLIC KEY" or "PUBLIC KEY" in pem
+ * SubjectPublicKeyInfo ::= SEQUENCE {
+ *   algorithm         AlgorithmIdentifier,
+ *   subjectPublicKey  BIT STRING
+ * }
+ * AlgorithmIdentifier ::= SEQUENCE {
+ *   algorithm        OBJECT IDENTIFIER,
+ *   parameters       ANY DEFINED BY algorithm OPTIONAL
+ * }
+ */
+int s_export_spki(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *out) {
+    struct aws_der_encoder *encoder = aws_der_encoder_new(key_pair->allocator, 256);
+
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        goto on_error;
+    }
+
+    /* AlgorithmIdentifier */
+    if (aws_der_encoder_begin_sequence(encoder)) {
+        goto on_error;
+    }
+
+    if (aws_der_encoder_write_object_identifier(encoder, s_ec_public_key_oid_cursor)) {
+        goto on_error;
+    }
+
+    struct aws_byte_cursor oid;
+    AWS_ZERO_STRUCT(oid);
+    if (aws_ecc_oid_from_curve_name(key_pair->curve_name, &oid)) {
+        goto on_error;
+    }
+
+    if (aws_der_encoder_write_object_identifier(encoder, oid)) {
+        goto on_error;
+    }
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        goto on_error;
+    }
+
+    /* Public key */
+    struct aws_byte_buf pub_buf;
+    aws_byte_buf_init(&pub_buf, key_pair->allocator, 128);
+
+    if (aws_byte_buf_append_byte_dynamic(&pub_buf, 0x04)) { /* uncompressed pub key */
+        goto on_error;
+    }
+
+    size_t coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name);
+
+    struct aws_byte_cursor pub_x_cur = aws_byte_cursor_from_buf(&key_pair->pub_x);
+    if (s_write_coord_padded(&pub_buf, pub_x_cur, coord_size)) {
+        goto on_error;
+    }
+
+    struct aws_byte_cursor pub_y_cur = aws_byte_cursor_from_buf(&key_pair->pub_y);
+    if (s_write_coord_padded(&pub_buf, pub_y_cur, coord_size)) {
+        goto on_error;
+    }
+
+    struct aws_byte_cursor pub_cur = aws_byte_cursor_from_buf(&pub_buf);
+    if (aws_der_encoder_write_bit_string(encoder, pub_cur)) {
+        aws_byte_buf_clean_up(&pub_buf);
+        goto on_error;
+    }
+
+    aws_byte_buf_clean_up(&pub_buf);
+
+    if (aws_der_encoder_end_sequence(encoder)) {
+        goto on_error;
+    }
+
+    struct aws_byte_cursor contents;
+    AWS_ZERO_STRUCT(contents);
+    if (aws_der_encoder_get_contents(encoder, &contents)) {
+        goto on_error;
+    }
+
+    if (aws_byte_buf_append(out, &contents)) {
+        goto on_error;
+    }
+
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_SUCCESS;
+
+on_error:
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+}
+
+int aws_ecc_key_pair_export(
+    const struct aws_ecc_key_pair *key_pair,
+    enum aws_ecc_key_export_format format,
+    struct aws_byte_buf *out) {
+    AWS_ERROR_PRECONDITION(key_pair);
+    AWS_ERROR_PRECONDITION(out);
+
+    switch (format) {
+        case AWS_CAL_ECC_KEY_EXPORT_PRIVATE_SEC1:
+            return s_export_sec1(key_pair, false /* skip_params */, out);
+        case AWS_CAL_ECC_KEY_EXPORT_PRIVATE_PKCS8:
+            return s_export_pkcs8(key_pair, out);
+        case AWS_CAL_ECC_KEY_EXPORT_PUBLIC_SPKI:
+            return s_export_spki(key_pair, out);
+        default:
+            return aws_raise_error(AWS_ERROR_UNSUPPORTED_OPERATION);
+    }
 }

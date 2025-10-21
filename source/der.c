@@ -304,6 +304,17 @@ int aws_der_encoder_write_octet_string(struct aws_der_encoder *encoder, struct a
     return s_der_write_tlv(&tlv, encoder->buffer);
 }
 
+int aws_der_encoder_write_object_identifier(struct aws_der_encoder *encoder, struct aws_byte_cursor bytes) {
+    AWS_FATAL_ASSERT(bytes.len <= UINT32_MAX);
+    struct der_tlv tlv = {
+        .tag = AWS_DER_OBJECT_IDENTIFIER,
+        .length = (uint32_t)bytes.len,
+        .value = bytes.ptr,
+    };
+
+    return s_der_write_tlv(&tlv, encoder->buffer);
+}
+
 static int s_der_encoder_begin_container(struct aws_der_encoder *encoder, enum aws_der_type type) {
     struct aws_byte_buf *seq_buf = aws_mem_acquire(encoder->allocator, sizeof(struct aws_byte_buf));
     AWS_FATAL_ASSERT(seq_buf);

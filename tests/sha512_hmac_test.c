@@ -227,7 +227,7 @@ static int s_sha512_hmac_test_oneshot_fn(struct aws_allocator *allocator, void *
                           0xb1, 0x0d, 0x5e, 0xeb, 0x55, 0xc3, 0xe4, 0xde, 0x15, 0x13, 0x46, 0x76, 0xfb,
                           0x6d, 0xe0, 0x44, 0x60, 0x65, 0xc9, 0x74, 0x40, 0xfa, 0x8c, 0x6a, 0x58};
 
-    uint8_t output[AWS_sha512_HMAC_LEN] = {0};
+    uint8_t output[AWS_SHA512_HMAC_LEN] = {0};
     struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
     output_buf.len = 0;
 
@@ -263,7 +263,7 @@ static int s_sha512_hmac_test_invalid_buffer_fn(struct aws_allocator *allocator,
                                                                   "data. The key needs to be hashed before "
                                                                   "being used by the HMAC algorithm.");
 
-    uint8_t output[AWS_sha512_HMAC_LEN] = {0};
+    uint8_t output[AWS_SHA512_HMAC_LEN] = {0};
     struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
     output_buf.len = 1;
 
@@ -298,7 +298,7 @@ static int s_sha512_hmac_test_invalid_state_fn(struct aws_allocator *allocator, 
                                                                   "data. The key needs to be hashed before "
                                                                   "being used by the HMAC algorithm.");
 
-    uint8_t output[AWS_sha512_HMAC_LEN] = {0};
+    uint8_t output[AWS_SHA512_HMAC_LEN] = {0};
     struct aws_byte_buf output_buf = aws_byte_buf_from_array(output, sizeof(output));
     output_buf.len = 0;
 
@@ -335,14 +335,14 @@ static int s_sha512_hmac_test_extra_buffer_space_fn(struct aws_allocator *alloca
     struct aws_byte_buf digest_size_buf;
     struct aws_byte_buf super_size_buf;
 
-    aws_byte_buf_init(&digest_size_buf, allocator, AWS_sha512_HMAC_LEN);
-    aws_byte_buf_init(&super_size_buf, allocator, AWS_sha512_HMAC_LEN + 100);
+    aws_byte_buf_init(&digest_size_buf, allocator, AWS_SHA512_HMAC_LEN);
+    aws_byte_buf_init(&super_size_buf, allocator, AWS_SHA512_HMAC_LEN + 100);
 
     aws_sha512_hmac_compute(allocator, &secret_buf, &input, &digest_size_buf, 0);
     aws_sha512_hmac_compute(allocator, &secret_buf, &input, &super_size_buf, 0);
 
     ASSERT_TRUE(aws_byte_buf_eq(&digest_size_buf, &super_size_buf));
-    ASSERT_TRUE(super_size_buf.len == AWS_sha512_HMAC_LEN);
+    ASSERT_TRUE(super_size_buf.len == AWS_SHA512_HMAC_LEN);
 
     aws_byte_buf_clean_up(&digest_size_buf);
     aws_byte_buf_clean_up(&super_size_buf);

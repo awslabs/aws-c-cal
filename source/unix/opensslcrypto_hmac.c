@@ -60,10 +60,6 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
 
     struct aws_hmac *hmac = aws_mem_acquire(allocator, sizeof(struct aws_hmac));
 
-    if (!hmac) {
-        return NULL;
-    }
-
     hmac->allocator = allocator;
     hmac->vtable = &s_sha256_hmac_vtable;
     hmac->digest_size = AWS_SHA256_HMAC_LEN;
@@ -71,7 +67,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     ctx = g_aws_openssl_hmac_ctx_table->new_fn();
 
     if (!ctx) {
-        aws_raise_error(AWS_ERROR_OOM);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         aws_mem_release(allocator, hmac);
         return NULL;
     }
@@ -95,10 +91,6 @@ struct aws_hmac *aws_sha512_hmac_default_new(struct aws_allocator *allocator, co
 
     struct aws_hmac *hmac = aws_mem_acquire(allocator, sizeof(struct aws_hmac));
 
-    if (!hmac) {
-        return NULL;
-    }
-
     hmac->allocator = allocator;
     hmac->vtable = &s_sha512_hmac_vtable;
     hmac->digest_size = AWS_SHA512_HMAC_LEN;
@@ -106,7 +98,7 @@ struct aws_hmac *aws_sha512_hmac_default_new(struct aws_allocator *allocator, co
     ctx = g_aws_openssl_hmac_ctx_table->new_fn();
 
     if (!ctx) {
-        aws_raise_error(AWS_ERROR_OOM);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         aws_mem_release(allocator, hmac);
         return NULL;
     }

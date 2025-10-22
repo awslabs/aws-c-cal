@@ -36,10 +36,6 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
 
     struct cc_hmac *cc_hmac = aws_mem_acquire(allocator, sizeof(struct cc_hmac));
 
-    if (!cc_hmac) {
-        return NULL;
-    }
-
     cc_hmac->hmac.allocator = allocator;
     cc_hmac->hmac.vtable = &s_sha256_hmac_vtable;
     cc_hmac->hmac.impl = cc_hmac;
@@ -55,10 +51,6 @@ struct aws_hmac *aws_sha512_hmac_default_new(struct aws_allocator *allocator, co
     AWS_ASSERT(secret->ptr);
 
     struct cc_hmac *cc_hmac = aws_mem_acquire(allocator, sizeof(struct cc_hmac));
-
-    if (!cc_hmac) {
-        return NULL;
-    }
 
     cc_hmac->hmac.allocator = allocator;
     cc_hmac->hmac.vtable = &s_sha512_hmac_vtable;

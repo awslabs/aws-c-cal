@@ -38,7 +38,7 @@ typedef struct aws_hash *(aws_hash_new_fn)(struct aws_allocator *allocator);
 
 AWS_EXTERN_C_BEGIN
 /**
- * Allocates and initializes a sha256 hash instance.
+ * Allocates and initializes a sha512 hash instance.
  */
 AWS_CAL_API struct aws_hash *aws_sha512_new(struct aws_allocator *allocator);
 

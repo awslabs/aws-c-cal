@@ -84,10 +84,6 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     aws_mem_acquire_many(
         allocator, 2, &bcrypt_hmac, sizeof(struct bcrypt_hmac_handle), &hash_obj, s_sha256_hmac_obj_len);
 
-    if (!bcrypt_hmac) {
-        return NULL;
-    }
-
     AWS_ZERO_STRUCT(*bcrypt_hmac);
     bcrypt_hmac->hmac.allocator = allocator;
     bcrypt_hmac->hmac.vtable = &s_sha256_hmac_vtable;
@@ -106,6 +102,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
 
     if (((NTSTATUS)status) < 0) {
         aws_mem_release(allocator, bcrypt_hmac);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         return NULL;
     }
 
@@ -142,6 +139,7 @@ struct aws_hmac *aws_sha512_hmac_default_new(struct aws_allocator *allocator, co
 
     if (((NTSTATUS)status) < 0) {
         aws_mem_release(allocator, bcrypt_hmac);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         return NULL;
     }
 

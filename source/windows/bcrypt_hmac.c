@@ -11,9 +11,12 @@
 #include <winerror.h>
 
 static BCRYPT_ALG_HANDLE s_sha256_hmac_alg = NULL;
+static BCRYPT_ALG_HANDLE s_sha512_hmac_alg = NULL;
 static size_t s_sha256_hmac_obj_len = 0;
+static size_t s_sha512_hmac_obj_len = 0;
 
 static aws_thread_once s_sha256_hmac_once = AWS_THREAD_ONCE_STATIC_INIT;
+static aws_thread_once s_sha512_hmac_once = AWS_THREAD_ONCE_STATIC_INIT;
 
 static void s_destroy(struct aws_hmac *hash);
 static int s_update(struct aws_hmac *hash, const struct aws_byte_cursor *to_hash);

@@ -2,8 +2,8 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
-#include <aws/cal/hmac.h>
 #include <aws/cal/cal.h>
+#include <aws/cal/hmac.h>
 
 #include <aws/common/thread.h>
 

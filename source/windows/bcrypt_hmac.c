@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 #include <aws/cal/hmac.h>
+#include <aws/cal/cal.h>
+
 #include <aws/common/thread.h>
 
 #include <windows.h>

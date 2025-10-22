@@ -27,13 +27,21 @@ static struct aws_hmac_vtable s_sha256_hmac_vtable = {
     .provider = "Windows CNG",
 };
 
+static struct aws_hmac_vtable s_sha512_hmac_vtable = {
+    .destroy = s_destroy,
+    .update = s_update,
+    .finalize = s_finalize,
+    .alg_name = "SHA512 HMAC",
+    .provider = "Windows CNG",
+};
+
 struct bcrypt_hmac_handle {
     struct aws_hmac hmac;
     BCRYPT_HASH_HANDLE hash_handle;
     uint8_t *hash_obj;
 };
 
-static void s_load_alg_handle(void *user_data) {
+static void s_load_alg_handle_sha256(void *user_data) {
     (void)user_data;
     /* this function is incredibly slow, LET IT LEAK*/
     BCryptOpenAlgorithmProvider(
@@ -49,8 +57,24 @@ static void s_load_alg_handle(void *user_data) {
         0);
 }
 
+static void s_load_alg_handle_sha512(void *user_data) {
+    (void)user_data;
+    /* this function is incredibly slow, LET IT LEAK*/
+    BCryptOpenAlgorithmProvider(
+        &s_sha512_hmac_alg, BCRYPT_SHA512_ALGORITHM, MS_PRIMITIVE_PROVIDER, BCRYPT_ALG_HANDLE_HMAC_FLAG);
+    AWS_ASSERT(s_sha512_hmac_alg);
+    DWORD result_length = 0;
+    BCryptGetProperty(
+        s_sha512_hmac_alg,
+        BCRYPT_OBJECT_LENGTH,
+        (PBYTE)&s_sha512_hmac_obj_len,
+        sizeof(s_sha512_hmac_obj_len),
+        &result_length,
+        0);
+}
+
 struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
-    aws_thread_call_once(&s_sha256_hmac_once, s_load_alg_handle, NULL);
+    aws_thread_call_once(&s_sha256_hmac_once, s_load_alg_handle_sha256, NULL);
 
     struct bcrypt_hmac_handle *bcrypt_hmac;
     uint8_t *hash_obj;
@@ -73,6 +97,42 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
         &bcrypt_hmac->hash_handle,
         bcrypt_hmac->hash_obj,
         (ULONG)s_sha256_hmac_obj_len,
+        secret->ptr,
+        (ULONG)secret->len,
+        0);
+
+    if (((NTSTATUS)status) < 0) {
+        aws_mem_release(allocator, bcrypt_hmac);
+        return NULL;
+    }
+
+    return &bcrypt_hmac->hmac;
+}
+
+struct aws_hmac *aws_sha512_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
+    aws_thread_call_once(&s_sha512_hmac_once, s_load_alg_handle_sha512, NULL);
+
+    struct bcrypt_hmac_handle *bcrypt_hmac;
+    uint8_t *hash_obj;
+    aws_mem_acquire_many(
+        allocator, 2, &bcrypt_hmac, sizeof(struct bcrypt_hmac_handle), &hash_obj, s_sha512_hmac_obj_len);
+
+    if (!bcrypt_hmac) {
+        return NULL;
+    }
+
+    AWS_ZERO_STRUCT(*bcrypt_hmac);
+    bcrypt_hmac->hmac.allocator = allocator;
+    bcrypt_hmac->hmac.vtable = &s_sha512_hmac_vtable;
+    bcrypt_hmac->hmac.impl = bcrypt_hmac;
+    bcrypt_hmac->hmac.digest_size = AWS_SHA512_HMAC_LEN;
+    bcrypt_hmac->hmac.good = true;
+    bcrypt_hmac->hash_obj = hash_obj;
+    NTSTATUS status = BCryptCreateHash(
+        s_sha512_hmac_alg,
+        &bcrypt_hmac->hash_handle,
+        bcrypt_hmac->hash_obj,
+        (ULONG)s_sha512_hmac_obj_len,
         secret->ptr,
         (ULONG)secret->len,
         0);

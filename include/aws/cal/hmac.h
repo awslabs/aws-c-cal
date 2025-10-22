@@ -12,6 +12,7 @@
 AWS_PUSH_SANE_WARNING_LEVEL
 
 #define AWS_SHA256_HMAC_LEN 32
+#define AWS_SHA512_HMAC_LEN 64
 
 struct aws_hmac;
 
@@ -41,6 +42,12 @@ AWS_EXTERN_C_BEGIN
 AWS_CAL_API struct aws_hmac *aws_sha256_hmac_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret);
 
 /**
+ * Allocates and initializes a sha512 hmac instance. Secret is the key to be
+ * used for the hmac process.
+ */
+AWS_CAL_API struct aws_hmac *aws_sha512_hmac_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret);
+
+/**
  * Cleans up and deallocates hmac.
  */
 AWS_CAL_API void aws_hmac_destroy(struct aws_hmac *hmac);
@@ -49,6 +56,7 @@ AWS_CAL_API void aws_hmac_destroy(struct aws_hmac *hmac);
  * Updates the running hmac with to_hash. this can be called multiple times.
  */
 AWS_CAL_API int aws_hmac_update(struct aws_hmac *hmac, const struct aws_byte_cursor *to_hmac);
+
 /**
  * Completes the hmac computation and writes the final digest to output.
  * Allocation of output is the caller's responsibility. If you specify
@@ -58,6 +66,7 @@ AWS_CAL_API int aws_hmac_update(struct aws_hmac *hmac, const struct aws_byte_cur
  * to 0.
  */
 AWS_CAL_API int aws_hmac_finalize(struct aws_hmac *hmac, struct aws_byte_buf *output, size_t truncate_to);
+
 /**
  * Computes the sha256 hmac over input and writes the digest output to 'output'.
  * Use this if you don't need to stream the data you're hashing and you can load
@@ -72,6 +81,22 @@ AWS_CAL_API int aws_sha256_hmac_compute(
     const struct aws_byte_cursor *to_hmac,
     struct aws_byte_buf *output,
     size_t truncate_to);
+
+/**
+ * Computes the sha512 hmac over input and writes the digest output to 'output'.
+ * Use this if you don't need to stream the data you're hashing and you can load
+ * the entire input to hash into memory. If you specify truncate_to to something
+ * other than 0, the output will be truncated to that number of bytes. For
+ * example if you want a SHA512 HMAC digest as the first 16 bytes, set
+ * truncate_to to 16. If you want the full digest size, just set this to 0.
+ */
+AWS_CAL_API int aws_sha512_hmac_compute(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *secret,
+    const struct aws_byte_cursor *to_hmac,
+    struct aws_byte_buf *output,
+    size_t truncate_to);
+
 /**
  * Set the implementation of sha256 hmac to use. If you compiled without
  * BYO_CRYPTO, you do not need to call this. However, if use this, we will
@@ -80,6 +105,15 @@ AWS_CAL_API int aws_sha256_hmac_compute(
  * you will segfault.
  */
 AWS_CAL_API void aws_set_sha256_hmac_new_fn(aws_hmac_new_fn *fn);
+
+/**
+ * Set the implementation of sha256 hmac to use. If you compiled without
+ * BYO_CRYPTO, you do not need to call this. However, if use this, we will
+ * honor it, regardless of compile options. This may be useful for testing
+ * purposes. If you did set BYO_CRYPTO, and you do not call this function
+ * you will segfault.
+ */
+AWS_CAL_API void aws_set_sha512_hmac_new_fn(aws_hmac_new_fn *fn);
 
 AWS_EXTERN_C_END
 AWS_POP_SANE_WARNING_LEVEL

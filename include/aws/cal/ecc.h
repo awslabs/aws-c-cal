@@ -179,6 +179,22 @@ AWS_CAL_API void aws_ecc_key_pair_get_private_key(
 
 AWS_CAL_API size_t aws_ecc_key_coordinate_byte_size_from_curve_name(enum aws_ecc_curve_name curve_name);
 
+enum aws_ecc_key_export_format {
+    AWS_CAL_ECC_KEY_EXPORT_PRIVATE_SEC1,
+    AWS_CAL_ECC_KEY_EXPORT_PRIVATE_PKCS8,
+    AWS_CAL_ECC_KEY_EXPORT_PUBLIC_SPKI
+};
+
+/**
+ * Export key to a specified format.
+ * out should be initialized and have enough space for the key.
+ * returns error if export is not possible.
+ */
+AWS_CAL_API int aws_ecc_key_pair_export(
+    const struct aws_ecc_key_pair *key_pair,
+    enum aws_ecc_key_export_format format,
+    struct aws_byte_buf *out);
+
 /*
  * Helper to decode ECDSA signature from DER format to base components R and S.
  */

@@ -1035,25 +1035,25 @@ int s_export_spki(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *
     aws_byte_buf_init(&pub_buf, key_pair->allocator, 128);
 
     if (aws_byte_buf_append_byte_dynamic(&pub_buf, 0x04)) { /* uncompressed pub key */
-        goto on_error;
+        goto on_pub_error;
     }
 
     size_t coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name);
 
     struct aws_byte_cursor pub_x_cur = aws_byte_cursor_from_buf(&key_pair->pub_x);
     if (s_write_coord_padded(&pub_buf, pub_x_cur, coord_size)) {
-        goto on_error;
+        goto on_pub_error;
     }
 
     struct aws_byte_cursor pub_y_cur = aws_byte_cursor_from_buf(&key_pair->pub_y);
     if (s_write_coord_padded(&pub_buf, pub_y_cur, coord_size)) {
-        goto on_error;
+        goto on_pub_error;
     }
 
     struct aws_byte_cursor pub_cur = aws_byte_cursor_from_buf(&pub_buf);
     if (aws_der_encoder_write_bit_string(encoder, pub_cur)) {
         aws_byte_buf_clean_up(&pub_buf);
-        goto on_error;
+        goto on_pub_error;
     }
 
     aws_byte_buf_clean_up(&pub_buf);
@@ -1076,6 +1076,11 @@ int s_export_spki(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *
     return AWS_OP_SUCCESS;
 
 on_error:
+    aws_der_encoder_destroy(encoder);
+    return AWS_OP_ERR;
+
+on_pub_error:
+    aws_byte_buf_clean_up(&pub_buf);
     aws_der_encoder_destroy(encoder);
     return AWS_OP_ERR;
 }

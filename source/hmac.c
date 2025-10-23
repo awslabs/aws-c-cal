@@ -9,6 +9,11 @@ extern struct aws_hmac *aws_sha256_hmac_default_new(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *secret);
 static aws_hmac_new_fn *s_sha256_hmac_new_fn = aws_sha256_hmac_default_new;
+
+extern struct aws_hmac *aws_sha512_hmac_default_new(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *secret);
+static aws_hmac_new_fn *s_sha512_hmac_new_fn = aws_sha512_hmac_default_new;
 #else
 static struct aws_hmac *aws_hmac_new_abort(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
     (void)allocator;
@@ -17,6 +22,7 @@ static struct aws_hmac *aws_hmac_new_abort(struct aws_allocator *allocator, cons
 }
 
 static aws_hmac_new_fn *s_sha256_hmac_new_fn = aws_hmac_new_abort;
+static aws_hmac_new_fn *s_sha512_hmac_new_fn = aws_hmac_new_abort;
 #endif
 
 struct aws_hmac *aws_sha256_hmac_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
@@ -25,6 +31,14 @@ struct aws_hmac *aws_sha256_hmac_new(struct aws_allocator *allocator, const stru
 
 void aws_set_sha256_hmac_new_fn(aws_hmac_new_fn *fn) {
     s_sha256_hmac_new_fn = fn;
+}
+
+struct aws_hmac *aws_sha512_hmac_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
+    return s_sha512_hmac_new_fn(allocator, secret);
+}
+
+void aws_set_sha512_hmac_new_fn(aws_hmac_new_fn *fn) {
+    s_sha512_hmac_new_fn = fn;
 }
 
 void aws_hmac_destroy(struct aws_hmac *hmac) {
@@ -67,6 +81,32 @@ int aws_sha256_hmac_compute(
     struct aws_byte_buf *output,
     size_t truncate_to) {
     struct aws_hmac *hmac = aws_sha256_hmac_new(allocator, secret);
+
+    if (!hmac) {
+        return AWS_OP_ERR;
+    }
+
+    if (aws_hmac_update(hmac, to_hmac)) {
+        aws_hmac_destroy(hmac);
+        return AWS_OP_ERR;
+    }
+
+    if (aws_hmac_finalize(hmac, output, truncate_to)) {
+        aws_hmac_destroy(hmac);
+        return AWS_OP_ERR;
+    }
+
+    aws_hmac_destroy(hmac);
+    return AWS_OP_SUCCESS;
+}
+
+int aws_sha512_hmac_compute(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *secret,
+    const struct aws_byte_cursor *to_hmac,
+    struct aws_byte_buf *output,
+    size_t truncate_to) {
+    struct aws_hmac *hmac = aws_sha512_hmac_new(allocator, secret);
 
     if (!hmac) {
         return AWS_OP_ERR;

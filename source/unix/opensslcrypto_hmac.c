@@ -20,6 +20,14 @@ static struct aws_hmac_vtable s_sha256_hmac_vtable = {
     .provider = "OpenSSL Compatible libcrypto",
 };
 
+static struct aws_hmac_vtable s_sha512_hmac_vtable = {
+    .destroy = s_destroy,
+    .update = s_update,
+    .finalize = s_finalize,
+    .alg_name = "SHA512 HMAC",
+    .provider = "OpenSSL Compatible libcrypto",
+};
+
 static void s_destroy(struct aws_hmac *hmac) {
     if (hmac == NULL) {
         return;
@@ -52,10 +60,6 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
 
     struct aws_hmac *hmac = aws_mem_acquire(allocator, sizeof(struct aws_hmac));
 
-    if (!hmac) {
-        return NULL;
-    }
-
     hmac->allocator = allocator;
     hmac->vtable = &s_sha256_hmac_vtable;
     hmac->digest_size = AWS_SHA256_HMAC_LEN;
@@ -63,7 +67,7 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     ctx = g_aws_openssl_hmac_ctx_table->new_fn();
 
     if (!ctx) {
-        aws_raise_error(AWS_ERROR_OOM);
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         aws_mem_release(allocator, hmac);
         return NULL;
     }
@@ -74,6 +78,37 @@ struct aws_hmac *aws_sha256_hmac_default_new(struct aws_allocator *allocator, co
     hmac->good = true;
 
     if (!g_aws_openssl_hmac_ctx_table->init_ex_fn(ctx, secret->ptr, secret->len, EVP_sha256(), NULL)) {
+        s_destroy(hmac);
+        aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+        return NULL;
+    }
+
+    return hmac;
+}
+
+struct aws_hmac *aws_sha512_hmac_default_new(struct aws_allocator *allocator, const struct aws_byte_cursor *secret) {
+    AWS_ASSERT(secret->ptr);
+
+    struct aws_hmac *hmac = aws_mem_acquire(allocator, sizeof(struct aws_hmac));
+
+    hmac->allocator = allocator;
+    hmac->vtable = &s_sha512_hmac_vtable;
+    hmac->digest_size = AWS_SHA512_HMAC_LEN;
+    HMAC_CTX *ctx = NULL;
+    ctx = g_aws_openssl_hmac_ctx_table->new_fn();
+
+    if (!ctx) {
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        aws_mem_release(allocator, hmac);
+        return NULL;
+    }
+
+    g_aws_openssl_hmac_ctx_table->init_fn(ctx);
+
+    hmac->impl = ctx;
+    hmac->good = true;
+
+    if (!g_aws_openssl_hmac_ctx_table->init_ex_fn(ctx, secret->ptr, secret->len, EVP_sha512(), NULL)) {
         s_destroy(hmac);
         aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
         return NULL;

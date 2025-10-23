@@ -5,6 +5,7 @@
 #include <aws/cal/hash.h>
 
 #include <CommonCrypto/CommonDigest.h>
+#include <CommonCrypto/CommonKeyDerivation.h>
 
 static void s_destroy(struct aws_hash *hash);
 static int s_update(struct aws_hash *hash, const struct aws_byte_cursor *to_hash);

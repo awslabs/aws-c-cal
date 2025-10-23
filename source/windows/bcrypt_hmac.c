@@ -119,10 +119,6 @@ struct aws_hmac *aws_sha512_hmac_default_new(struct aws_allocator *allocator, co
     aws_mem_acquire_many(
         allocator, 2, &bcrypt_hmac, sizeof(struct bcrypt_hmac_handle), &hash_obj, s_sha512_hmac_obj_len);
 
-    if (!bcrypt_hmac) {
-        return NULL;
-    }
-
     AWS_ZERO_STRUCT(*bcrypt_hmac);
     bcrypt_hmac->hmac.allocator = allocator;
     bcrypt_hmac->hmac.vtable = &s_sha512_hmac_vtable;

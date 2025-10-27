@@ -26,31 +26,38 @@ int aws_hkdf_derive_impl(
 
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
     if (!pctx) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        goto on_error;
     }
 
     if (EVP_PKEY_derive_init(pctx) <= 0) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        goto on_error;
     }
 
-    if (EVP_PKEY_CTX_set1_hkdf_md(pctx, EVP_sha512()) <= 0) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+    if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha512()) <= 0) {
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        goto on_error;
     }
 
     if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, salt.ptr, salt.len) <= 0) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        goto on_error;
     }
 
     if (EVP_PKEY_CTX_set1_hkdf_key(pctx, ikm.ptr, ikm.len) <= 0) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        goto on_error;
     }
 
-    if (EVP_PKEY_CTX_add1_hkdf_info(pctx, info.ptr, ptr.len) <= 0) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+    if (EVP_PKEY_CTX_add1_hkdf_info(pctx, info.ptr, info.len) <= 0) {
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        goto on_error;
     }
 
     if (EVP_PKEY_derive(pctx, out_buf->buffer, &length) <= 0) {
-        return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
+        aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
+        goto on_error;
     }
 
     EVP_PKEY_CTX_free(pctx);

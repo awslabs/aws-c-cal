@@ -19,7 +19,7 @@ int aws_hkdf_derive_impl(
     size_t length) {
     AWS_PRECONDITION(hash_type == HKDF_HMAC_SHA512);
 
-    size_t available_len = out_buf.capacity - out_buf.len;
+    size_t available_len = out_buf->capacity - out_buf->len;
     if (available_len < length) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
     }
@@ -33,23 +33,23 @@ int aws_hkdf_derive_impl(
         return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
     }
 
-    if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha512()) <= 0) {
+    if (EVP_PKEY_CTX_set1_hkdf_md(pctx, EVP_sha512()) <= 0) {
         return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
     }
 
-    if (EVP_PKEY_CTX_set_hkdf_salt(pctx, salt.ptr, salt.len) <= 0) {
+    if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, salt.ptr, salt.len) <= 0) {
         return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
     }
 
-    if (EVP_PKEY_CTX_set_hkdf_key(pctx, ikm.ptr, ikm.len) <= 0) {
+    if (EVP_PKEY_CTX_set1_hkdf_key(pctx, ikm.ptr, ikm.len) <= 0) {
         return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
     }
 
-    if (EVP_PKEY_CTX_add_hkdf_info(pctx, info.ptr, ptr.len) <= 0) {
+    if (EVP_PKEY_CTX_add1_hkdf_info(pctx, info.ptr, ptr.len) <= 0) {
         return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
     }
 
-    if (EVP_PKEY_derive(pctx, out_buf.buffer, &length) <= 0) {
+    if (EVP_PKEY_derive(pctx, out_buf->buffer, &length) <= 0) {
         return AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
     }
 

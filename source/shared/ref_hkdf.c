@@ -15,6 +15,7 @@ int s_hkdf_extract(
     struct aws_byte_cursor ikm,
     struct aws_byte_cursor salt,
     struct aws_byte_buf *out_prk_buf) {
+    (void) hash_type;
     static size_t zero_salt[64] = {0};
 
     if (salt.len == 0) {
@@ -32,6 +33,7 @@ int s_hkdf_expand(
     struct aws_byte_cursor info,
     struct aws_byte_buf *out_okm_buf,
     size_t length) {
+    (void) hash_type;
     static size_t hmac_length = 64; /* sha512 hmac */
 
     size_t num_iterations = (length + hmac_length - 1) / hmac_length; /* round up */

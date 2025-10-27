@@ -7,7 +7,13 @@
 #include <aws/cal/hkdf.h>
 
 #include <openssl/evp.h>
-#include <openssl/kdf.h>
+
+#include <openssl/opensslv.h>
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    // OpenSSL 1.1.0 or later - can use kdf.h
+    #include <openssl/kdf.h>
+#endif
 
 int aws_hkdf_derive_impl(
     struct aws_allocator *allocator,
@@ -18,7 +24,13 @@ int aws_hkdf_derive_impl(
     struct aws_byte_buf *out_buf,
     size_t length) {
     AWS_PRECONDITION(hash_type == HKDF_HMAC_SHA512);
-
+ 
+/*
+ * KDF are only supported since 1.1.0. In practice very few callers should 
+ * still be using anything older than that, so throw error.
+ * We can revisit if there is a need for hkdf on old libcrypto.
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000
     size_t available_len = out_buf->capacity - out_buf->len;
     if (available_len < length) {
         return aws_raise_error(AWS_ERROR_SHORT_BUFFER);
@@ -66,4 +78,7 @@ int aws_hkdf_derive_impl(
 on_error:
     EVP_PKEY_CTX_free(pctx);
     return AWS_OP_ERR;
+#else
+    return aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_ALGORITHM);
+#endif
 }

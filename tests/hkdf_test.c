@@ -12,6 +12,14 @@
 static int s_hkdf_derive_test_case_1(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
 
+#if defined(AWS_OS_LINUX)
+#    if defined(OPENSSL_IS_OPENSSL)
+#        if OPENSSL_VERSION_NUMBER < 0x10100000
+            return AWS_OP_SKIP;
+#        endif
+#    endif
+#endif
+
     aws_cal_library_init(allocator);
 
     uint8_t ikm[] = {0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
@@ -45,6 +53,14 @@ AWS_TEST_CASE(hkdf_derive_test_case_1, s_hkdf_derive_test_case_1);
 
 static int s_hkdf_derive_test_case_2(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+
+#if defined(AWS_OS_LINUX)
+#    if defined(OPENSSL_IS_OPENSSL)
+#        if OPENSSL_VERSION_NUMBER < 0x10100000
+            return AWS_OP_SKIP;
+#        endif
+#    endif
+#endif
 
     aws_cal_library_init(allocator);
 
@@ -93,6 +109,14 @@ AWS_TEST_CASE(hkdf_derive_test_case_2, s_hkdf_derive_test_case_2);
 
 static int s_hkdf_derive_test_case_3(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
+    
+#if defined(AWS_OS_LINUX)
+#    if defined(OPENSSL_IS_OPENSSL)
+#        if OPENSSL_VERSION_NUMBER < 0x10100000
+            return AWS_OP_SKIP;
+#        endif
+#    endif
+#endif
 
     aws_cal_library_init(allocator);
 

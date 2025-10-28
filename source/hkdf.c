@@ -17,7 +17,7 @@ extern int aws_hkdf_derive_impl(
 
 #else /* BYO_CRYPTO */
 
-struct int aws_hkdf_derive_impl(
+int aws_hkdf_derive_impl(
     struct aws_allocator *allocator,
     enum aws_hkdf_hmac_type,
     struct aws_byte_cursor ikm,

@@ -48,6 +48,8 @@ if (WIN32)
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519_noop.c")
         endif()
 
+        list(APPEND AWS_CAL_OS_SRC "source/shared/ref_hkdf.c")
+
         if (AWS_SUPPORT_WIN7)
             set(PLATFORM_LIBS bcrypt)
         else()
@@ -96,6 +98,8 @@ elseif (APPLE)
         else()
             list(APPEND AWS_CAL_OS_SRC "source/shared/ed25519_noop.c")
         endif()
+
+        list(APPEND AWS_CAL_OS_SRC "source/shared/ref_hkdf.c")
 
         find_library(SECURITY_LIB Security)
         if (NOT SECURITY_LIB)

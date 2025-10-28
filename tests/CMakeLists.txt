@@ -187,6 +187,10 @@ add_test_case(ecc_key_gen_from_private_fuzz_test)
 
 add_test_case(ed25519_key_pair_generate_test)
 
+add_test_case(hkdf_derive_test_case_1)
+add_test_case(hkdf_derive_test_case_2)
+add_test_case(hkdf_derive_test_case_3)
+
 generate_test_driver(${PROJECT_NAME}-tests)
 
 if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)

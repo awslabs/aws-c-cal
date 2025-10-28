@@ -7,6 +7,10 @@
 
 #include <aws/testing/aws_test_harness.h>
 
+#if defined(AWS_OS_LINUX)
+#    include <aws/cal/private/opensslcrypto_common.h>
+#endif
+
 /* Test vectors from rfc5869 converted to use SHA512. */
 
 static int s_hkdf_derive_test_case_1(struct aws_allocator *allocator, void *ctx) {

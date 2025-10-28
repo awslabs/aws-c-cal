@@ -11,22 +11,22 @@
 #include <openssl/opensslv.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    // OpenSSL 1.1.0 or later - can use kdf.h
-    #include <openssl/kdf.h>
+// OpenSSL 1.1.0 or later - can use kdf.h
+#    include <openssl/kdf.h>
 #endif
 
 int aws_hkdf_derive_impl(
     struct aws_allocator *allocator,
-    enum aws_hkdf_hash_type hash_type,
+    enum aws_hkdf_hmac_type hmac_type,
     struct aws_byte_cursor ikm,
     struct aws_byte_cursor salt,
     struct aws_byte_cursor info,
     struct aws_byte_buf *out_buf,
     size_t length) {
-    AWS_PRECONDITION(hash_type == HKDF_HMAC_SHA512);
- 
+    AWS_PRECONDITION(hmac_type == HKDF_HMAC_SHA512);
+
 /*
- * KDF are only supported since 1.1.0. In practice very few callers should 
+ * KDF are only supported since 1.1.0. In practice very few callers should
  * still be using anything older than that, so throw error.
  * We can revisit if there is a need for hkdf on old libcrypto.
  */

@@ -12,11 +12,26 @@ AWS_PUSH_SANE_WARNING_LEVEL
 
 AWS_EXTERN_C_BEGIN
 
-enum aws_hkdf_hash_type { HKDF_HMAC_SHA512 };
+/**
+ * Only supports SHA512 hmac for now.
+ * No reason other than thats the only one we need for now.
+ */
+enum aws_hkdf_hmac_type {
+    HKDF_HMAC_SHA512,
+};
 
-AWS_CAL_API int aws_hkdf(
+/**
+ * Derive hkdf.
+ * hmac_type - type of hmac to use
+ * ikm - input keying material
+ * salt - salt (optional) all zeroes if not provided.
+ * info - extra info (optional).
+ * out_buf - must have enough capacity to fit result (i.e. have at least length left)
+ * length - length of generated key
+ */
+AWS_CAL_API int aws_hkdf_derive(
     struct aws_allocator *allocator,
-    enum aws_hkdf_hash_type hash_type,
+    enum aws_hkdf_hmac_type hmac_type,
     struct aws_byte_cursor ikm,
     struct aws_byte_cursor salt,
     struct aws_byte_cursor info,
@@ -25,7 +40,7 @@ AWS_CAL_API int aws_hkdf(
 
 typedef int(aws_hkdf_fn)(
     struct aws_allocator *allocator,
-    enum aws_hkdf_hash_type hash_type,
+    enum aws_hkdf_hmac_type hmac_type,
     struct aws_byte_cursor ikm,
     struct aws_byte_cursor salt,
     struct aws_byte_cursor info,

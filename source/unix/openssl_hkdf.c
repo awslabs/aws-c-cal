@@ -72,7 +72,7 @@ int aws_hkdf_derive_impl(
         goto on_error;
     }
 
-    out_buf->len = length;
+    out_buf->len += length;
 
     EVP_PKEY_CTX_free(pctx);
     return AWS_OP_SUCCESS;

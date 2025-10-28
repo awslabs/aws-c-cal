@@ -8,15 +8,15 @@
 #include <aws/cal/hmac.h>
 
 /*
- * Note: mac only provides hkdf starting in cryptokit (swift only) 
+ * Note: mac only provides hkdf starting in cryptokit (swift only)
  * and windows added convoluted api to generate hkdf starting with win 10+.
  * So to support those 2 platforms we use the ref implementation as defined
  * in rfc5869.
-*/
+ */
 
 enum { MAX_HMAC_SIZE = 64 };
 
-int s_hkdf_extract(
+static int s_hkdf_extract(
     struct aws_allocator *allocator,
     enum aws_hkdf_hmac_type hmac_type,
     struct aws_byte_cursor ikm,
@@ -33,7 +33,7 @@ int s_hkdf_extract(
     return aws_sha512_hmac_compute(allocator, &ikm, &salt, out_prk_buf, 0);
 }
 
-int s_hkdf_expand(
+static int s_hkdf_expand(
     struct aws_allocator *allocator,
     enum aws_hkdf_hmac_type hmac_type,
     struct aws_byte_cursor prk,
@@ -46,7 +46,7 @@ int s_hkdf_expand(
     /*
      * Follows rfc implementation.
      * N = ceil(L/HashLen)
-     * T = T(1) | T(2) | T(3) | ... | T(N)
+     * T = T(1) | T(2) | T(3) | ... | T(N) (i.e. concat of successive T(x))
      * OKM = first L octets of T
      * where:
      * T(0) = empty string (zero length)
@@ -54,6 +54,7 @@ int s_hkdf_expand(
      * T(2) = HMAC-Hash(PRK, T(1) | info | 0x02)
      * T(3) = HMAC-Hash(PRK, T(2) | info | 0x03)
      * ...
+     * Note: each T hmac has a single byte of counter appended to data, which increases on every iteration.
      */
 
     size_t num_iterations = (length + hmac_length - 1) / hmac_length; /* round up */
@@ -63,6 +64,8 @@ int s_hkdf_expand(
     }
 
     struct aws_byte_buf ret_buf;
+    /* the approach is to append successive hmacs until we get over required length and then truncate.
+     * so overallocate here */
     aws_byte_buf_init(&ret_buf, allocator, length + hmac_length);
 
     struct aws_byte_cursor prev_cur = {0};
@@ -73,36 +76,41 @@ int s_hkdf_expand(
     };
     struct aws_hmac *hmac = NULL;
 
-    for (size_t i = 0; i < num_iterations; ++i) {
+    for (counter i = 1; counter <= num_iterations; ++counter) {
 
         hmac = aws_sha512_hmac_new(allocator, &prk);
         if (!hmac) {
-            aws_byte_buf_clean_up(&ret_buf);
+            goto on_error;
         }
 
-        if (i > 0) {
-            aws_hmac_update(hmac, &prev_cur);
+        if (aws_hmac_update(hmac, &prev_cur)) {
+            goto on_error;
         }
 
         if (info.len > 0) {
-            aws_hmac_update(hmac, &info);
+            if (aws_hmac_update(hmac, &info)) {
+                goto on_error;
+            }
         }
 
-        aws_hmac_update(hmac, &counter_cur);
+        if (aws_hmac_update(hmac, &counter_cur)) {
+            goto on_error;
+        }
 
-        aws_hmac_finalize(hmac, &ret_buf, 0);
+        if (aws_hmac_finalize(hmac, &ret_buf, 0)) {
+            goto on_error;
+        }
 
         prev_cur = (struct aws_byte_cursor){
-            .ptr = ret_buf.buffer + i * hmac_length,
+            .ptr = ret_buf.buffer + (counter - 1) * hmac_length,
             .len = hmac_length,
         };
-        counter++;
         aws_hmac_destroy(hmac);
         hmac = NULL;
     }
 
     struct aws_byte_cursor ret_cur = aws_byte_cursor_from_buf(&ret_buf);
-    ret_cur.len = length;
+    ret_cur.len = length; /* truncate to required length */
 
     if (aws_byte_buf_append(out_okm_buf, &ret_cur)) {
         goto on_error;

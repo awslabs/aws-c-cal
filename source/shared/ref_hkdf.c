@@ -69,14 +69,10 @@ static int s_hkdf_expand(
     aws_byte_buf_init(&ret_buf, allocator, length + hmac_length);
 
     struct aws_byte_cursor prev_cur = {0};
-    uint8_t counter = 1;
-    struct aws_byte_cursor counter_cur = {
-        .ptr = &counter,
-        .len = 1,
-    };
+
     struct aws_hmac *hmac = NULL;
 
-    for (counter = 1; counter <= num_iterations; ++counter) {
+    for (uint8_t counter = 1; counter <= num_iterations; ++counter) {
 
         hmac = aws_sha512_hmac_new(allocator, &prk);
         if (!hmac) {
@@ -92,6 +88,11 @@ static int s_hkdf_expand(
                 goto on_error;
             }
         }
+
+        struct aws_byte_cursor counter_cur = {
+            .ptr = &counter,
+            .len = 1,
+        };
 
         if (aws_hmac_update(hmac, &counter_cur)) {
             goto on_error;

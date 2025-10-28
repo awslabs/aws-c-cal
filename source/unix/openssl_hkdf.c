@@ -68,7 +68,7 @@ int aws_hkdf_derive_impl(
     }
 
     if (EVP_PKEY_derive(pctx, out_buf->buffer, &length) <= 0) {
-        
+
         aws_raise_error(AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED);
         goto on_error;
     }

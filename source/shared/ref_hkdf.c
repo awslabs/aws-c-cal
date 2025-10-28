@@ -76,7 +76,7 @@ static int s_hkdf_expand(
     };
     struct aws_hmac *hmac = NULL;
 
-    for (counter i = 1; counter <= num_iterations; ++counter) {
+    for (counter = 1; counter <= num_iterations; ++counter) {
 
         hmac = aws_sha512_hmac_new(allocator, &prk);
         if (!hmac) {

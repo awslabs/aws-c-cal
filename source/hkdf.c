@@ -8,7 +8,7 @@
 
 extern int aws_hkdf_derive_impl(
     struct aws_allocator *allocator,
-    enum aws_hkdf_hmac_type,
+    enum aws_hkdf_hmac_type hmac_type,
     struct aws_byte_cursor ikm,
     struct aws_byte_cursor salt,
     struct aws_byte_cursor info,
@@ -19,16 +19,19 @@ extern int aws_hkdf_derive_impl(
 
 int aws_hkdf_derive_impl(
     struct aws_allocator *allocator,
-    enum aws_hkdf_hmac_type,
+    enum aws_hkdf_hmac_type hmac_type,
     struct aws_byte_cursor ikm,
     struct aws_byte_cursor salt,
     struct aws_byte_cursor info,
     struct aws_byte_buf *out_buf,
     size_t length) {
     (void)allocator;
-    (void)curve_name;
-    (void)public_key_x;
-    (void)public_key_y;
+    (void)hmac_type;
+    (void)ikm;
+    (void)salt;
+    (void)info;
+    (void)out_buf;
+    (void)length;
     abort();
 }
 

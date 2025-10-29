@@ -372,13 +372,13 @@ AWS_CAL_API int aws_der_encoder_begin_context_aware_tag(
     struct aws_der_encoder *encoder,
     bool is_constructed,
     uint64_t tag_value) {
-    static uint64_t tag_mask = 0x1f; /* 5bit mask */
+    static uint8_t tag_mask = 0x1f; /* 5bit mask */
     if (tag_value >= tag_mask) {
         return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
     }
 
     enum aws_der_type constructed_type =
-        AWS_DER_CLASS_CONTEXT | (is_constructed ? AWS_DER_FORM_CONSTRUCTED : 0) | (tag_value & tag_mask);
+        AWS_DER_CLASS_CONTEXT | (is_constructed ? AWS_DER_FORM_CONSTRUCTED : 0) | ((uint8_t)tag_value & tag_mask);
 
     return s_der_encoder_begin_container(encoder, constructed_type);
 }

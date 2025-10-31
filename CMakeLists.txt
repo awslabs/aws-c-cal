@@ -121,6 +121,8 @@ else ()
             "source/shared/lccrypto_common.c"
         )
     endif()
+
+    list(APPEND AWS_CAL_OS_SRC "source/shared/ref_hkdf.c")
 endif()
 
 if (NOT BYO_CRYPTO)

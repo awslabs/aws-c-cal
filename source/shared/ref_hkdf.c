@@ -10,7 +10,6 @@
 /*
  * Note: mac only provides hkdf starting in cryptokit (swift only)
  * and windows added convoluted api to generate hkdf starting with win 10+.
- * So to support those 2 platforms we use the ref implementation as defined
  * in rfc5869.
  */
 

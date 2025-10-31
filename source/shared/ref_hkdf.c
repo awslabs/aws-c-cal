@@ -10,7 +10,6 @@
 /*
  * Note: mac only provides hkdf starting in cryptokit (swift only)
  * and windows added convoluted api to generate hkdf starting with win 10+.
- * So to support those 2 platforms we use the ref implementation as defined
  * in rfc5869.
  */
 
@@ -30,7 +29,7 @@ static int s_hkdf_extract(
     }
 
     /* PRK = HMAC-Hash(salt, IKM) */
-    return aws_sha512_hmac_compute(allocator, &ikm, &salt, out_prk_buf, 0);
+    return aws_sha512_hmac_compute(allocator, &salt, &ikm, out_prk_buf, 0);
 }
 
 static int s_hkdf_expand(
@@ -140,7 +139,7 @@ int aws_hkdf_derive_impl(
     uint8_t prk[MAX_HMAC_SIZE] = {0};
     struct aws_byte_buf prk_buf = aws_byte_buf_from_empty_array(prk, MAX_HMAC_SIZE);
 
-    if (s_hkdf_extract(allocator, hmac_type, salt, ikm, &prk_buf)) {
+    if (s_hkdf_extract(allocator, hmac_type, ikm, salt, &prk_buf)) {
         return AWS_OP_ERR;
     }
 

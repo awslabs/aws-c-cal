@@ -139,7 +139,7 @@ int aws_hkdf_derive_impl(
     uint8_t prk[MAX_HMAC_SIZE] = {0};
     struct aws_byte_buf prk_buf = aws_byte_buf_from_empty_array(prk, MAX_HMAC_SIZE);
 
-    if (s_hkdf_extract(allocator, hmac_type, salt, ikm, &prk_buf)) {
+    if (s_hkdf_extract(allocator, hmac_type, ikm, salt, &prk_buf)) {
         return AWS_OP_ERR;
     }
 

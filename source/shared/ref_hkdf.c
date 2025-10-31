@@ -29,7 +29,7 @@ static int s_hkdf_extract(
     }
 
     /* PRK = HMAC-Hash(salt, IKM) */
-    return aws_sha512_hmac_compute(allocator, &ikm, &salt, out_prk_buf, 0);
+    return aws_sha512_hmac_compute(allocator, &salt, &ikm, out_prk_buf, 0);
 }
 
 static int s_hkdf_expand(

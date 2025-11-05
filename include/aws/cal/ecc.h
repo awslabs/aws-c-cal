@@ -74,21 +74,14 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key);
 
-#if !defined(AWS_OS_IOS)
 /**
  * Creates an Elliptic Curve public/private key pair that can be used for signing and verifying.
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
  * Otherwise returns NULL.
- * Note: On Apple platforms this function is only supported on MacOS. This is
- * due to usage of SecItemExport, which is only available on MacOS 10.7+
- * (yes, MacOS only and no other Apple platforms). There are alternatives for
- * ios and other platforms, but they are ugly to use. Hence for now it only
- * supports this call on MacOS.
  */
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name);
-#endif /* !AWS_OS_IOS */
 
 /**
  * Creates an Elliptic Curve public key that can be used for verifying.

@@ -388,7 +388,6 @@ error:
     return NULL;
 }
 
-#if defined(AWS_OS_MACOS)
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name) {
@@ -451,54 +450,32 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     cc_key_pair->pub_key_ref = SecKeyCopyPublicKey(cc_key_pair->priv_key_ref);
 
-    /* OKAY up to here was incredibly reasonable, after this we get attacked by the bad API design
-     * dragons.
-     *
-     * Summary: Apple assumed we'd never need the raw key data. Apple was wrong. So we have to export each component
-     * into the OpenSSL format (just fancy words for DER), but the public key and private key are exported separately
-     * for some reason. Anyways, we export the keys, use our handy dandy DER decoder and grab the raw key data out. */
-    OSStatus ret_code = SecItemExport(cc_key_pair->priv_key_ref, kSecFormatOpenSSL, 0, NULL, &sec_key_export_data);
+    CFErrorRef error = NULL;
 
-    if (ret_code != errSecSuccess) {
+    /* Get external representation and parse out components.
+     * SecKeyCopyExternalRepresentation should return 0x | x | y | d for private key */
+    CFDataRef keyData = SecKeyCopyExternalRepresentation(cc_key_pair->priv_key_ref, &error);
+
+    if (!keyData || error) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto error;
     }
 
-    /* now we need to DER decode data */
-    struct aws_byte_cursor key_cur =
-        aws_byte_cursor_from_array(CFDataGetBytePtr(sec_key_export_data), CFDataGetLength(sec_key_export_data));
-
-    decoder = aws_der_decoder_new(allocator, key_cur);
-
-    if (!decoder) {
-        goto error;
-    }
-
-    struct aws_byte_cursor pub_x;
-    AWS_ZERO_STRUCT(pub_x);
-    struct aws_byte_cursor pub_y;
-    AWS_ZERO_STRUCT(pub_y);
-    struct aws_byte_cursor priv_d;
-    AWS_ZERO_STRUCT(priv_d);
-
-    if (aws_der_decoder_load_ecc_key_pair(decoder, &pub_x, &pub_y, &priv_d, &curve_name)) {
-        goto error;
-    }
-
-    AWS_ASSERT(
-        priv_d.len == key_coordinate_size && pub_x.len == key_coordinate_size && pub_y.len == key_coordinate_size &&
-        "Apple Security Framework had better have exported the full pair.");
+    struct aws_byte_cursor key_data_cur = {
+        .ptr = CFDataGetBytePtr(keyData),
+        .len = CFDataGetLength(keyData),
+    };
 
     size_t total_buffer_size = key_coordinate_size * 3 + 1;
-
-    if (aws_byte_buf_init(&cc_key_pair->key_pair.key_buf, allocator, total_buffer_size)) {
+    if (key_data_cur.len != total_buffer_size) {
+        AWS_LOGF_DEBUG(AWS_LS_CAL_ECC, "Something went wrong. Apple Security Framework didn't return full key data.");
+        aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto error;
     }
 
-    aws_byte_buf_write_u8(&cc_key_pair->key_pair.key_buf, s_preamble);
-    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_x);
-    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &pub_y);
-    aws_byte_buf_append(&cc_key_pair->key_pair.key_buf, &priv_d);
+    if (aws_byte_buf_init_copy_from_cursor(&cc_key_pair->key_pair.key_buf, allocator, key_data_cur)) {
+        goto error;
+    }
 
     /* cc_key_pair->key_pair.key_buf is contiguous memory, so just load up the offsets. */
     cc_key_pair->key_pair.pub_x =
@@ -511,24 +488,19 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     cc_key_pair->key_pair.curve_name = curve_name;
     cc_key_pair->key_pair.vtable = &s_key_pair_vtable;
 
-    CFRelease(sec_key_export_data);
+    CFRelease(keyData);
     CFRelease(key_size_cf_str);
     CFRelease(key_attributes);
-    aws_der_decoder_destroy(decoder);
 
     return &cc_key_pair->key_pair;
 
 error:
-    if (decoder) {
-        aws_der_decoder_destroy(decoder);
+    if (keyData) {
+        CFRelease(keyData);
     }
 
     if (key_attributes) {
         CFRelease(key_attributes);
-    }
-
-    if (sec_key_export_data) {
-        CFRelease(sec_key_export_data);
     }
 
     if (key_size_cf_str) {
@@ -538,7 +510,6 @@ error:
     s_destroy_key(&cc_key_pair->key_pair);
     return NULL;
 }
-#endif /* AWS_OS_MACOS */
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,

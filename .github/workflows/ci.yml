@@ -337,6 +337,56 @@ jobs:
         chmod a+x builder
         ./builder build -p ${{ env.PACKAGE_NAME }} --cmake-extra=-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
 
+  apple-devices:
+    runs-on: ${{ matrix.runner }}
+    env:
+      DEVELOPER_DIR: /Applications/${{ matrix.xcode }}.app/Contents/Developer
+      XCODE_DESTINATION: ${{matrix.target.destination}}
+      NSUnbufferedIO: YES
+    strategy:
+      fail-fast: false
+      matrix:
+        # This matrix runs tests on iOS and tvOS on oldest & newest supported Xcodes.
+        # Copied from https://github.com/awslabs/aws-sdk-swift/blob/main/.github/workflows/integration-test.yml
+        runner:
+          - macos-14
+          - macos-15
+        xcode:
+          - Xcode_15.2
+          - Xcode_16.3
+        target:
+          [{ os: ios, destination: 'iOS Simulator,OS=17.2,name=iPhone 15'},
+           { os: ios, destination: 'iOS Simulator,OS=18.4,name=iPhone 16'},
+           { os: tvos, destination: 'tvOS Simulator,OS=17.2,name=Apple TV 4K (3rd generation) (at 1080p)'},
+           { os: tvos, destination: 'tvOS Simulator,OS=18.4,name=Apple TV 4K (3rd generation) (at 1080p)'}]
+        exclude:
+          # Don't run old macOS with new Xcode
+          - runner: macos-14
+            xcode: Xcode_16.3
+          # Don't run new macOS with old Xcode
+          - runner: macos-15
+            xcode: Xcode_15.2
+          # Don't run old simulators with new Xcode
+          - target: { os: tvos, destination: 'tvOS Simulator,OS=17.2,name=Apple TV 4K (3rd generation) (at 1080p)' }
+            xcode: Xcode_16.3
+          - target: { os: ios, destination: 'iOS Simulator,OS=17.2,name=iPhone 15' }
+            xcode: Xcode_16.3
+          # Don't run new simulators with old Xcode
+          - target: { os: tvos, destination: 'tvOS Simulator,OS=18.4,name=Apple TV 4K (3rd generation) (at 1080p)' }
+            xcode: Xcode_15.2
+          - target: { os: ios, destination: 'iOS Simulator,OS=18.4,name=iPhone 16' }
+            xcode: Xcode_15.2
+    steps:
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ env.CRT_CI_ROLE }}
+        aws-region: ${{ env.AWS_DEFAULT_REGION }}
+    - name: Build ${{ env.PACKAGE_NAME }} + consumers
+      run: |
+        python3 -c "from urllib.request import urlretrieve; urlretrieve('${{ env.BUILDER_HOST }}/${{ env.BUILDER_SOURCE }}/${{ env.BUILDER_VERSION }}/builder.pyz?run=${{ env.RUN }}', 'builder')"
+        chmod a+x builder
+        ./builder build -p ${{ env.PACKAGE_NAME }} --target=${{ matrix.target.os }}-armv8
+
   freebsd:
     runs-on: ubuntu-24.04 # latest
     steps:

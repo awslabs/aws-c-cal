@@ -398,10 +398,10 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
         return NULL;
     }
 
-    CFDataRef sec_key_export_data = NULL;
     CFStringRef key_size_cf_str = NULL;
     CFMutableDictionaryRef key_attributes = NULL;
-    struct aws_der_decoder *decoder = NULL;
+    CFErrorRef error = NULL;
+    CFDataRef keyData = NULL;
 
     aws_atomic_init_int(&cc_key_pair->key_pair.ref_count, 1);
     cc_key_pair->key_pair.impl = cc_key_pair;
@@ -438,13 +438,10 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     CFDictionaryAddValue(key_attributes, kSecAttrKeySizeInBits, key_size_cf_str);
 
-    CFErrorRef error = NULL;
-
     cc_key_pair->priv_key_ref = SecKeyCreateRandomKey(key_attributes, &error);
 
     if (error) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
-        CFRelease(error);
         goto error;
     }
 
@@ -452,17 +449,15 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     /* Get external representation and parse out components.
      * SecKeyCopyExternalRepresentation should return 0x | x | y | d for private key */
-    CFDataRef keyData = SecKeyCopyExternalRepresentation(cc_key_pair->priv_key_ref, &error);
+    keyData = SecKeyCopyExternalRepresentation(cc_key_pair->priv_key_ref, &error);
 
     if (!keyData || error) {
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto error;
     }
 
-    struct aws_byte_cursor key_data_cur = {
-        .ptr = CFDataGetBytePtr(keyData),
-        .len = CFDataGetLength(keyData),
-    };
+    struct aws_byte_cursor key_data_cur =
+        aws_byte_cursor_from_array(CFDataGetBytePtr(keyData), CFDataGetLength(keyData));
 
     size_t total_buffer_size = key_coordinate_size * 3 + 1;
     if (key_data_cur.len != total_buffer_size) {
@@ -503,6 +498,10 @@ error:
 
     if (key_size_cf_str) {
         CFRelease(key_size_cf_str);
+    }
+
+    if (error) {
+        CFRelease(error);
     }
 
     s_destroy_key(&cc_key_pair->key_pair);

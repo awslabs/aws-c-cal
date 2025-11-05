@@ -452,6 +452,9 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     keyData = SecKeyCopyExternalRepresentation(cc_key_pair->priv_key_ref, &error);
 
     if (!keyData || error) {
+        if (error) {
+            AWS_LOGF_ERROR(AWS_LS_CAL_ECC, "SecKeyCopyExternalRepresentation call failed with %ld", CFErrorGetCode(error));
+        }
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto error;
     }
@@ -461,7 +464,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     size_t total_buffer_size = key_coordinate_size * 3 + 1;
     if (key_data_cur.len != total_buffer_size) {
-        AWS_LOGF_DEBUG(AWS_LS_CAL_ECC, "Something went wrong. Apple Security Framework didn't return full key data.");
+        AWS_LOGF_ERROR(AWS_LS_CAL_ECC, "Something went wrong. Apple Security Framework didn't return full key data.");
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto error;
     }

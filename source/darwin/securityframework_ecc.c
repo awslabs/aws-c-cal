@@ -450,8 +450,6 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     cc_key_pair->pub_key_ref = SecKeyCopyPublicKey(cc_key_pair->priv_key_ref);
 
-    CFErrorRef error = NULL;
-
     /* Get external representation and parse out components.
      * SecKeyCopyExternalRepresentation should return 0x | x | y | d for private key */
     CFDataRef keyData = SecKeyCopyExternalRepresentation(cc_key_pair->priv_key_ref, &error);

@@ -453,7 +453,8 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
 
     if (!keyData || error) {
         if (error) {
-            AWS_LOGF_ERROR(AWS_LS_CAL_ECC, "SecKeyCopyExternalRepresentation call failed with %ld", CFErrorGetCode(error));
+            AWS_LOGF_ERROR(
+                AWS_LS_CAL_ECC, "SecKeyCopyExternalRepresentation call failed with %ld", CFErrorGetCode(error));
         }
         aws_raise_error(AWS_ERROR_SYS_CALL_FAILURE);
         goto error;

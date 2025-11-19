@@ -388,7 +388,7 @@ error:
     return NULL;
 }
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name) {
     struct commoncrypto_ecc_key_pair *cc_key_pair =
@@ -512,7 +512,7 @@ error:
     return NULL;
 }
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys) {
 

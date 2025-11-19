@@ -191,7 +191,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     return &key_impl->key_pair;
 }
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name) {
     struct libcrypto_ecc_key *key_impl = aws_mem_calloc(allocator, 1, sizeof(struct libcrypto_ecc_key));

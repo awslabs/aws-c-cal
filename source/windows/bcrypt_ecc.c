@@ -363,7 +363,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
     return s_alloc_pair_and_init_buffers(allocator, curve_name, *public_key_x, *public_key_y, empty);
 }
 
-struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name) {
     aws_thread_call_once(&s_ecdsa_thread_once, s_load_alg_handle, NULL);

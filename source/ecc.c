@@ -74,6 +74,9 @@ typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_from_private_key_fn)(stru
 typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_from_asn1_fn)(struct aws_allocator *allocator,
                                                                      const struct aws_byte_cursor *encoded_keys);
 
+typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_generate_random_fn)(struct aws_allocator *allocator,
+                                                                           enum aws_ecc_curve_name curve_name);
+
 #ifndef BYO_CRYPTO
 
 extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
@@ -90,6 +93,10 @@ extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
 extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1_impl(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys);
+
+extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random_impl(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name);
 
 #else /* BYO_CRYPTO */
 
@@ -123,6 +130,14 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1_impl(
     abort();
 }
 
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random_impl(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name) {
+    (void)allocator;
+    (void)curve_name;
+    abort();
+}
+
 #endif /* BYO_CRYPTO */
 
 static aws_ecc_key_pair_new_from_public_key_fn *s_ecc_key_pair_new_from_public_key_fn =
@@ -132,6 +147,9 @@ static aws_ecc_key_pair_new_from_private_key_fn *s_ecc_key_pair_new_from_private
     aws_ecc_key_pair_new_from_private_key_impl;
 
 static aws_ecc_key_pair_new_from_asn1_fn *s_ecc_key_pair_new_from_asn1_fn = aws_ecc_key_pair_new_from_asn1_impl;
+
+static aws_ecc_key_pair_new_generate_random_fn *s_ecc_key_pair_new_generate_random1_fn =
+    aws_ecc_key_pair_new_generate_random_impl;
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     struct aws_allocator *allocator,
@@ -152,6 +170,12 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
     struct aws_allocator *allocator,
     const struct aws_byte_cursor *encoded_keys) {
     return s_ecc_key_pair_new_from_asn1_fn(allocator, encoded_keys);
+}
+
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name) {
+    return s_ecc_key_pair_new_generate_random1_fn(allocator, curve_name);
 }
 
 static void s_aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair) {

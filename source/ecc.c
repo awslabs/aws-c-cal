@@ -72,7 +72,7 @@ typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_from_private_key_fn)(stru
                                                                             const struct aws_byte_cursor *priv_key);
 
 typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_from_asn1_fn)(struct aws_allocator *allocator,
-                                                                            const struct aws_byte_cursor *encoded_keys);
+                                                                     const struct aws_byte_cursor *encoded_keys);
 
 #ifndef BYO_CRYPTO
 
@@ -131,8 +131,7 @@ static aws_ecc_key_pair_new_from_public_key_fn *s_ecc_key_pair_new_from_public_k
 static aws_ecc_key_pair_new_from_private_key_fn *s_ecc_key_pair_new_from_private_key_fn =
     aws_ecc_key_pair_new_from_private_key_impl;
 
-static aws_ecc_key_pair_new_from_asn1_fn *s_ecc_key_pair_new_from_asn1_fn =
-    aws_ecc_key_pair_new_from_asn1_impl;
+static aws_ecc_key_pair_new_from_asn1_fn *s_ecc_key_pair_new_from_asn1_fn = aws_ecc_key_pair_new_from_asn1_impl;
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     struct aws_allocator *allocator,

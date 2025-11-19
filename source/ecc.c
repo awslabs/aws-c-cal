@@ -71,6 +71,9 @@ typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_from_private_key_fn)(stru
                                                                             enum aws_ecc_curve_name curve_name,
                                                                             const struct aws_byte_cursor *priv_key);
 
+typedef struct aws_ecc_key_pair *(aws_ecc_key_pair_new_from_asn1_fn)(struct aws_allocator *allocator,
+                                                                            const struct aws_byte_cursor *encoded_keys);
+
 #ifndef BYO_CRYPTO
 
 extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key_impl(
@@ -83,6 +86,10 @@ extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key);
+
+extern struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *encoded_keys);
 
 #else /* BYO_CRYPTO */
 
@@ -108,6 +115,14 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key_impl(
     abort();
 }
 
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1_impl(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *encoded_keys) {
+    (void)allocator;
+    (void)encoded_keys;
+    abort();
+}
+
 #endif /* BYO_CRYPTO */
 
 static aws_ecc_key_pair_new_from_public_key_fn *s_ecc_key_pair_new_from_public_key_fn =
@@ -115,6 +130,9 @@ static aws_ecc_key_pair_new_from_public_key_fn *s_ecc_key_pair_new_from_public_k
 
 static aws_ecc_key_pair_new_from_private_key_fn *s_ecc_key_pair_new_from_private_key_fn =
     aws_ecc_key_pair_new_from_private_key_impl;
+
+static aws_ecc_key_pair_new_from_asn1_fn *s_ecc_key_pair_new_from_asn1_fn =
+    aws_ecc_key_pair_new_from_asn1_impl;
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
     struct aws_allocator *allocator,
@@ -129,6 +147,12 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_private_key(
     enum aws_ecc_curve_name curve_name,
     const struct aws_byte_cursor *priv_key) {
     return s_ecc_key_pair_new_from_private_key_fn(allocator, curve_name, priv_key);
+}
+
+struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
+    struct aws_allocator *allocator,
+    const struct aws_byte_cursor *encoded_keys) {
+    return s_ecc_key_pair_new_from_asn1_fn(allocator, encoded_keys);
 }
 
 static void s_aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair) {

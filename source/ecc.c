@@ -712,6 +712,20 @@ done:
     return key;
 }
 
+int s_write_component_padded(struct aws_byte_buf *buf, struct aws_byte_cursor coord, size_t pad_to) {
+    for (size_t pad = 0; pad < pad_to - coord.len; ++pad) {
+        if (aws_byte_buf_append_byte_dynamic(buf, 0x0)) {
+            return AWS_OP_ERR;
+        }
+    }
+
+    if (aws_byte_buf_append(buf, &coord)) {
+        return AWS_OP_ERR;
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
 int aws_ecc_decode_signature_der_to_raw(
     struct aws_allocator *allocator,
     struct aws_byte_cursor signature,
@@ -755,6 +769,41 @@ int aws_ecc_decode_signature_der_to_raw(
 on_error:
     aws_der_decoder_destroy(decoder);
     return AWS_OP_ERR;
+}
+
+int aws_ecc_decode_signature_der_to_raw_padded(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor signature,
+    struct aws_byte_buf *out,
+    size_t pad_to) {
+    struct aws_byte_cursor r;
+    AWS_ZERO_STRUCT(r);
+    struct aws_byte_cursor s;
+    AWS_ZERO_STRUCT(s);
+
+    AWS_ERROR_PRECONDITION(allocator);
+    AWS_ERROR_PRECONDITION(out);
+    AWS_ERROR_PRECONDITION(pad_to <= 256);
+
+    if (aws_ecc_decode_signature_der_to_raw(allocator, signature, &r, &s)) {
+        return AWS_OP_ERR;
+    }
+
+    if (r.len > pad_to || s.len > pad_to) {
+        return aws_raise_error(AWS_ERROR_INVALID_ARGUMENT);
+    }
+
+    size_t available_write_space = out->capacity - out->len;
+
+    if (available_write_space < (2 * pad_to)) {
+        return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
+    }
+
+    if (s_write_component_padded(out, r, pad_to) || s_write_component_padded(out, s, pad_to)) {
+        return AWS_OP_ERR;
+    }
+
+    return AWS_OP_SUCCESS;
 }
 
 static bool s_trim_zeros_predicate(uint8_t value) {
@@ -809,20 +858,6 @@ int aws_ecc_encode_signature_raw_to_der(
 on_error:
     aws_der_encoder_destroy(encoder);
     return AWS_OP_ERR;
-}
-
-int s_write_coord_padded(struct aws_byte_buf *buf, struct aws_byte_cursor coord, size_t pad_to) {
-    for (size_t pad = 0; pad < pad_to - coord.len; ++pad) {
-        if (aws_byte_buf_append_byte_dynamic(buf, 0x0)) {
-            return AWS_OP_ERR;
-        }
-    }
-
-    if (aws_byte_buf_append(buf, &coord)) {
-        return AWS_OP_ERR;
-    }
-
-    return AWS_OP_SUCCESS;
 }
 
 /*
@@ -891,12 +926,12 @@ int s_export_sec1(const struct aws_ecc_key_pair *key_pair, bool should_skip_para
     size_t coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name);
 
     struct aws_byte_cursor pub_x_cur = aws_byte_cursor_from_buf(&key_pair->pub_x);
-    if (s_write_coord_padded(&pub_buf, pub_x_cur, coord_size)) {
+    if (s_write_component_padded(&pub_buf, pub_x_cur, coord_size)) {
         goto on_error_pub_key;
     }
 
     struct aws_byte_cursor pub_y_cur = aws_byte_cursor_from_buf(&key_pair->pub_y);
-    if (s_write_coord_padded(&pub_buf, pub_y_cur, coord_size)) {
+    if (s_write_component_padded(&pub_buf, pub_y_cur, coord_size)) {
         goto on_error_pub_key;
     }
 
@@ -1088,12 +1123,12 @@ int s_export_spki(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *
     size_t coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name);
 
     struct aws_byte_cursor pub_x_cur = aws_byte_cursor_from_buf(&key_pair->pub_x);
-    if (s_write_coord_padded(&pub_buf, pub_x_cur, coord_size)) {
+    if (s_write_component_padded(&pub_buf, pub_x_cur, coord_size)) {
         goto on_pub_error;
     }
 
     struct aws_byte_cursor pub_y_cur = aws_byte_cursor_from_buf(&key_pair->pub_y);
-    if (s_write_coord_padded(&pub_buf, pub_y_cur, coord_size)) {
+    if (s_write_component_padded(&pub_buf, pub_y_cur, coord_size)) {
         goto on_pub_error;
     }
 

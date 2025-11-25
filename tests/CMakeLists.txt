@@ -100,6 +100,7 @@ add_test_case(ecdsa_signature_encode_helper_roundtrip)
 add_test_case(ecdsa_export_sec1_roundtrip)
 add_test_case(ecdsa_export_pkcs8_roundtrip)
 add_test_case(ecdsa_export_spki_roundtrip)
+add_test_case(ecdsa_signature_decode_helper)
 
 add_test_case(rsa_encryption_roundtrip_pkcs1_from_user)
 add_test_case(rsa_encryption_roundtrip_oaep_sha256_from_user)

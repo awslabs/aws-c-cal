@@ -190,12 +190,26 @@ AWS_CAL_API int aws_ecc_key_pair_export(
 
 /*
  * Helper to decode ECDSA signature from DER format to base components R and S.
+ * Does not pad and returns values as they are in DER. r and s might be smaller than coord size
  */
 AWS_CAL_API int aws_ecc_decode_signature_der_to_raw(
     struct aws_allocator *allocator,
     struct aws_byte_cursor signature,
     struct aws_byte_cursor *out_r,
     struct aws_byte_cursor *out_s);
+
+/*
+ * Helper to decode ECDSA signature from DER format to padded R || S.
+ * Common jwt format.
+ * Pads each R and S to pad_to.
+ * Returns error if pad_to is less than len of r or s.
+ * use aws_ecc_decode_signature_der_to_raw if you need unpadded values
+ */
+AWS_CAL_API int aws_ecc_decode_signature_der_to_raw_padded(
+    struct aws_allocator *allocator,
+    struct aws_byte_cursor signature,
+    struct aws_byte_buf *out,
+    size_t pad_to);
 
 /*
  * Helper to encode ECDSA signature from raw format (R and S) to DER.

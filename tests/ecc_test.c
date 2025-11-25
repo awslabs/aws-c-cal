@@ -1019,6 +1019,55 @@ static int s_ecdsa_signature_encode_helper_roundtrip(struct aws_allocator *alloc
 }
 AWS_TEST_CASE(ecdsa_signature_encode_helper_roundtrip, s_ecdsa_signature_encode_helper_roundtrip);
 
+AWS_STATIC_STRING_FROM_LITERAL(
+    s_signature_value_short,
+    "3042021f2d2aadcebc1b3f78ecd112539ec0e3447b375f6a99ca0b27b54c31da0e6c5e021f47fb3dbdffb858f4ba8a03e7b483e6b8c946a80a"
+    "d846fa800ad8cac53f8ebd");
+
+static int s_ecdsa_signature_decode_helper(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    struct aws_byte_cursor signature_value_cursor = aws_byte_cursor_from_string(s_signature_value_short);
+    size_t binary_length = 0;
+    if (aws_hex_compute_decoded_len(signature_value_cursor.len, &binary_length)) {
+        return AWS_OP_ERR;
+    }
+    struct aws_byte_buf binary_signature;
+    AWS_ZERO_STRUCT(binary_signature);
+
+    aws_byte_buf_init(&binary_signature, allocator, binary_length);
+
+    ASSERT_SUCCESS(aws_hex_decode(&signature_value_cursor, &binary_signature));
+
+    struct aws_byte_cursor r;
+    AWS_ZERO_STRUCT(r);
+    struct aws_byte_cursor s;
+    AWS_ZERO_STRUCT(s);
+    struct aws_byte_cursor bin_cursor = aws_byte_cursor_from_buf(&binary_signature);
+
+    struct aws_byte_buf decoded_buf;
+    aws_byte_buf_init(&decoded_buf, allocator, 64);
+
+    ASSERT_SUCCESS(aws_ecc_decode_signature_der_to_raw_padded(allocator, bin_cursor, &decoded_buf, 32));
+
+    uint8_t expected_out[] = {0x00, 0x2d, 0x2a, 0xad, 0xce, 0xbc, 0x1b, 0x3f, 0x78, 0xec, 0xd1, 0x12, 0x53,
+                              0x9e, 0xc0, 0xe3, 0x44, 0x7b, 0x37, 0x5f, 0x6a, 0x99, 0xca, 0x0b, 0x27, 0xb5,
+                              0x4c, 0x31, 0xda, 0x0e, 0x6c, 0x5e, 0x00, 0x47, 0xfb, 0x3d, 0xbd, 0xff, 0xb8,
+                              0x58, 0xf4, 0xba, 0x8a, 0x03, 0xe7, 0xb4, 0x83, 0xe6, 0xb8, 0xc9, 0x46, 0xa8,
+                              0x0a, 0xd8, 0x46, 0xfa, 0x80, 0x0a, 0xd8, 0xca, 0xc5, 0x3f, 0x8e, 0xbd};
+    struct aws_byte_cursor expected_out_cur = aws_byte_cursor_from_array(expected_out, sizeof(expected_out));
+
+    ASSERT_BIN_ARRAYS_EQUALS(expected_out_cur.ptr, expected_out_cur.len, decoded_buf.buffer, decoded_buf.len);
+
+    aws_byte_buf_clean_up(&decoded_buf);
+    aws_byte_buf_clean_up(&binary_signature);
+
+    aws_cal_library_clean_up();
+    return AWS_OP_SUCCESS;
+}
+AWS_TEST_CASE(ecdsa_signature_decode_helper, s_ecdsa_signature_decode_helper);
+
 static int s_ecdsa_export_sec1_roundtrip(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
     aws_cal_library_test_init(allocator);

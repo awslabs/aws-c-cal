@@ -712,14 +712,14 @@ done:
     return key;
 }
 
-int s_write_component_padded(struct aws_byte_buf *buf, struct aws_byte_cursor coord, size_t pad_to) {
-    for (size_t pad = 0; pad < pad_to - coord.len; ++pad) {
+int s_write_component_padded(struct aws_byte_buf *buf, struct aws_byte_cursor component, size_t pad_to) {
+    for (size_t pad = 0; pad < pad_to - component.len; ++pad) {
         if (aws_byte_buf_append_byte_dynamic(buf, 0x0)) {
             return AWS_OP_ERR;
         }
     }
 
-    if (aws_byte_buf_append(buf, &coord)) {
+    if (aws_byte_buf_append(buf, &component)) {
         return AWS_OP_ERR;
     }
 

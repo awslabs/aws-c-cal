@@ -799,7 +799,10 @@ int aws_ecc_decode_signature_der_to_raw_padded(
         return aws_raise_error(AWS_ERROR_INVALID_BUFFER_SIZE);
     }
 
+    size_t old_len = out->len;
+
     if (s_write_component_padded(out, r, pad_to) || s_write_component_padded(out, s, pad_to)) {
+        out->len = old_len;
         return AWS_OP_ERR;
     }
 

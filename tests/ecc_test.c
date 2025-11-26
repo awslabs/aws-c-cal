@@ -1046,8 +1046,8 @@ static int s_ecdsa_signature_decode_helper(struct aws_allocator *allocator, void
     AWS_ZERO_STRUCT(s);
     struct aws_byte_cursor bin_cursor = aws_byte_cursor_from_buf(&binary_signature);
 
-    struct aws_byte_buf decoded_buf;
-    aws_byte_buf_init(&decoded_buf, allocator, 64);
+    uint8_t decoded[64] = {0};
+    struct aws_byte_buf decoded_buf = aws_byte_buf_from_empty_array(decoded, 64);
 
     ASSERT_SUCCESS(aws_ecc_decode_signature_der_to_raw_padded(allocator, bin_cursor, &decoded_buf, 32));
 

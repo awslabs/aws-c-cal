@@ -714,7 +714,7 @@ done:
 
 static struct aws_byte_cursor s_null_byte_cursor = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("\0");
 
-int s_write_component_padded(struct aws_byte_buf *buf, struct aws_byte_cursor component, size_t pad_to) {
+static int s_write_component_padded(struct aws_byte_buf *buf, struct aws_byte_cursor component, size_t pad_to) {
     for (size_t pad = 0; pad < pad_to - component.len; ++pad) {
         if (aws_byte_buf_append(buf, &s_null_byte_cursor)) {
             return AWS_OP_ERR;

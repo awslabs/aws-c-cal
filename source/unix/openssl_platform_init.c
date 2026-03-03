@@ -683,14 +683,8 @@ static enum aws_libcrypto_version s_resolve_libcrypto(void) {
     return result;
 }
 
-/* Ignore warnings about how CRYPTO_get_locking_callback() always returns NULL on 1.1.1 */
-#if !defined(__GNUC__) || (__GNUC__ * 100 + __GNUC_MINOR__ * 10 > 410)
-#    pragma GCC diagnostic push
-#    pragma GCC diagnostic ignored "-Waddress"
-#endif
-
 /* Openssl 1.0.x requires special handling for its locking callbacks or else it's not thread safe */
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_OPENSSL) && (OPENSSL_VERSION_NUMBER < 0x10101000L)
 static struct aws_mutex *s_libcrypto_locks = NULL;
 
 static void s_locking_fn(int mode, int n, const char *unused0, int unused1) {
@@ -717,7 +711,7 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
 
     s_libcrypto_allocator = allocator;
 
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_OPENSSL) && (OPENSSL_VERSION_NUMBER < 0x10101000L)
     /* Ensure that libcrypto 1.0.2 has working locking mechanisms. This code is macro'ed
      * by libcrypto to be a no-op on 1.1.1 */
     if (!CRYPTO_get_locking_callback()) {
@@ -769,7 +763,7 @@ void __attribute__((destructor)) s_cal_crypto_shutdown(void) {
 }
 
 void aws_cal_platform_clean_up(void) {
-#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL)
+#if defined(OPENSSL_IS_OPENSSL) && (OPENSSL_VERSION_NUMBER < 0x10101000L)
     if (CRYPTO_get_locking_callback() == s_locking_fn) {
         CRYPTO_set_locking_callback(NULL);
         size_t lock_count = (size_t)CRYPTO_num_locks();
@@ -796,7 +790,3 @@ void aws_cal_platform_thread_clean_up(void) {
     AWSLC_thread_local_clear();
 #endif
 }
-
-#if !defined(__GNUC__) || (__GNUC__ >= 4 && __GNUC_MINOR__ > 1)
-#    pragma GCC diagnostic pop
-#endif

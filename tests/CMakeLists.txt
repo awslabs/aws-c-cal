@@ -169,7 +169,7 @@ add_test_case(der_decode_zero_int)
 add_test_case(der_decode_bad_length)
 add_test_case(der_decode_zero_length_int)
 add_test_case(der_decode_zero_length_bit_string)
-add_test_case(der_decode_zero_empty_bit_string)
+add_test_case(der_decode_empty_bit_string)
 add_test_case(der_decode_empty_bit_string_bad_padding)
 add_test_case(der_roundtrip_context_specific_tags)
 

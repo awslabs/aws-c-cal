@@ -58,10 +58,15 @@ static int s_decode_tlv(struct der_tlv *tlv) {
         }
     } else if (tlv->tag == AWS_DER_BIT_STRING) {
         /* per X.690 8.6.2:"The contents octets for the primitive encoding shall contain an
-        *    initial octet followed by zero, one, or more subsequent octets."
-        * Its invalid to have 0 len bit strings, so reject them.
-        */
+         *    initial octet followed by zero, one, or more subsequent octets."
+         * Its invalid to have 0 len bit strings, so reject them.
+         */
         if (tlv->length == 0) {
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
+        }
+
+        /* Its invalid for empty string to have non-zero padding value */
+        if (tlv->length == 1 && tlv->value[0] != 0) {
             return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
 

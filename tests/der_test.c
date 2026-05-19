@@ -708,6 +708,53 @@ static int s_der_decode_zero_length_bit_string(struct aws_allocator *allocator, 
 }
 AWS_TEST_CASE(der_decode_zero_length_bit_string, s_der_decode_zero_length_bit_string)
 
+static int s_der_decode_empty_bit_string(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    uint8_t zero_bitstring_der[] = {0x03 /*int*/, 0x00 /*len 0*/, 0x00};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(zero_bitstring_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(zero_bitstring_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NOT_NULL(decoder);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+
+    ASSERT_INT_EQUALS(AWS_DER_BIT_STRING, aws_der_decoder_tlv_type(decoder));
+
+    struct aws_byte_cursor cur = {0};
+    ASSERT_SUCCESS(aws_der_decoder_tlv_string(decoder, &cur));
+
+    ASSERT_INT_EQUALS(0, cur.len);
+
+    aws_der_decoder_destroy(decoder);
+
+    aws_cal_library_clean_up();
+    return 0;
+}
+AWS_TEST_CASE(der_decode_empty_bit_string, s_der_decode_empty_bit_string)
+
+static int s_der_decode_empty_bit_string_bad_padding(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    uint8_t zero_bitstring_der[] = {0x03 /*int*/, 0x00 /*len 0*/, 0x03};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(zero_bitstring_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(zero_bitstring_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NULL(decoder);
+
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
+
+    aws_der_decoder_destroy(decoder);
+
+    aws_cal_library_clean_up();
+    return 0;
+}
+AWS_TEST_CASE(der_decode_empty_bit_string_bad_padding, s_der_decode_empty_bit_string_bad_padding)
+
 static int s_der_roundtrip_context_specific_tags(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
     aws_cal_library_test_init(allocator);

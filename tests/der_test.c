@@ -712,7 +712,7 @@ static int s_der_decode_empty_bit_string(struct aws_allocator *allocator, void *
     (void)ctx;
     aws_cal_library_test_init(allocator);
 
-    uint8_t zero_bitstring_der[] = {0x03 /*int*/, 0x00 /*len 0*/, 0x00};
+    uint8_t zero_bitstring_der[] = {0x03 /*int*/, 0x01 /*len 1*/, 0x00};
 
     const size_t encoded_size = AWS_ARRAY_SIZE(zero_bitstring_der);
     struct aws_byte_cursor input = aws_byte_cursor_from_array(zero_bitstring_der, encoded_size);
@@ -739,7 +739,7 @@ static int s_der_decode_empty_bit_string_bad_padding(struct aws_allocator *alloc
     (void)ctx;
     aws_cal_library_test_init(allocator);
 
-    uint8_t zero_bitstring_der[] = {0x03 /*int*/, 0x00 /*len 0*/, 0x03};
+    uint8_t zero_bitstring_der[] = {0x03 /*int*/, 0x01 /*len 1*/, 0x03};
 
     const size_t encoded_size = AWS_ARRAY_SIZE(zero_bitstring_der);
     struct aws_byte_cursor input = aws_byte_cursor_from_array(zero_bitstring_der, encoded_size);

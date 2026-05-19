@@ -67,7 +67,6 @@ static int s_decode_tlv(struct der_tlv *tlv) {
 
         /* Its invalid for empty string to have non-zero padding value */
         if (tlv->length == 1 && tlv->value[0] != 0) {
-            AWS_LOGF_DEBUG(0, "foo");
             return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
 

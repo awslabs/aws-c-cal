@@ -688,6 +688,32 @@ static int s_der_decode_zero_length_int(struct aws_allocator *allocator, void *c
 }
 AWS_TEST_CASE(der_decode_zero_length_int, s_der_decode_zero_length_int)
 
+static int s_der_decode_zero_length_bit_string(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    uint8_t zero_bitstring_der[] = {0x03 /*int*/, 0x00 /*len 0*/};
+
+    const size_t encoded_size = AWS_ARRAY_SIZE(zero_bitstring_der);
+    struct aws_byte_cursor input = aws_byte_cursor_from_array(zero_bitstring_der, encoded_size);
+    struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
+    ASSERT_NOT_NULL(decoder);
+
+    ASSERT_TRUE(aws_der_decoder_next(decoder));
+    ASSERT_INT_EQUALS(aws_der_decoder_tlv_type(decoder), AWS_DER_BIT_STRING);
+
+    struct aws_byte_cursor out = {0};
+    ASSERT_SUCCESS(aws_der_decoder_tlv_string(decoder, &out));
+
+    ASSERT_INT_EQUALS(0, out.len);
+
+    aws_der_decoder_destroy(decoder);
+
+    aws_cal_library_clean_up();
+    return 0;
+}
+AWS_TEST_CASE(der_decode_zero_length_bit_string, s_der_decode_zero_length_bit_string)
+
 static int s_der_roundtrip_context_specific_tags(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
     aws_cal_library_test_init(allocator);

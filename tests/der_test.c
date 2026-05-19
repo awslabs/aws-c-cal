@@ -697,15 +697,9 @@ static int s_der_decode_zero_length_bit_string(struct aws_allocator *allocator, 
     const size_t encoded_size = AWS_ARRAY_SIZE(zero_bitstring_der);
     struct aws_byte_cursor input = aws_byte_cursor_from_array(zero_bitstring_der, encoded_size);
     struct aws_der_decoder *decoder = aws_der_decoder_new(allocator, input);
-    ASSERT_NOT_NULL(decoder);
+    ASSERT_NULL(decoder);
 
-    ASSERT_TRUE(aws_der_decoder_next(decoder));
-    ASSERT_INT_EQUALS(aws_der_decoder_tlv_type(decoder), AWS_DER_BIT_STRING);
-
-    struct aws_byte_cursor out = {0};
-    ASSERT_SUCCESS(aws_der_decoder_tlv_string(decoder, &out));
-
-    ASSERT_INT_EQUALS(0, out.len);
+    ASSERT_INT_EQUALS(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED, aws_last_error());
 
     aws_der_decoder_destroy(decoder);
 

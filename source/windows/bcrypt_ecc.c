@@ -156,7 +156,7 @@ static int s_append_coordinate(
     if (coordinate->len < coordinate_size) {
         size_t leading_zero_count = coordinate_size - coordinate->len;
         if (leading_zero_count + buffer->len > buffer->capacity) {
-            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED)
+            return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
         }
 
         aws_byte_buf_write_u8_n(buffer, 0x0, leading_zero_count);

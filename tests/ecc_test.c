@@ -1253,12 +1253,9 @@ AWS_TEST_CASE(ecc_key_gen_from_private_fuzz_test, s_ecc_key_gen_from_private_fuz
 #endif
 
 /*
- * A malformed DER-encoded ECDSA signature with an
- * oversized coordinate (70 bytes for P-256, which expects 32) must return an error
- * rather than triggering AWS_FATAL_ASSERT / abort().
- *
- * On Windows, the code path is in s_append_coordinate() in bcrypt_ecc.c.
- * On other platforms this exercises the equivalent DER parsing path.
+ * Verify that aws_ecc_key_pair_verify_signature gracefully rejects a
+ * DER-encoded signature containing a coordinate larger than the curve's
+ * field size.
  */
 static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -1268,9 +1265,8 @@ static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator 
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, AWS_CAL_ECDSA_P256);
     ASSERT_NOT_NULL(key_pair);
 
-    /* 77-byte malformed P-256 DER signature: r = 70 bytes (way oversized), s = 1 byte.
-     * For P-256, each coordinate should be at most 33 bytes (32 + 1 leading zero for sign).
-     * This must be rejected gracefully, not crash the process. */
+    /* 77-byte malformed P-256 DER signature: r = 70 bytes (oversized), s = 1 byte.
+     * For P-256, each coordinate should be at most 33 bytes (32 + 1 leading zero for sign). */
     static const uint8_t malformed_sig[] = {
         0x30, 0x4B,                                                 /* SEQUENCE, 75 bytes */
         0x02, 0x46,                                                 /* INTEGER, 70 bytes (r) */
@@ -1286,7 +1282,7 @@ static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator 
     struct aws_byte_cursor digest_cur = aws_byte_cursor_from_array(digest, sizeof(digest));
     struct aws_byte_cursor sig_cur = aws_byte_cursor_from_array(malformed_sig, sizeof(malformed_sig));
 
-    /* This MUST return an error, not abort/crash the process */
+    /* This MUST return an error */
     int result = aws_ecc_key_pair_verify_signature(key_pair, &digest_cur, &sig_cur);
     ASSERT_TRUE(result != AWS_OP_SUCCESS, "Oversized coordinate signature should be rejected");
 

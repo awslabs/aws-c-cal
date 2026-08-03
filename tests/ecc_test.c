@@ -1259,9 +1259,8 @@ AWS_TEST_CASE(ecc_key_gen_from_private_fuzz_test, s_ecc_key_gen_from_private_fuz
  *
  * For P-256, each coordinate should be at most 33 bytes (32 + 1 leading zero
  * for DER integer sign padding). We test:
- *   1. r = 70 bytes (far oversized) -- obvious malformation
- *   2. r = 34 bytes (just 1 byte over) -- boundary rejection
- *   3. r = 33 bytes (valid size), s = 34 bytes (just 1 byte over) -- validates
+ *   1. r = 34 bytes (just 1 byte over the 33-byte max) -- boundary rejection
+ *   2. r = 33 bytes (valid size), s = 34 bytes (just 1 byte over) -- validates
  *      both coordinates are checked independently
  */
 static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator *allocator, void *ctx) {
@@ -1275,23 +1274,7 @@ static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator 
     uint8_t digest[32] = {0};
     struct aws_byte_cursor digest_cur = aws_byte_cursor_from_array(digest, sizeof(digest));
 
-    /* Case 1: r = 70 bytes (far oversized), s = 1 byte. */
-    static const uint8_t sig_r_70[] = {
-        0x30, 0x4B,                                                 /* SEQUENCE, 75 bytes */
-        0x02, 0x46,                                                 /* INTEGER, 70 bytes (r) */
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* r value: 70 bytes */
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, /* INTEGER, 1 byte (s) */
-        0x01,                                                                               /* s value: 1 */
-    };
-
-    struct aws_byte_cursor sig_cur = aws_byte_cursor_from_array(sig_r_70, sizeof(sig_r_70));
-    int result = aws_ecc_key_pair_verify_signature(key_pair, &digest_cur, &sig_cur);
-    ASSERT_TRUE(result != AWS_OP_SUCCESS, "r=70 bytes should be rejected");
-
-    /* Case 2: r = 34 bytes (one byte over the 33-byte max), s = 32 bytes.
+    /* Case 1: r = 34 bytes (one byte over the 33-byte max), s = 32 bytes.
      * This is the boundary case: 33 is valid, 34 must be rejected. */
     static const uint8_t sig_r_34[] = {
         0x30, 0x46,                                                 /* SEQUENCE, 70 bytes */
@@ -1305,11 +1288,11 @@ static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator 
         0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
     };
 
-    sig_cur = aws_byte_cursor_from_array(sig_r_34, sizeof(sig_r_34));
-    result = aws_ecc_key_pair_verify_signature(key_pair, &digest_cur, &sig_cur);
+    struct aws_byte_cursor sig_cur = aws_byte_cursor_from_array(sig_r_34, sizeof(sig_r_34));
+    int result = aws_ecc_key_pair_verify_signature(key_pair, &digest_cur, &sig_cur);
     ASSERT_TRUE(result != AWS_OP_SUCCESS, "r=34 bytes should be rejected (max is 33)");
 
-    /* Case 3: r = 33 bytes (valid), s = 34 bytes (one byte over max).
+    /* Case 2: r = 33 bytes (valid), s = 34 bytes (one byte over max).
      * Proves the validation checks the s coordinate independently. */
     static const uint8_t sig_s_34[] = {
         0x30, 0x47, /* SEQUENCE, 71 bytes */

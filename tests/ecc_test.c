@@ -1256,6 +1256,12 @@ AWS_TEST_CASE(ecc_key_gen_from_private_fuzz_test, s_ecc_key_gen_from_private_fuz
  * Verify that aws_ecc_key_pair_verify_signature gracefully rejects a
  * DER-encoded signature containing a coordinate larger than the curve's
  * field size.
+ *
+ * For P-256, each coordinate should be at most 33 bytes (32 + 1 leading zero
+ * for DER integer sign padding). We test:
+ *   1. r = 34 bytes (just 1 byte over the 33-byte max) -- boundary rejection
+ *   2. r = 33 bytes (valid size), s = 34 bytes (just 1 byte over) -- validates
+ *      both coordinates are checked independently
  */
 static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
@@ -1265,26 +1271,44 @@ static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator 
     struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, AWS_CAL_ECDSA_P256);
     ASSERT_NOT_NULL(key_pair);
 
-    /* 77-byte malformed P-256 DER signature: r = 70 bytes (oversized), s = 1 byte.
-     * For P-256, each coordinate should be at most 33 bytes (32 + 1 leading zero for sign). */
-    static const uint8_t malformed_sig[] = {
-        0x30, 0x4B,                                                 /* SEQUENCE, 75 bytes */
-        0x02, 0x46,                                                 /* INTEGER, 70 bytes (r) */
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* r value: 70 bytes */
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, /* INTEGER, 1 byte (s) */
-        0x01,                                                                               /* s value: 1 */
-    };
-
     uint8_t digest[32] = {0};
     struct aws_byte_cursor digest_cur = aws_byte_cursor_from_array(digest, sizeof(digest));
-    struct aws_byte_cursor sig_cur = aws_byte_cursor_from_array(malformed_sig, sizeof(malformed_sig));
 
-    /* This MUST return an error */
+    /* Case 1: r = 34 bytes (one byte over the 33-byte max), s = 32 bytes.
+     * This is the boundary case: 33 is valid, 34 must be rejected. */
+    static const uint8_t sig_r_34[] = {
+        0x30, 0x46,                                                 /* SEQUENCE, 70 bytes */
+        0x02, 0x22,                                                 /* INTEGER, 34 bytes (r) -- one byte over max */
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, /* r value: 34 bytes */
+        0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x02, 0x20, /* INTEGER, 32 bytes (s) -- valid size
+                                                                                 */
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,             /* s value: 32 bytes */
+        0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+        0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
+    };
+
+    struct aws_byte_cursor sig_cur = aws_byte_cursor_from_array(sig_r_34, sizeof(sig_r_34));
     int result = aws_ecc_key_pair_verify_signature(key_pair, &digest_cur, &sig_cur);
-    ASSERT_TRUE(result != AWS_OP_SUCCESS, "Oversized coordinate signature should be rejected");
+    ASSERT_TRUE(result != AWS_OP_SUCCESS, "r=34 bytes should be rejected (max is 33)");
+
+    /* Case 2: r = 33 bytes (valid), s = 34 bytes (one byte over max).
+     * Proves the validation checks the s coordinate independently. */
+    static const uint8_t sig_s_34[] = {
+        0x30, 0x47, /* SEQUENCE, 71 bytes */
+        0x02, 0x21, /* INTEGER, 33 bytes (r) -- valid (32 + leading zero) */
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, /* r value: 33 bytes */
+        0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+        0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x02, 0x22, /* INTEGER, 34 bytes (s) -- one byte
+                                                                                   over max */
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,             /* s value: 34 bytes */
+        0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+        0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21,
+    };
+
+    sig_cur = aws_byte_cursor_from_array(sig_s_34, sizeof(sig_s_34));
+    result = aws_ecc_key_pair_verify_signature(key_pair, &digest_cur, &sig_cur);
+    ASSERT_TRUE(result != AWS_OP_SUCCESS, "r=33 s=34 bytes should be rejected (s exceeds max)");
 
     aws_ecc_key_pair_release(key_pair);
     aws_cal_library_clean_up();

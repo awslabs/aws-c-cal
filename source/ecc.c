@@ -148,7 +148,7 @@ static aws_ecc_key_pair_new_from_private_key_fn *s_ecc_key_pair_new_from_private
 
 static aws_ecc_key_pair_new_from_asn1_fn *s_ecc_key_pair_new_from_asn1_fn = aws_ecc_key_pair_new_from_asn1_impl;
 
-static aws_ecc_key_pair_new_generate_random_fn *s_ecc_key_pair_new_generate_random1_fn =
+static aws_ecc_key_pair_new_generate_random_fn *s_ecc_key_pair_new_generate_random_fn_impl =
     aws_ecc_key_pair_new_generate_random_impl;
 
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
@@ -175,7 +175,7 @@ struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(
 struct aws_ecc_key_pair *aws_ecc_key_pair_new_generate_random(
     struct aws_allocator *allocator,
     enum aws_ecc_curve_name curve_name) {
-    return s_ecc_key_pair_new_generate_random1_fn(allocator, curve_name);
+    return s_ecc_key_pair_new_generate_random_fn_impl(allocator, curve_name);
 }
 
 static void s_aws_ecc_key_pair_destroy(struct aws_ecc_key_pair *key_pair) {
@@ -630,7 +630,7 @@ int aws_der_decoder_load_ecc_key_pair(
     AWS_ERROR_PRECONDITION(out_curve_name);
 
     /**
-     * Since this is a generic api to parse from ans1, we can encounter several key structures.
+     * Since this is a generic api to parse from asn1, we can encounter several key structures.
      * Just go through them one by one and see if any match the expected type.
      * Note: We should at least get some id in the structure or unique enough layout so ordering does not matter.
      */
@@ -876,7 +876,7 @@ on_error:
  *
  * Note: skip params is used for pkcs8 case, where params structure is written out top level instead.
  */
-int s_export_sec1(const struct aws_ecc_key_pair *key_pair, bool should_skip_params, struct aws_byte_buf *out) {
+static int s_export_sec1(const struct aws_ecc_key_pair *key_pair, bool should_skip_params, struct aws_byte_buf *out) {
 
     if (key_pair->priv_d.buffer == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
@@ -995,7 +995,7 @@ on_error_pub_key:
  *   publicKey  [1] BIT STRING OPTIONAL
  * }
  */
-int s_export_pkcs8(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *out) {
+static int s_export_pkcs8(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *out) {
     if (key_pair->priv_d.buffer == NULL) {
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
@@ -1087,7 +1087,7 @@ on_priv_error:
  *   parameters       ANY DEFINED BY algorithm OPTIONAL
  * }
  */
-int s_export_spki(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *out) {
+static int s_export_spki(const struct aws_ecc_key_pair *key_pair, struct aws_byte_buf *out) {
     struct aws_der_encoder *encoder = aws_der_encoder_new(key_pair->allocator, 256);
 
     if (aws_der_encoder_begin_sequence(encoder)) {

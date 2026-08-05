@@ -107,7 +107,7 @@ AWS_CAL_API int aws_sha512_hmac_compute(
 AWS_CAL_API void aws_set_sha256_hmac_new_fn(aws_hmac_new_fn *fn);
 
 /**
- * Set the implementation of sha256 hmac to use. If you compiled without
+ * Set the implementation of sha512 hmac to use. If you compiled without
  * BYO_CRYPTO, you do not need to call this. However, if use this, we will
  * honor it, regardless of compile options. This may be useful for testing
  * purposes. If you did set BYO_CRYPTO, and you do not call this function
@@ -118,4 +118,4 @@ AWS_CAL_API void aws_set_sha512_hmac_new_fn(aws_hmac_new_fn *fn);
 AWS_EXTERN_C_END
 AWS_POP_SANE_WARNING_LEVEL
 
-#endif /* AWS_CAL_HASH_H_ */
+#endif /* AWS_CAL_HMAC_H_ */

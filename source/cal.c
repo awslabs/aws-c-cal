@@ -13,8 +13,8 @@ static struct aws_error_info s_errors[] = {
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT,
         "An attempt was made to perform an "
-        "Asymmetric cryptographic operation with the"
-        "wrong key component. For example, attempt to"
+        "Asymmetric cryptographic operation with the "
+        "wrong key component. For example, attempt to "
         "verify a signature with a private key or "
         "sign a message with a public key."),
     AWS_DEFINE_ERROR_INFO_CAL(
@@ -42,7 +42,7 @@ static struct aws_error_info s_errors[] = {
         "A cipher material such as an initialization vector or tag was an incorrect size for the selected algorithm."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_DER_UNSUPPORTED_NEGATIVE_INT,
-        "DER decoder does support negative integers."),
+        "DER decoder does not support negative integers."),
     AWS_DEFINE_ERROR_INFO_CAL(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT, "Key format is not supported."),
     AWS_DEFINE_ERROR_INFO_CAL(
         AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED,

@@ -16,7 +16,7 @@
 /*
  * OpenSSL 3 has a large amount of interface changes and many of the functions used
  * throughout aws-c-cal have become deprecated.
- * Lets disable deprecation warnings, so that we can atleast run CI, until we
+ * Lets disable deprecation warnings, so that we can at least run CI, until we
  * can move over to new functions.
  */
 #define OPENSSL_SUPPRESS_DEPRECATED
@@ -39,7 +39,7 @@ static struct aws_allocator *s_libcrypto_allocator = NULL;
  */
 #if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
 /* TODO:the weak refs is not GUARANTEED to avoid linker to strip the symbol.
-   Build on musl with openssl 1.1.1w, those those was referenced, but still stripped from libcrypto during linking.
+   Build on musl with openssl 1.1.1w, those were referenced, but still stripped from libcrypto during linking.
    Logs was:
    ```
    / # gcc -static -Wl,--trace-symbol=HMAC_CTX_new,-v -o test test.c -I $HOME/opt/aws/include -L $HOME/opt/aws/lib
@@ -753,10 +753,10 @@ void aws_cal_platform_init(struct aws_allocator *allocator) {
  * AWSLC_thread_local_shutdown was added by aws-lc to let teams remove thread
  * local data manually before lib is unloaded.
  * We can't call AWSLC_thread_local_shutdown in cal cleanup because it renders
- * aws-lc unusable and there is no way to reinitilize aws-lc to a working state,
+ * aws-lc unusable and there is no way to reinitialize aws-lc to a working state,
  * i.e. everything that depends on aws-lc stops working after shutdown (ex. curl).
  * So instead rely on GCC/Clang destructor extension to shutdown right before
- * crt gets unloaded. Does not work on msvc, but thats a bridge we can cross at
+ * crt gets unloaded. Does not work on msvc, but that's a bridge we can cross at
  * a later date (since we dont support aws-lc on win right now)
  * TODO: do already init'ed check on lc similar to what we do for s2n, so we
  * only shutdown when we initialized aws-lc. currently not possible because

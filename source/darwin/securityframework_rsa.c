@@ -71,7 +71,7 @@ static int s_reinterpret_sec_error_as_crt(CFErrorRef error, const char *function
     int crt_error = AWS_ERROR_CAL_CRYPTO_OPERATION_FAILED;
 
     /*
-     * Mac seems throws errSecVerifyFailed for any signature verification
+     * Mac seems to throw errSecVerifyFailed for any signature verification
      * failures (based on testing and not review of their code).
      * Which makes it impossible to distinguish between signature validation
      * failure and api call failure.
@@ -219,7 +219,7 @@ static int s_rsa_decrypt(
     struct sec_rsa_key_pair *key_pair_impl = key_pair->impl;
 
     if (key_pair_impl->priv_key_ref == NULL) {
-        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "RSA Key Pair is missing Private Key required for encrypt operation.");
+        AWS_LOGF_ERROR(AWS_LS_CAL_RSA, "RSA Key Pair is missing Private Key required for decrypt operation.");
         return aws_raise_error(AWS_ERROR_CAL_MISSING_REQUIRED_KEY_COMPONENT);
     }
 

@@ -158,8 +158,8 @@ AWS_CAL_API int aws_symmetric_cipher_decrypt(
 /**
  * Encrypts any remaining data that was reserved for final padding, loads GMACs etc... and if there is any
  * writes any remaining encrypted data to out. If out is dynamic it will be expanded. If it is not, and
- * out is not large enough to handle the decrypted output, the call will fail. If you're trying to optimize
- *  to use a stack based array or something, make sure it's at least as large as the size of 2 BLOCKs to account for
+ * out is not large enough to handle the encrypted output, the call will fail. If you're trying to optimize
+ * to use a stack based array or something, make sure it's at least as large as the size of 2 BLOCKs to account for
  * padding etc...
  *
  * After invoking this function, you MUST call aws_symmetric_cipher_reset() before invoking any encrypt/decrypt
@@ -190,10 +190,10 @@ AWS_CAL_API int aws_symmetric_cipher_finalize_decryption(struct aws_symmetric_ci
  * same cipher without a call to reset in between them. However, this leaves the key, iv etc... materials setup for
  * immediate reuse.
  * Note: GCM tag is not preserved between operations. If you intend to do encrypt followed directly by decrypt, make
- * sure to make a copy of tag before reseting the cipher and pass that copy for decryption.
+ * sure to make a copy of tag before resetting the cipher and pass that copy for decryption.
  *
  * Warning: In most cases it's a really bad idea to reset a cipher and perform another operation using that cipher.
- * Key and IV should not be reused for different operations. Instead of reseting the cipher, destroy the cipher
+ * Key and IV should not be reused for different operations. Instead of resetting the cipher, destroy the cipher
  * and create new one with a new key/iv pair. Use reset at your own risk, and only after careful consideration.
  *
  * returns AWS_OP_SUCCESS on success. Call aws_last_error() to determine the failure cause if it returns
@@ -223,7 +223,7 @@ AWS_CAL_API void aws_symmetric_cipher_set_tag(struct aws_symmetric_cipher *ciphe
  * This was done because the use case doesn't require fetching these during an
  * encryption or decryption operation and it dramatically simplifies the API.
  *
- * Unlike some other fields, this value does not change after the inital construction of the cipher.
+ * Unlike some other fields, this value does not change after the initial construction of the cipher.
  *
  * For some algorithms, such as AES Keywrap, this will return an empty cursor.
  */
@@ -237,7 +237,7 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_initialization_vecto
  * This was done because the use case doesn't require fetching these during an
  * encryption or decryption operation and it dramatically simplifies the API.
  *
- * Unlike some other fields, this value does not change after the inital construction of the cipher.
+ * Unlike some other fields, this value does not change after the initial construction of the cipher.
  */
 AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws_symmetric_cipher *cipher);
 
@@ -249,8 +249,8 @@ AWS_CAL_API struct aws_byte_cursor aws_symmetric_cipher_get_key(const struct aws
 AWS_CAL_API bool aws_symmetric_cipher_is_good(const struct aws_symmetric_cipher *cipher);
 
 /**
- * Retuns the current state of the cipher. Ther state of the cipher can be ready for use, finalized, or has encountered
- * an error. if the cipher is in a finished or error state, it must be reset before further use.
+ * Returns the current state of the cipher. The state of the cipher can be ready for use, finalized, or has encountered
+ * an error. If the cipher is in a finished or error state, it must be reset before further use.
  */
 AWS_CAL_API enum aws_symmetric_cipher_state aws_symmetric_cipher_get_state(const struct aws_symmetric_cipher *cipher);
 

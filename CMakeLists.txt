@@ -182,6 +182,7 @@ if (AWS_USE_LIBCRYPTO_TO_SUPPORT_ED25519_EVERYWHERE)
 endif()
 
 # Our ABI is not yet stable
+# TODO: switch to VERSION derived from the VERSION file (via aws_get_version) once SOVERSION is set explicitly, to avoid changing the SONAME.
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION 1.0.0)
 
 target_include_directories(${PROJECT_NAME} PUBLIC

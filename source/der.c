@@ -423,7 +423,7 @@ int aws_der_encoder_get_contents(struct aws_der_encoder *encoder, struct aws_byt
 /*
  * DECODER
  */
-int s_decoder_parse(struct aws_der_decoder *decoder);
+static int s_decoder_parse(struct aws_der_decoder *decoder);
 
 struct aws_der_decoder *aws_der_decoder_new(struct aws_allocator *allocator, struct aws_byte_cursor input) {
     struct aws_der_decoder *decoder = aws_mem_calloc(allocator, 1, sizeof(struct aws_der_decoder));
@@ -467,7 +467,7 @@ void aws_der_decoder_destroy(struct aws_der_decoder *decoder) {
     aws_mem_release(decoder->allocator, decoder);
 }
 
-int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) {
+static int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) {
     if (++decoder->depth > 16) {
         /* stream contains too many nested containers, probably malformed/attack */
         return aws_raise_error(AWS_ERROR_CAL_MALFORMED_ASN1_ENCOUNTERED);
@@ -518,7 +518,7 @@ int s_parse_cursor(struct aws_der_decoder *decoder, struct aws_byte_cursor cur) 
     return AWS_OP_SUCCESS;
 }
 
-int s_decoder_parse(struct aws_der_decoder *decoder) {
+static int s_decoder_parse(struct aws_der_decoder *decoder) {
     return s_parse_cursor(decoder, decoder->input);
 }
 

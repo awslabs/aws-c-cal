@@ -83,8 +83,8 @@ AWS_CAL_API size_t aws_rsa_key_pair_max_encrypt_plaintext_size(
     enum aws_rsa_encryption_algorithm algorithm);
 
 /*
- * Uses the key_pair's private key to encrypt the plaintext. The output will be
- * in out. out must be large enough to to hold the ciphertext. Check
+ * Uses the key_pair's public key to encrypt the plaintext. The output will be
+ * in out. out must be large enough to hold the ciphertext. Check
  * aws_rsa_key_pair_block_length() for output upper bound.
  */
 AWS_CAL_API int aws_rsa_key_pair_encrypt(
@@ -95,7 +95,7 @@ AWS_CAL_API int aws_rsa_key_pair_encrypt(
 
 /*
  * Uses the key_pair's private key to decrypt the ciphertext. The output will be
- * in out. out must be large enough to to hold the ciphertext. Check
+ * in out. out must be large enough to hold the plaintext. Check
  * aws_rsa_key_pair_block_length() for output upper bound.
  */
 AWS_CAL_API int aws_rsa_key_pair_decrypt(

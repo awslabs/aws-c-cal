@@ -609,7 +609,7 @@ static void s_gcm_ensure_tag_setup_for_encrypt(struct aws_symmetric_cipher *ciph
         cipher_impl->auth_info_ptr->pbTag = cipher->tag.buffer;
         cipher_impl->auth_info_ptr->cbTag = (ULONG)cipher->tag.capacity;
         /* bcrypt will either end up filling full tag buffer or in an error state,
-        /* in which tag will not be correct */
+           in which tag will not be correct */
         cipher->tag.len = AWS_AES_256_CIPHER_BLOCK_SIZE;
     }
 }

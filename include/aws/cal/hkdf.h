@@ -1,5 +1,5 @@
-#ifndef AWS_CAL_ECC_H
-#define AWS_CAL_ECC_H
+#ifndef AWS_CAL_HKDF_H
+#define AWS_CAL_HKDF_H
 /**
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
@@ -14,7 +14,7 @@ AWS_EXTERN_C_BEGIN
 
 /**
  * Only supports SHA512 hmac for now.
- * No reason other than thats the only one we need for now.
+ * No reason other than that's the only one we need for now.
  */
 enum aws_hkdf_hmac_type {
     HKDF_HMAC_SHA512,
@@ -52,4 +52,4 @@ AWS_CAL_API void aws_set_hkdf_fn(aws_hkdf_fn *fn);
 AWS_EXTERN_C_END
 AWS_POP_SANE_WARNING_LEVEL
 
-#endif /* AWS_CAL_ECC_H */
+#endif /* AWS_CAL_HKDF_H */

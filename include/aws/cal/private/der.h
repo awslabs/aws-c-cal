@@ -23,7 +23,7 @@ struct aws_der_decoder;
  * During encoding aws_der_encoder_write_unsigned_integer assumes that cursor
  * points to a positive number and will prepend 0 if needed by DER spec to
  * indicate its positive number. Encoder does not support writing negative numbers.
- * Decoder aws_der_encoder_write_unsigned_integer will strip any leading 0 as
+ * Decoder aws_der_decoder_tlv_unsigned_integer will strip any leading 0 as
  * needed and will error out if der contains negative number.
  * Take special care when integrating with 3p libraries cause they might expect
  * different format. Ex. this format matches what openssl calls bin format

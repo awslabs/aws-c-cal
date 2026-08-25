@@ -10,7 +10,7 @@
 /*
  * Note: mac only provides hkdf starting in cryptokit (swift only)
  * and windows added convoluted api to generate hkdf starting with win 10+.
- * in rfc5869.
+ * So we provide our own implementation as defined in rfc5869.
  */
 
 enum { MAX_HMAC_SIZE = 64 };

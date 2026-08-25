@@ -273,7 +273,7 @@ on_error:
         BN_free(pub_x_num);
     }
 
-    if (pub_x_num) {
+    if (pub_y_num) {
         BN_free(pub_y_num);
     }
 

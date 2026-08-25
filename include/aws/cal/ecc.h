@@ -98,7 +98,7 @@ AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_public_key(
 /**
  * Creates an Elliptic Curve public/private key pair from a DER encoded key pair.
  * Returns a new instance of aws_ecc_key_pair if the key was successfully built.
- * Otherwise returns NULL. Whether or not signing or verification can be perform depends
+ * Otherwise returns NULL. Whether or not signing or verification can be performed depends
  * on if encoded_keys is a public/private pair or a public key.
  */
 AWS_CAL_API struct aws_ecc_key_pair *aws_ecc_key_pair_new_from_asn1(

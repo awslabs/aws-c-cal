@@ -96,7 +96,11 @@ void aws_validate_libcrypto_linkage(void) {
 #elif !defined(BYO_CRYPTO)
 #    error Unsupported libcrypto!
 #endif
+#if defined(OPENSSL_IS_OPENSSL) && (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+    const char *runtime_version = OpenSSL_version(OPENSSL_VERSION);
+#else
     const char *runtime_version = SSLeay_version(SSLEAY_VERSION);
+#endif
     AWS_LOGF_DEBUG(
         AWS_LS_CAL_LIBCRYPTO_RESOLVE,
         "Compiled with libcrypto %s, linked to libcrypto %s",

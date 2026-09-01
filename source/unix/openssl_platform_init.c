@@ -155,6 +155,11 @@ enum aws_libcrypto_version {
     AWS_LIBCRYPTO_BORINGSSL
 };
 
+/* Don't support OpenSSL 1.0.2 on AIX platform,
+ * In AIX, HMAC_CTX_init and HMAC_CTX_cleanup is not available.
+ * So disabling this method and calling of this method.
+ */
+#if !defined(_AIX)
 bool s_resolve_hmac_102(void *module) {
 #if defined(OPENSSL_IS_OPENSSL)
     hmac_ctx_init init_fn = (hmac_ctx_init)HMAC_CTX_init;
@@ -197,6 +202,7 @@ bool s_resolve_hmac_102(void *module) {
 #endif
     return false;
 }
+#endif
 
 bool s_resolve_hmac_111(void *module) {
 #if defined(OPENSSL_IS_OPENSSL)
@@ -342,8 +348,10 @@ static enum aws_libcrypto_version s_resolve_libcrypto_hmac(enum aws_libcrypto_ve
             return s_resolve_hmac_lc(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_1_1_1:
             return s_resolve_hmac_111(module) ? version : AWS_LIBCRYPTO_NONE;
+#if !defined(_AIX)
         case AWS_LIBCRYPTO_1_0_2:
             return s_resolve_hmac_102(module) ? version : AWS_LIBCRYPTO_NONE;
+#endif
         case AWS_LIBCRYPTO_BORINGSSL:
             return s_resolve_hmac_boringssl(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_NONE:
@@ -383,6 +391,11 @@ extern int EVP_DigestInit_ex(EVP_MD_CTX *, const EVP_MD *, ENGINE *) __attribute
 extern int EVP_DigestUpdate(EVP_MD_CTX *, const void *, size_t) __attribute__((weak, used));
 extern int EVP_DigestFinal_ex(EVP_MD_CTX *, unsigned char *, unsigned int *) __attribute__((weak, used));
 
+/* Don't support OpenSSL 1.0.2 on AIX platform,
+ * In AIX, EVP_MD_CTX_create and EVP_MD_CTX_destroy is not available.
+ * So disabling this method and calling of this method.
+ */
+#if !defined(_AIX)
 bool s_resolve_md_102(void *module) {
 #if !defined(OPENSSL_IS_AWSLC)
     evp_md_ctx_new md_create_fn = s_EVP_MD_CTX_create;
@@ -422,6 +435,7 @@ bool s_resolve_md_102(void *module) {
 #endif
     return false;
 }
+#endif
 
 bool s_resolve_md_111(void *module) {
 #if !defined(OPENSSL_IS_AWSLC)
@@ -520,8 +534,10 @@ static enum aws_libcrypto_version s_resolve_libcrypto_md(enum aws_libcrypto_vers
             return s_resolve_md_lc(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_1_1_1:
             return s_resolve_md_111(module) ? version : AWS_LIBCRYPTO_NONE;
+#if !defined(_AIX)
         case AWS_LIBCRYPTO_1_0_2:
             return s_resolve_md_102(module) ? version : AWS_LIBCRYPTO_NONE;
+#endif
         case AWS_LIBCRYPTO_BORINGSSL:
             return s_resolve_md_boringssl(module) ? version : AWS_LIBCRYPTO_NONE;
         case AWS_LIBCRYPTO_NONE:

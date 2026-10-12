@@ -110,7 +110,19 @@ void aws_validate_libcrypto_linkage(void) {
     const char *openssl_prefix = "OpenSSL ";
     AWS_FATAL_ASSERT(strncmp(openssl_prefix, expected_version, strlen(openssl_prefix)) == 0);
     AWS_FATAL_ASSERT(strncmp(openssl_prefix, runtime_version, strlen(openssl_prefix)) == 0);
+#elif defined(OPENSSL_IS_AWSLC) && defined(AWSLC_FIPS_VERSION_NUMBER)
+    /* FIPS_version() returns the module version of the loaded library, AWSLC_FIPS_VERSION_NUMBER gives the
+     * module version aws-c-cal was compiled against. Allow different AWS-LC versions in FIPS mode as long as
+     * module version matches. Outside FIPS mode the version string must fully match. */
+    const uint32_t runtime_fips_version = FIPS_version();
+    if (runtime_fips_version != 0) {
+        AWS_FATAL_ASSERT(runtime_fips_version == AWSLC_FIPS_VERSION_NUMBER && "libcrypto mislink");
+    } else {
+        AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
+    }
 #else
+    /* BoringSSL and AWS-LC before 5.x expose nothing to compare beyond the version string, so keep it
+     * exact. BoringSSL's string is a library name alone, leaving a check of library identity. */
     AWS_FATAL_ASSERT(strcmp(expected_version, runtime_version) == 0 && "libcrypto mislink");
 #endif
 }

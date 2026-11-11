@@ -137,8 +137,13 @@ static void s_destroy(struct aws_symmetric_cipher *cipher) {
 static int s_clear_reusable_state(struct aws_symmetric_cipher *cipher) {
     struct openssl_aes_cipher *openssl_cipher = cipher->impl;
 
+#if !defined(OPENSSL_IS_AWSLC) && !defined(OPENSSL_IS_BORINGSSL) && (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    EVP_CIPHER_CTX_reset(openssl_cipher->encryptor_ctx);
+    EVP_CIPHER_CTX_reset(openssl_cipher->decryptor_ctx);
+#else
     EVP_CIPHER_CTX_cleanup(openssl_cipher->encryptor_ctx);
     EVP_CIPHER_CTX_cleanup(openssl_cipher->decryptor_ctx);
+#endif
     aws_byte_buf_secure_zero(&openssl_cipher->working_buffer);
     cipher->state = AWS_SYMMETRIC_CIPHER_READY;
     return AWS_OP_SUCCESS;

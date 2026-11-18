@@ -1317,3 +1317,51 @@ static int s_ecdsa_p256_test_oversized_coordinate_rejected(struct aws_allocator 
 }
 
 AWS_TEST_CASE(ecdsa_p256_test_oversized_coordinate_rejected, s_ecdsa_p256_test_oversized_coordinate_rejected)
+
+static int s_test_sec1_export_short_scalar_for_curve(
+    struct aws_allocator *allocator,
+    enum aws_ecc_curve_name curve_name) {
+    struct aws_ecc_key_pair *key_pair = aws_ecc_key_pair_new_generate_random(allocator, curve_name);
+    ASSERT_NOT_NULL(key_pair);
+
+    size_t expected_coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(curve_name);
+    uint8_t *orig_buffer = key_pair->priv_d.buffer;
+    size_t orig_len = key_pair->priv_d.len;
+    ASSERT_TRUE(orig_len == expected_coord_size);
+
+    /* Simulate a key whose private scalar has a leading zero byte (i.e. length is coord_size - 1) */
+    key_pair->priv_d.buffer = orig_buffer + 1;
+    key_pair->priv_d.len = expected_coord_size - 1;
+
+    struct aws_byte_buf sec1_buf;
+    ASSERT_SUCCESS(aws_byte_buf_init(&sec1_buf, allocator, 256));
+    ASSERT_SUCCESS(aws_ecc_key_pair_export(key_pair, AWS_CAL_ECC_KEY_EXPORT_PRIVATE_SEC1, &sec1_buf));
+
+    /* Verify the exported SEC1 structure can be re-imported without error */
+    struct aws_byte_cursor sec1_cur = aws_byte_cursor_from_buf(&sec1_buf);
+    struct aws_ecc_key_pair *reimported = aws_ecc_key_pair_new_from_asn1(allocator, &sec1_cur);
+    ASSERT_NOT_NULL(reimported);
+
+    aws_ecc_key_pair_release(reimported);
+    aws_byte_buf_clean_up(&sec1_buf);
+
+    /* Restore original buffer pointers before release */
+    key_pair->priv_d.buffer = orig_buffer;
+    key_pair->priv_d.len = orig_len;
+    aws_ecc_key_pair_release(key_pair);
+
+    return AWS_OP_SUCCESS;
+}
+
+static int s_ecdsa_sec1_export_short_scalar_padded(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_cal_library_test_init(allocator);
+
+    ASSERT_SUCCESS(s_test_sec1_export_short_scalar_for_curve(allocator, AWS_CAL_ECDSA_P256));
+    ASSERT_SUCCESS(s_test_sec1_export_short_scalar_for_curve(allocator, AWS_CAL_ECDSA_P384));
+
+    aws_cal_library_clean_up();
+    return AWS_OP_SUCCESS;
+}
+
+AWS_TEST_CASE(ecdsa_sec1_export_short_scalar_padded, s_ecdsa_sec1_export_short_scalar_padded)

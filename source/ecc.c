@@ -893,7 +893,20 @@ static int s_export_sec1(const struct aws_ecc_key_pair *key_pair, bool should_sk
         goto on_error;
     }
 
-    if (aws_der_encoder_write_octet_string(encoder, aws_byte_cursor_from_buf(&key_pair->priv_d))) {
+    /* RFC 5915: privateKey is always ceil(log2(n) / 8) octets. Backends may hold a shorter priv_d. */
+    size_t coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name);
+    if (key_pair->priv_d.len > coord_size) {
+        aws_raise_error(AWS_ERROR_CAL_UNSUPPORTED_KEY_FORMAT);
+        goto on_error;
+    }
+    uint8_t priv_storage[66];
+    struct aws_byte_buf priv_padded = aws_byte_buf_from_empty_array(priv_storage, sizeof(priv_storage));
+    int priv_err = s_write_component_padded(&priv_padded, aws_byte_cursor_from_buf(&key_pair->priv_d), coord_size);
+    if (!priv_err) {
+        priv_err = aws_der_encoder_write_octet_string(encoder, aws_byte_cursor_from_buf(&priv_padded));
+    }
+    aws_secure_zero(priv_storage, sizeof(priv_storage));
+    if (priv_err) {
         goto on_error;
     }
 
@@ -927,8 +940,6 @@ static int s_export_sec1(const struct aws_ecc_key_pair *key_pair, bool should_sk
     if (aws_byte_buf_append_byte_dynamic(&pub_buf, 0x04)) { /* uncompressed pub key */
         goto on_error_pub_key;
     }
-
-    size_t coord_size = aws_ecc_key_coordinate_byte_size_from_curve_name(key_pair->curve_name);
 
     struct aws_byte_cursor pub_x_cur = aws_byte_cursor_from_buf(&key_pair->pub_x);
     if (s_write_component_padded(&pub_buf, pub_x_cur, coord_size)) {

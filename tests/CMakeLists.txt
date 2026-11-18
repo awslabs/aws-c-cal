@@ -189,6 +189,7 @@ add_test_case(ecc_key_pair_asn1_ref_count_test)
 add_test_case(ecc_key_pair_private_ref_count_test)
 add_test_case(ecc_key_gen_from_private_fuzz_test)
 add_test_case(ecdsa_p256_test_oversized_coordinate_rejected)
+add_test_case(ecdsa_sec1_export_short_scalar_padded)
 
 add_test_case(ed25519_key_pair_generate_test)
 
